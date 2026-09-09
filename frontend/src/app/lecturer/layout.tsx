@@ -1,5 +1,6 @@
 import DashboardSidebar from '@/components/layout/dashboard-sidebar';
 import { DashboardTopbar } from '@/components/layout/dashboard-nav';
+import MessageFAB from '@/components/chat/message-fab';
 
 export default function LecturerLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,8 @@ export default function LecturerLayout({ children }: { children: React.ReactNode
           {children}
         </div>
       </div>
+      <MessageFAB />
     </div>
   );
 }
+

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Info, Lock } from 'lucide-react';
+import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock } from 'lucide-react';
 import Link from 'next/link';
 
 type ViewMode = 'list' | 'calendar';
@@ -88,12 +88,6 @@ export default function StudentSessionsPage() {
             <Calendar className="h-3.5 w-3.5" /> Calendar
           </button>
         </div>
-      </div>
-
-      {/* Cancellation policy banner */}
-      <div className="p-3 rounded-xl bg-[hsl(var(--muted))] text-xs text-[hsl(var(--muted-foreground))] flex items-start gap-2">
-        <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <div><strong>Cancellation &amp; Rescheduling Policy:</strong> You can cancel or reschedule a session up to <strong>12 hours</strong> before its start time at no cost. Within 12 hours of the start time, the session is locked and will count as used if missed.</div>
       </div>
 
       {/* List View */}

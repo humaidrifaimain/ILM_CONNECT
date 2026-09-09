@@ -34,8 +34,8 @@ import {
   Library,
   MessageSquare,
   Award,
+  HelpCircle,
 } from 'lucide-react';
-
 
 interface NavItem {
   href: string;
@@ -49,6 +49,7 @@ const globalStudentNav: NavItem[] = [
   { href: '/student/courses', label: 'My Courses', icon: Library },
   { href: '/student/messages', label: 'Messages', icon: MessageSquare },
   { href: '/student/billing', label: 'Billing', icon: CreditCard },
+  { href: '/student/support', label: 'Support & Help', icon: HelpCircle },
   { href: '/student/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -69,6 +70,7 @@ const lecturerNav: NavItem[] = [
   { href: '/lecturer/students', label: 'My Students', icon: GraduationCap },
   { href: '/lecturer/messages', label: 'Messages', icon: MessageSquare },
   { href: '/lecturer/earnings', label: 'Earnings', icon: DollarSign },
+  { href: '/lecturer/support', label: 'Support & Help', icon: HelpCircle },
   { href: '/lecturer/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -213,6 +215,7 @@ export default function DashboardSidebar() {
       <div className="border-t border-[hsl(var(--sidebar-border))] p-2 space-y-1">
         <button
           onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          title={collapsed ? (resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode') : undefined}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-[hsl(var(--sidebar-foreground)/0.7)] hover:text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-accent)/0.5)] transition-colors"
         >
           {resolvedTheme === 'dark' ? (

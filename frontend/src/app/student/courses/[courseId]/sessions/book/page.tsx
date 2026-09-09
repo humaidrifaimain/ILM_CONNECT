@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Clock, ChevronLeft, ChevronRight, Check, AlertTriangle, Calendar, Info, Loader2 } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Check, Calendar, Info, Loader2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
-
-const POLICY_TEXT = 'Cancellation & Rescheduling Policy: You can cancel or reschedule a session up to 12 hours before its start time at no cost. Within 12 hours of the start time, the session is locked and will count as used if missed.';
 
 function getWeekDates(weekOffset: number) {
   const today = new Date();
@@ -191,12 +189,6 @@ export default function BookSessionPage() {
           <p className="font-medium text-[hsl(var(--primary))]">You can book between <strong>1 and 2 sessions per week</strong> with your assigned lecturer.</p>
           <p className="text-[hsl(var(--muted-foreground))] mt-1">A minimum 3-day gap is required between sessions booked in the same week.</p>
         </div>
-      </div>
-
-      {/* Cancellation policy */}
-      <div className="p-4 rounded-xl bg-[hsl(var(--muted))] text-xs text-[hsl(var(--muted-foreground))] flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-        <div><strong>Cancellation &amp; Rescheduling Policy:</strong> You can cancel or reschedule a session up to <strong>12 hours</strong> before its start time at no cost. Within 12 hours of the start time, the session is locked and will count as used if missed.</div>
       </div>
 
       {/* Assigned lecturer info */}

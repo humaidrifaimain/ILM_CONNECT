@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useTheme } from '@/components/theme-provider';
-import { Bell, Sun, Moon, BookOpen, LogOut, Inbox, MessageSquare, CheckCheck } from 'lucide-react';
+import { Bell, BookOpen, LogOut, Inbox, MessageSquare, CheckCheck } from 'lucide-react';
+import WhatsAppIcon from '@/components/icons/whatsapp-icon';
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
@@ -47,7 +47,6 @@ function formatNotifTime(iso: string) {
 }
 
 export function DashboardTopbar() {
-  const { resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
@@ -251,12 +250,21 @@ export function DashboardTopbar() {
             </div>
           )}
 
-          <button
-            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
+          {/* WhatsApp Support Button */}
+          <a
+            href="https://wa.me/"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Chat on WhatsApp"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-[#25D366] bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/25 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
           >
-            {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </button>
+            <WhatsAppIcon className="h-4 w-4 flex-shrink-0" />
+            <span className="hidden sm:inline">WhatsApp</span>
+            <span className="flex h-1.5 w-1.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#25D366] opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#25D366]" />
+            </span>
+          </a>
           <button
             onClick={handleLogout}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors"
