@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Put, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -44,6 +44,12 @@ export class ProfileController {
   @Roles(Role.LECTURER)
   async getMyStudents(@Req() req: any) {
     return this.profileService.getMyStudents(req.user.id);
+  }
+
+  @Get('lecturer/students/:studentId')
+  @Roles(Role.LECTURER)
+  async getStudentDetail(@Req() req: any, @Param('studentId') studentId: string) {
+    return this.profileService.getStudentDetailForLecturer(req.user.id, studentId);
   }
 }
 

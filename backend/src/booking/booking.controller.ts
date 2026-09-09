@@ -18,9 +18,19 @@ export class BookingController {
   }
 
   @Delete(':id')
-  @Roles(Role.STUDENT)
+  @Roles(Role.STUDENT, Role.ADMIN, Role.SUPER_ADMIN)
   async cancelBooking(@Req() req: any, @Param('id') id: string) {
-    return this.bookingService.cancelBooking(req.user.id, id);
+    return this.bookingService.cancelBooking(req.user, id);
+  }
+
+  @Post(':id/reschedule')
+  @Roles(Role.STUDENT, Role.ADMIN, Role.SUPER_ADMIN)
+  async rescheduleBooking(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: { startsAt: string }
+  ) {
+    return this.bookingService.rescheduleBooking(req.user, id, body.startsAt);
   }
 
   @Get('student')

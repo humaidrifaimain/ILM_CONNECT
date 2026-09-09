@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock } from 'lucide-react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -27,10 +28,21 @@ function isWithinLockWindow(startsAt: string) {
 }
 
 export default function StudentSessionsPage() {
+  const params = useParams();
+  const courseId = (params?.courseId as string) || 'beginner-qaida';
+  const queryClient = useQueryClient();
+
   const [view, setView] = useState<ViewMode>('list');
-  const [selectedSession, setSelectedSession] = useState<typeof sessions[0] | null>(null);
+  const [selectedSession, setSelectedSession] = useState<any | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
+
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('10:00 AM');
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('ilm-sessions-view');
@@ -41,6 +53,8 @@ export default function StudentSessionsPage() {
   const { data: rawBookings, isLoading } = useQuery({
     queryKey: ['studentBookings'],
     queryFn: () => apiFetch('/bookings/student'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const sessions = useMemo(() => {
@@ -65,7 +79,71 @@ export default function StudentSessionsPage() {
   const nextMonth = () => { if (calMonth === 11) { setCalYear(calYear + 1); setCalMonth(0); } else setCalMonth(calMonth + 1); };
   const getSessionsForDay = (day: number) => sessions.filter((s: any) => { const d = new Date(s.startsAt); return d.getFullYear() === calYear && d.getMonth() === calMonth && d.getDate() === day; });
 
-  const closeDetail = useCallback(() => { setSelectedSession(null); setShowCancelConfirm(false); setShowReschedule(false); }, []);
+  const closeDetail = useCallback(() => {
+    setSelectedSession(null);
+    setShowCancelConfirm(false);
+    setShowReschedule(false);
+    setActionSuccessMessage(null);
+    setActionErrorMessage(null);
+  }, []);
+
+  const handleCancelSession = async () => {
+    if (!selectedSession) return;
+    setIsCanceling(true);
+    setActionErrorMessage(null);
+    try {
+      await apiFetch(`/bookings/${selectedSession.id}`, { method: 'DELETE' });
+      await queryClient.invalidateQueries({ queryKey: ['studentBookings'] });
+      setActionSuccessMessage('Session has been canceled.');
+      setTimeout(() => {
+        closeDetail();
+      }, 1200);
+    } catch (err: any) {
+      setActionErrorMessage(err.message || 'Failed to cancel session');
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  const handleRescheduleSession = async () => {
+    if (!selectedSession || !rescheduleDate) {
+      setActionErrorMessage('Please select a new date for rescheduling');
+      return;
+    }
+    setIsRescheduling(true);
+    setActionErrorMessage(null);
+    try {
+      let [hourStr, minStr] = rescheduleTime.split(' ')[0].split(':');
+      let hour = parseInt(hourStr, 10);
+      const isPM = rescheduleTime.includes('PM');
+      if (isPM && hour !== 12) hour += 12;
+      if (!isPM && hour === 12) hour = 0;
+
+      const [year, month, day] = rescheduleDate.split('-');
+      const startsAtDate = new Date(Number(year), Number(month) - 1, Number(day), hour, parseInt(minStr, 10));
+
+      if (startsAtDate <= new Date()) {
+        setActionErrorMessage('Please select a future date and time');
+        setIsRescheduling(false);
+        return;
+      }
+
+      await apiFetch(`/bookings/${selectedSession.id}/reschedule`, {
+        method: 'POST',
+        body: JSON.stringify({ startsAt: startsAtDate.toISOString() }),
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['studentBookings'] });
+      setActionSuccessMessage('Session has been rescheduled successfully!');
+      setTimeout(() => {
+        closeDetail();
+      }, 1200);
+    } catch (err: any) {
+      setActionErrorMessage(err.message || 'Failed to reschedule session');
+    } finally {
+      setIsRescheduling(false);
+    }
+  };
 
   useEffect(() => {
     if (!selectedSession) return;
@@ -213,11 +291,40 @@ export default function StudentSessionsPage() {
               <AlertTriangle className="h-6 w-6 text-[hsl(var(--destructive))]" />
             </div>
             <h3 className="font-bold text-lg text-center mb-2">Cancel Session?</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] text-center mb-4">Are you sure you want to cancel your session &ldquo;{selectedSession.subject}&rdquo;? This action cannot be undone.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowCancelConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">Keep Session</button>
-              <button onClick={closeDetail} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[hsl(var(--destructive))]">Confirm Cancel</button>
-            </div>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] text-center mb-4">
+              Are you sure you want to cancel your session &ldquo;{selectedSession.subject}&rdquo;?
+            </p>
+            {actionSuccessMessage ? (
+              <div className="p-3 rounded-xl bg-green-500/10 text-green-700 dark:text-green-300 text-sm font-semibold text-center mb-2">
+                ✓ {actionSuccessMessage}
+              </div>
+            ) : (
+              <>
+                {actionErrorMessage && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-xs font-semibold mb-4 leading-relaxed">
+                    ⚠️ {actionErrorMessage}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelConfirm(false)}
+                    disabled={isCanceling}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]"
+                  >
+                    Keep Session
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelSession}
+                    disabled={isCanceling}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[hsl(var(--destructive))] hover:opacity-90 transition-opacity"
+                  >
+                    {isCanceling ? 'Canceling...' : 'Confirm Cancel'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -226,16 +333,79 @@ export default function StudentSessionsPage() {
       {showReschedule && selectedSession && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={closeDetail}>
           <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-2">Reschedule Session</h3>
+            <h3 className="font-bold text-lg mb-1">Reschedule Session</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Choose a new date and time for &ldquo;{selectedSession.subject}&rdquo;</p>
-            <div className="space-y-3 mb-4">
-              <div><label className="block text-sm font-medium mb-1">New Date</label><input type="date" className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm" /></div>
-              <div><label className="block text-sm font-medium mb-1">New Time</label><select className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm"><option>08:00 AM</option><option>09:00 AM</option><option>10:00 AM</option><option>02:00 PM</option><option>03:00 PM</option><option>04:00 PM</option><option>05:00 PM</option></select></div>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setShowReschedule(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">Cancel</button>
-              <button onClick={closeDetail} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)]">Confirm New Time</button>
-            </div>
+            
+            {actionSuccessMessage ? (
+              <div className="p-3 rounded-xl bg-green-500/10 text-green-700 dark:text-green-300 text-sm font-semibold text-center my-4">
+                ✓ {actionSuccessMessage}
+              </div>
+            ) : (
+              <>
+                {actionErrorMessage && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-xs font-semibold mb-4 leading-relaxed">
+                    ⚠️ {actionErrorMessage}
+                  </div>
+                )}
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 text-[hsl(var(--foreground))]">New Date</label>
+                    <input
+                      type="date"
+                      value={rescheduleDate}
+                      min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                      onChange={(e) => setRescheduleDate(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1 text-[hsl(var(--foreground))]">New Time Slot</label>
+                    <select
+                      value={rescheduleTime}
+                      onChange={(e) => setRescheduleTime(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
+                    >
+                      <option value="10:00 AM">10:00 AM (Morning Slot)</option>
+                      <option value="04:00 PM">04:00 PM (Afternoon Slot)</option>
+                      <option value="08:00 AM">08:00 AM</option>
+                      <option value="09:00 AM">09:00 AM</option>
+                      <option value="11:00 AM">11:00 AM</option>
+                      <option value="02:00 PM">02:00 PM</option>
+                      <option value="03:00 PM">03:00 PM</option>
+                      <option value="05:00 PM">05:00 PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <Link
+                    href={`/student/courses/${courseId}/sessions/book`}
+                    className="text-xs text-[hsl(var(--primary))] hover:underline flex items-center gap-1 font-medium"
+                  >
+                    Or pick an open slot from visual calendar →
+                  </Link>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowReschedule(false)}
+                    disabled={isRescheduling}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRescheduleSession}
+                    disabled={isRescheduling || !rescheduleDate}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md disabled:opacity-50"
+                  >
+                    {isRescheduling ? 'Rescheduling...' : 'Confirm New Time'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

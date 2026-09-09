@@ -1,7 +1,7 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/booking.dto';
-import { SessionStatus, SlotStatus } from '@prisma/client';
+import { SessionStatus, SlotStatus, Role } from '@prisma/client';
 
 @Injectable()
 export class BookingService {
@@ -157,13 +157,20 @@ export class BookingService {
     }
   }
 
-  async cancelBooking(studentId: string, sessionId: string) {
-    const session = await this.prisma.session.findFirst({
-      where: { id: sessionId, studentId },
+  async cancelBooking(user: { id: string; role?: Role }, sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
     });
 
     if (!session) {
       throw new NotFoundException('Session not found');
+    }
+
+    const isAdmin = user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+    if (!isAdmin && session.studentId !== user.id) {
+      throw new ForbiddenException(
+        'You are not authorized to cancel this session. It was booked under a different student account.'
+      );
     }
 
     if (session.status !== SessionStatus.SCHEDULED) {
@@ -201,7 +208,7 @@ export class BookingService {
 
     await this.prisma.auditLog.create({
       data: {
-        actorId: studentId,
+        actorId: user.id,
         action: 'SESSION_CANCELED',
         entity: 'SESSION',
         entityId: sessionId,
@@ -223,7 +230,12 @@ export class BookingService {
   async getLecturerBookings(lecturerId: string) {
     return this.prisma.session.findMany({
       where: { lecturerId },
-      include: { student: true },
+      include: {
+        student: true,
+        lesson: { include: { module: { include: { learningPath: true } } } },
+        notes: true,
+        rating: true,
+      },
       orderBy: { startsAt: 'asc' },
     });
   }
@@ -244,5 +256,87 @@ export class BookingService {
         status: data.status ? (data.status as any) : undefined,
       },
     });
+  }
+
+  async rescheduleBooking(user: { id: string; role?: Role }, sessionId: string, newStartsAtISO: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    const isAdmin = user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+    if (!isAdmin && session.studentId !== user.id) {
+      throw new ForbiddenException(
+        'You are not authorized to reschedule this session. It was booked under a different student account.'
+      );
+    }
+
+    if (session.status !== SessionStatus.SCHEDULED) {
+      throw new BadRequestException('Only scheduled sessions can be rescheduled');
+    }
+
+    const newStartsAt = new Date(newStartsAtISO);
+    const newEndsAt = new Date(newStartsAt.getTime() + 45 * 60 * 1000);
+
+    if (newStartsAt <= new Date()) {
+      throw new BadRequestException('Cannot reschedule to a past time');
+    }
+
+    // Release old availability slot back to OPEN if it exists
+    const oldSlot = await this.prisma.availabilitySlot.findFirst({
+      where: {
+        lecturerId: session.lecturerId,
+        startsAt: session.startsAt,
+      },
+    });
+
+    if (oldSlot) {
+      await this.prisma.availabilitySlot.update({
+        where: { id: oldSlot.id },
+        data: { status: SlotStatus.OPEN },
+      });
+    }
+
+    // Check availability slot for new time
+    const newSlot = await this.prisma.availabilitySlot.findFirst({
+      where: {
+        lecturerId: session.lecturerId,
+        startsAt: { lte: newStartsAt },
+        endsAt: { gte: newEndsAt },
+        status: SlotStatus.OPEN,
+      },
+    });
+
+    if (newSlot) {
+      await this.prisma.availabilitySlot.update({
+        where: { id: newSlot.id },
+        data: { status: SlotStatus.BOOKED },
+      });
+    }
+
+    // Update the session times
+    const updated = await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        startsAt: newStartsAt,
+        endsAt: newEndsAt,
+      },
+      include: { lecturer: true },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: user.id,
+        action: 'SESSION_RESCHEDULED',
+        entity: 'SESSION',
+        entityId: sessionId,
+        details: { oldStartsAt: session.startsAt, newStartsAt },
+      },
+    });
+
+    return updated;
   }
 }

@@ -58,7 +58,20 @@ export function DashboardTopbar() {
   let pageTitle = 'Dashboard';
   const segments = pathname.split('/').filter(Boolean);
   if (segments.length >= 2) {
-    pageTitle = segments[segments.length - 1].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const last = segments[segments.length - 1];
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(last) ||
+      /^[0-9a-f-]{20,}$/i.test(last);
+
+    if (pathname.includes('/students/') && isUuid) {
+      pageTitle = 'Student Performance';
+    } else if (isUuid) {
+      pageTitle = segments[segments.length - 2].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    } else if (segments.length === 2 && segments[0] === 'lecturer' && segments[1] === 'students') {
+      pageTitle = 'My Students';
+    } else {
+      pageTitle = last.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    }
   }
 
   const handleLogout = () => {
@@ -255,11 +268,11 @@ export function DashboardTopbar() {
             href="https://wa.me/"
             target="_blank"
             rel="noopener noreferrer"
-            title="Chat on WhatsApp"
+            title="Contact Support on WhatsApp"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-[#25D366] bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/25 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
           >
             <WhatsAppIcon className="h-4 w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">WhatsApp</span>
+            <span className="hidden sm:inline">Contact Support</span>
             <span className="flex h-1.5 w-1.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#25D366] opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#25D366]" />

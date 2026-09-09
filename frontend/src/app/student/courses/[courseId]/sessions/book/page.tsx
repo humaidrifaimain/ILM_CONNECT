@@ -1,17 +1,34 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Clock, ChevronLeft, ChevronRight, Check, Calendar, Info, Loader2 } from 'lucide-react';
+import {
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Calendar,
+  Info,
+  Loader2,
+  X,
+  User,
+  Video,
+  ExternalLink,
+} from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 function getWeekDates(weekOffset: number) {
   const today = new Date();
-  const start = new Date(today);
-  start.setDate(today.getDate() - today.getDay() + 1 + weekOffset * 7);
+  const currentDay = today.getDay(); // 0 = Sun, 1 = Mon...
+  const distanceToMonday = (currentDay + 6) % 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - distanceToMonday + weekOffset * 7);
+  monday.setHours(0, 0, 0, 0);
+
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
     return d;
   });
 }
@@ -22,6 +39,9 @@ const timeSlots = [
 ];
 
 export default function BookSessionPage() {
+  const params = useParams();
+  const courseId = (params?.courseId as string) || 'beginner-qaida';
+
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [confirmed, setConfirmed] = useState(false);
@@ -29,11 +49,23 @@ export default function BookSessionPage() {
   
   const [assignedLecturer, setAssignedLecturer] = useState<any>(null);
   const [availabilitySlots, setAvailabilitySlots] = useState<any[]>([]);
+  const [studentBookings, setStudentBookings] = useState<any[]>([]);
+  const [selectedBookedSession, setSelectedBookedSession] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
   const weekLabel = `${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   const today = new Date();
+
+  // Escape key closes the booked session modal
+  useEffect(() => {
+    if (!selectedBookedSession) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedBookedSession(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedBookedSession]);
 
   useEffect(() => {
     async function loadData() {
@@ -41,6 +73,8 @@ export default function BookSessionPage() {
         setIsLoading(true);
         const profile = await apiFetch('/profile/student');
         const bookings = await apiFetch('/bookings/student');
+        setStudentBookings(bookings || []);
+
         let lecturer = profile?.assignedLecturer || bookings?.find((b: any) => new Date(b.startsAt) > new Date())?.lecturer;
         
         if (!lecturer && bookings?.length > 0) {
@@ -86,6 +120,38 @@ export default function BookSessionPage() {
     loadData();
   }, []);
 
+  // Filter active booked sessions that fall within the currently viewed week
+  const bookedSessionsInWeek = useMemo(() => {
+    return studentBookings.filter((b: any) => {
+      if (b.status === 'CANCELED' || b.status === 'canceled') return false;
+      const bStart = new Date(b.startsAt);
+      return weekDates.some(
+        (d) =>
+          d.getFullYear() === bStart.getFullYear() &&
+          d.getMonth() === bStart.getMonth() &&
+          d.getDate() === bStart.getDate()
+      );
+    });
+  }, [studentBookings, weekDates]);
+
+  // Check if student already booked a session for this specific date and time slot
+  const getBookedSessionForSlot = (dateStr: string, time: string) => {
+    const [year, month, day] = dateStr.split('-');
+    const [hour, min] = time.split(':');
+    const targetDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
+
+    return studentBookings.find((b: any) => {
+      if (b.status === 'CANCELED' || b.status === 'canceled') return false;
+      const bStart = new Date(b.startsAt);
+      return (
+        bStart.getFullYear() === targetDate.getFullYear() &&
+        bStart.getMonth() === targetDate.getMonth() &&
+        bStart.getDate() === targetDate.getDate() &&
+        bStart.getHours() === targetDate.getHours()
+      );
+    });
+  };
+
   const isAvailable = (dateStr: string, time: string) => {
     const [year, month, day] = dateStr.split('-');
     const [hour, min] = time.split(':');
@@ -111,14 +177,22 @@ export default function BookSessionPage() {
   };
 
   const toggleSlot = (key: string) => {
+    const [dateStr, time] = key.split('|');
+    if (getBookedSessionForSlot(dateStr, time)) return;
+
     if (selectedSlots.includes(key)) {
       setSelectedSlots(selectedSlots.filter(s => s !== key));
     } else {
-      if (selectedSlots.length >= 2) return;
+      if (bookedSessionsInWeek.length + selectedSlots.length >= 2) return;
       if (selectedSlots.length === 1) {
         const existingDate = new Date(selectedSlots[0].split('|')[0]);
         const newDate = new Date(key.split('|')[0]);
         if (!isValidPair(existingDate.getDay(), newDate.getDay())) return;
+      }
+      if (bookedSessionsInWeek.length === 1) {
+        const bookedDate = new Date(bookedSessionsInWeek[0].startsAt);
+        const newDate = new Date(key.split('|')[0]);
+        if (!isValidPair(bookedDate.getDay(), newDate.getDay())) return;
       }
       setSelectedSlots([...selectedSlots, key]);
     }
@@ -143,6 +217,10 @@ export default function BookSessionPage() {
           })
         });
       }
+      try {
+        const freshBookings = await apiFetch('/bookings/student');
+        setStudentBookings(freshBookings || []);
+      } catch (e) {}
       setConfirmed(true);
     } catch (error: any) {
       alert(`Failed to book session: ${error.message}`);
@@ -153,11 +231,16 @@ export default function BookSessionPage() {
 
   const getSlotStatus = (key: string) => {
     if (selectedSlots.includes(key)) return 'selected';
-    if (selectedSlots.length >= 2) return 'disabled';
+    if (bookedSessionsInWeek.length + selectedSlots.length >= 2) return 'disabled';
     if (selectedSlots.length === 1) {
       const existingDate = new Date(selectedSlots[0].split('|')[0]);
       const newDate = new Date(key.split('|')[0]);
       if (!isValidPair(existingDate.getDay(), newDate.getDay())) return 'gap-blocked';
+    }
+    if (bookedSessionsInWeek.length === 1) {
+      const bookedDate = new Date(bookedSessionsInWeek[0].startsAt);
+      const newDate = new Date(key.split('|')[0]);
+      if (!isValidPair(bookedDate.getDay(), newDate.getDay())) return 'gap-blocked';
     }
     return 'available';
   };
@@ -187,7 +270,7 @@ export default function BookSessionPage() {
         <Info className="h-5 w-5 text-[hsl(var(--primary))] flex-shrink-0 mt-0.5" />
         <div className="text-sm">
           <p className="font-medium text-[hsl(var(--primary))]">You can book between <strong>1 and 2 sessions per week</strong> with your assigned lecturer.</p>
-          <p className="text-[hsl(var(--muted-foreground))] mt-1">A minimum 3-day gap is required between sessions booked in the same week.</p>
+          <p className="text-[hsl(var(--muted-foreground))] mt-1">A minimum 3-day gap is required between sessions booked in the same week (Mon+Thu, Tue+Fri, Wed+Sat).</p>
         </div>
       </div>
 
@@ -201,6 +284,23 @@ export default function BookSessionPage() {
         <div className="ml-auto text-xs text-[hsl(var(--muted-foreground))]">Your assigned lecturer</div>
       </div>
 
+      {/* Weekly sessions notice if any already booked */}
+      {bookedSessionsInWeek.length > 0 && (
+        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-800 dark:text-emerald-200">
+          <div className="flex items-center gap-2 font-medium">
+            <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+            <span>
+              You have <strong>{bookedSessionsInWeek.length}</strong> session{bookedSessionsInWeek.length > 1 ? 's' : ''} already booked in this week. Click on any booked slot below to view its details.
+            </span>
+          </div>
+          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+            {bookedSessionsInWeek.length >= 2
+              ? 'Weekly limit reached (2/2)'
+              : '1 more session available (3-day gap applies)'}
+          </span>
+        </div>
+      )}
+
       {/* Week navigation */}
       <div className="flex items-center justify-between">
         <button onClick={() => setWeekOffset(weekOffset - 1)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">
@@ -210,6 +310,30 @@ export default function BookSessionPage() {
         <button onClick={() => setWeekOffset(weekOffset + 1)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">
           Next <ChevronRight className="h-4 w-4" />
         </button>
+      </div>
+
+      {/* Calendar Legend */}
+      <div className="flex flex-wrap items-center gap-4 text-xs px-1">
+        <div className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded bg-[hsl(var(--success)/0.15)] border border-[hsl(var(--success)/0.4)]" />
+          <span className="text-[hsl(var(--muted-foreground))]">Available Slot</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-3.5 w-3.5 rounded bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-[9px] font-bold">
+            ✓
+          </span>
+          <span className="text-[hsl(var(--foreground))] font-semibold">Already Booked (Click to view)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded bg-[hsl(var(--primary))] text-white flex items-center justify-center text-[9px]">
+            ✓
+          </span>
+          <span className="text-[hsl(var(--muted-foreground))]">Selected for Booking</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-3 w-3 rounded bg-[hsl(var(--muted)/0.4)]" />
+          <span className="text-[hsl(var(--muted-foreground))]">Unavailable</span>
+        </div>
       </div>
 
       {/* Time slot grid */}
@@ -242,8 +366,26 @@ export default function BookSessionPage() {
                   const targetDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
                   const twelveHoursFromNow = new Date(today.getTime() + 12 * 60 * 60 * 1000);
                   const isPast = targetDate < twelveHoursFromNow;
+                  const bookedSession = getBookedSessionForSlot(dateStr, time);
                   const avail = isAvailable(dateStr, time);
                   const status = getSlotStatus(key);
+
+                  // 1st: Check if this slot is already booked by the student
+                  if (bookedSession) {
+                    return (
+                      <td key={di} className="py-1 px-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBookedSession(bookedSession)}
+                          className="h-8 w-full rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 hover:border-emerald-500/60 transition-all text-xs font-semibold flex items-center justify-center gap-1 shadow-xs px-1 group cursor-pointer"
+                          title={`Booked: ${bookedSession.subject || 'Quran Session'}. Click to view details`}
+                        >
+                          <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                          <span className="truncate text-[10px] font-bold uppercase tracking-tight">Booked</span>
+                        </button>
+                      </td>
+                    );
+                  }
 
                   if (isPast || !avail) {
                     return <td key={di} className="py-1 px-2"><div className="h-8 w-full rounded-lg bg-[hsl(var(--muted)/0.3)]" /></td>;
@@ -252,6 +394,7 @@ export default function BookSessionPage() {
                   return (
                     <td key={di} className="py-1 px-2">
                       <button
+                        type="button"
                         onClick={() => toggleSlot(key)}
                         disabled={status === 'disabled' || status === 'gap-blocked'}
                         title={status === 'gap-blocked' ? 'Too close to your other session (3-day gap required)' : undefined}
@@ -276,7 +419,7 @@ export default function BookSessionPage() {
       {/* Selected slots summary */}
       <div className="flex items-center justify-between p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
         <div>
-          <div className="text-sm font-medium">{selectedSlots.length} of 2 slots selected</div>
+          <div className="text-sm font-medium">{selectedSlots.length} of {Math.max(0, 2 - bookedSessionsInWeek.length)} slots available to select</div>
           {selectedSlots.length > 0 && (
             <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
               {selectedSlots.map(s => {
@@ -285,9 +428,14 @@ export default function BookSessionPage() {
               })}
             </div>
           )}
-          <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Minimum 1 session required to confirm</div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+            {bookedSessionsInWeek.length >= 2
+              ? 'You already have 2 sessions booked for this week'
+              : 'Select your preferred available slot to confirm booking'}
+          </div>
         </div>
         <button
+          type="button"
           onClick={handleConfirmBooking}
           disabled={selectedSlots.length < 1 || isSubmitting}
           className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${selectedSlots.length >= 1 ? 'text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] cursor-not-allowed'}`}
@@ -297,7 +445,131 @@ export default function BookSessionPage() {
       </div>
     </div>
 
-      {/* Confirmation */}
+      {/* 2nd: Already Booked Session Detail Popup Modal */}
+      {selectedBookedSession && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          onClick={() => setSelectedBookedSession(null)}
+        >
+          <div
+            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-scale-in relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Ambient accent background glow */}
+            <div className="absolute top-0 right-0 h-32 w-32 bg-[hsl(var(--primary)/0.08)] rounded-bl-full pointer-events-none" />
+
+            {/* Modal Header */}
+            <div className="flex items-start justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 shadow-xs">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+                      <Check className="h-3 w-3" /> Already Booked
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] uppercase">
+                      {selectedBookedSession.status || 'Confirmed'}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-lg text-[hsl(var(--foreground))] mt-1">
+                    {selectedBookedSession.subject || 'Quran Tajweed & Recitation Session'}
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedBookedSession(null)}
+                className="p-1.5 rounded-xl text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Session Info Card */}
+            <div className="space-y-3 p-4 rounded-xl bg-[hsl(var(--muted)/0.4)] border border-[hsl(var(--border))] text-sm mb-5">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-[hsl(var(--primary))]" /> Lecturer
+                </span>
+                <span className="font-semibold text-[hsl(var(--foreground))]">
+                  {selectedBookedSession.lecturer?.fullName || selectedBookedSession.lecturer?.name || assignedLecturer?.name}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-[hsl(var(--primary))]" /> Date
+                </span>
+                <span className="font-medium text-[hsl(var(--foreground))]">
+                  {new Date(selectedBookedSession.startsAt).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-[hsl(var(--primary))]" /> Time Slot
+                </span>
+                <span className="font-medium text-[hsl(var(--foreground))]">
+                  {new Date(selectedBookedSession.startsAt).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                  {' — '}
+                  {new Date(
+                    selectedBookedSession.endsAt ||
+                      new Date(new Date(selectedBookedSession.startsAt).getTime() + 45 * 60 * 1000)
+                  ).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1.5">
+                  <Video className="h-3.5 w-3.5 text-[hsl(var(--primary))]" /> Classroom
+                </span>
+                <span className="text-xs font-semibold text-[hsl(var(--primary))] flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  LiveKit 1:1 Video Room
+                </span>
+              </div>
+            </div>
+
+            {/* Guidance banner */}
+            <div className="p-3.5 rounded-xl bg-[hsl(var(--primary)/0.08)] border border-[hsl(var(--primary)/0.2)] text-xs text-[hsl(var(--foreground)/0.8)] mb-5 flex items-start gap-2.5">
+              <Info className="h-4 w-4 text-[hsl(var(--primary))] flex-shrink-0 mt-0.5" />
+              <p className="leading-relaxed">
+                This session slot is already booked and reserved for you. You can enter the classroom 5 minutes before the scheduled time from your sessions dashboard.
+              </p>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex gap-2.5">
+              <Link
+                href={`/student/courses/${courseId}/sessions`}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] text-center transition-colors flex items-center justify-center gap-1.5"
+              >
+                Go to My Sessions <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSelectedBookedSession(null)}
+                className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
       {confirmed && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={() => setConfirmed(false)}>
           <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in text-center" onClick={e => e.stopPropagation()}>
