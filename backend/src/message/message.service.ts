@@ -1,17 +1,25 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PresenceService } from './presence.service';
 
 @Injectable()
 export class MessageService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private presenceService: PresenceService,
+  ) {}
 
   /**
    * Get all conversation threads for a user, enriched with:
    * - the other participant's profile (name, initials)
    * - the latest message in each thread
    * - unread count for the current user
+   * - online / offline presence status of the other participant
    */
   async getThreads(userId: string) {
+    // Record current user activity
+    this.presenceService.recordActivity(userId);
+
     const messages = await this.prisma.message.findMany({
       where: {
         OR: [{ senderId: userId }, { recipientId: userId }],
@@ -51,10 +59,13 @@ export class MessageService {
         });
 
         const otherUser = msg.senderId === userId ? msg.recipient : msg.sender;
+        const otherUserId = (otherUser as any).id;
         const otherName =
           (otherUser as any).lecturerProfile?.fullName ||
           (otherUser as any).studentProfile?.fullName ||
           (otherUser as any).email;
+
+        const presence = this.presenceService.getPresence(otherUserId);
 
         return {
           threadId: msg.threadId,
@@ -65,7 +76,7 @@ export class MessageService {
             createdAt: msg.createdAt,
           },
           otherUser: {
-            id: (otherUser as any).id,
+            id: otherUserId,
             name: otherName,
             role: (otherUser as any).role,
             initials: otherName
@@ -74,6 +85,8 @@ export class MessageService {
               .join('')
               .slice(0, 2)
               .toUpperCase(),
+            isOnline: presence.isOnline,
+            lastSeen: presence.lastSeen,
           },
           unreadCount,
         };
@@ -87,6 +100,8 @@ export class MessageService {
    * Get all messages in a thread. Security: caller must be a participant.
    */
   async getMessagesInThread(userId: string, threadId: string) {
+    this.presenceService.recordActivity(userId);
+
     const messages = await this.prisma.message.findMany({
       where: { threadId },
       orderBy: { createdAt: 'asc' },
@@ -123,6 +138,8 @@ export class MessageService {
     content: string,
     threadId?: string,
   ) {
+    this.presenceService.recordActivity(senderId);
+
     const computedThreadId =
       threadId || [senderId, recipientId].sort().join('_');
 
@@ -185,6 +202,8 @@ export class MessageService {
    * Mark all messages in a specific thread as read for the requesting user.
    */
   async markThreadAsRead(userId: string, threadId: string): Promise<void> {
+    this.presenceService.recordActivity(userId);
+
     await this.prisma.message.updateMany({
       where: {
         threadId,

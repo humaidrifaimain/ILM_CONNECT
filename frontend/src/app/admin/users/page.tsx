@@ -1,21 +1,41 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Search, Filter, MoreHorizontal, Shield, UserX, Key, Eye, UserPlus, CheckCircle } from 'lucide-react';
-import { students, lecturers } from '@/lib/mock-data';
-
-const allUsers = [
-  ...students.map(s => ({ ...s, role: 'student' as const })),
-  ...lecturers.map(l => ({ id: l.id, name: l.name, email: `${l.name.split(' ').pop()?.toLowerCase()}@scholar.com`, role: 'lecturer' as const, status: l.status, country: 'Sri Lanka', tier: undefined })),
-];
+import { Search, Shield, UserX, UserCheck, Key, Eye, UserPlus, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
 
 export default function AdminUsersPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<any>(null);
   const [assignmentSuccess, setAssignmentSuccess] = useState(false);
   const [showAddLecturerModal, setShowAddLecturerModal] = useState(false);
   const [addLecturerSuccess, setAddLecturerSuccess] = useState(false);
+
+  // Form states for creating lecturer
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [specializations, setSpecializations] = useState('Tajweed, Hifz, Fiqh');
+  const [hourlyRate, setHourlyRate] = useState('1250');
+  const [sendInviteEmail, setSendInviteEmail] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Fetch real users from database
+  const { data: dbUsers = [], isLoading, error } = useQuery({
+    queryKey: ['adminUsers'],
+    queryFn: () => apiFetch('/admin/users'),
+  });
+
+  // Fetch real lecturers from database for assignment
+  const { data: dbLecturers = [] } = useQuery({
+    queryKey: ['profileLecturers'],
+    queryFn: () => apiFetch('/profile/lecturers'),
+  });
 
   const closeModal = useCallback(() => setSelectedStudentForAssignment(null), []);
 
@@ -27,128 +47,332 @@ export default function AdminUsersPage() {
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
   }, [selectedStudentForAssignment, closeModal]);
 
-  const filtered = allUsers.filter(u => {
-    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase());
-    const matchRole = roleFilter === 'all' || u.role === roleFilter;
+  const handleCreateLecturer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      const specs = specializations
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      await apiFetch('/admin/lecturers', {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName,
+          email: email.trim(),
+          password: password.trim() || undefined,
+          specializations: specs.length ? specs : ['Quran Recitation'],
+          hourlyRate: Number(hourlyRate) || 1250,
+          sendInvitationEmail: sendInviteEmail,
+        }),
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      await queryClient.invalidateQueries({ queryKey: ['profileLecturers'] });
+      await queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+
+      setShowAddLecturerModal(false);
+      setAddLecturerSuccess(true);
+      setTimeout(() => setAddLecturerSuccess(false), 4000);
+
+      // Reset form fields
+      setFirstName('');
+      setLastName('');
+      setEmail('');
+      setPassword('');
+      setSpecializations('Tajweed, Hifz, Fiqh');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to create lecturer account');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAssignLecturer = async (lecturerUserId: string) => {
+    if (!selectedStudentForAssignment) return;
+    try {
+      await apiFetch(`/admin/students/${selectedStudentForAssignment.id}/assign-lecturer`, {
+        method: 'POST',
+        body: JSON.stringify({ lecturerId: lecturerUserId }),
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      setAssignmentSuccess(true);
+      closeModal();
+      setTimeout(() => setAssignmentSuccess(false), 3000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to assign lecturer');
+    }
+  };
+
+  const handleToggleUserStatus = async (user: any) => {
+    const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+    try {
+      await apiFetch(`/admin/users/${user.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+    } catch (err: any) {
+      alert(err.message || 'Failed to update user status');
+    }
+  };
+
+  // Transform and filter real users
+  const transformedUsers = dbUsers.map((u: any) => {
+    const name =
+      u.studentProfile?.fullName ||
+      u.lecturerProfile?.fullName ||
+      u.email.split('@')[0];
+    const roleLower = u.role.toLowerCase();
+    const statusLower = u.status.toLowerCase();
+
+    return {
+      ...u,
+      name,
+      roleLower,
+      statusLower,
+      assignedScholar: u.studentProfile?.assignedLecturer?.fullName,
+      specializations: u.lecturerProfile?.specializations,
+    };
+  });
+
+  const filtered = transformedUsers.filter((u: any) => {
+    const matchSearch =
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase());
+    const matchRole =
+      roleFilter === 'all' ||
+      u.roleLower === roleFilter.toLowerCase();
     return matchSearch && matchRole;
   });
 
   return (
     <>
-      <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">User Management</h1>
-        {(roleFilter === 'all' || roleFilter === 'lecturer') && (
-          <button 
-            onClick={() => setShowAddLecturerModal(true)}
-            className="px-4 py-2 bg-[hsl(var(--primary))] text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2"
-          >
-            <UserPlus className="h-4 w-4" />
-            Add Lecturer
-          </button>
-        )}
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-          <input type="text" placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-        </div>
-        <div className="flex gap-2">
-          {['all', 'student', 'lecturer'].map((r) => (
-            <button key={r} onClick={() => setRoleFilter(r)} className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${roleFilter === r ? 'bg-[hsl(var(--primary))] text-white' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'}`}>
-              {r === 'all' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)}s
+      <div className="space-y-6 animate-fade-in p-6 lg:p-8">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">User Management</h1>
+            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+              Live records from PostgreSQL database ({transformedUsers.length} total users)
+            </p>
+          </div>
+          {(roleFilter === 'all' || roleFilter === 'lecturer') && (
+            <button
+              onClick={() => {
+                setErrorMessage(null);
+                setShowAddLecturerModal(true);
+              }}
+              className="px-4 py-2 bg-[hsl(var(--primary))] text-white text-sm font-medium rounded-xl hover:opacity-90 hover:shadow-lg transition-all flex items-center gap-2 self-start sm:self-auto"
+            >
+              <UserPlus className="h-4 w-4" />
+              Add Lecturer
             </button>
-          ))}
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+            />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {['all', 'student', 'lecturer', 'admin'].map((r) => (
+              <button
+                key={r}
+                onClick={() => setRoleFilter(r)}
+                className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                  roleFilter === r
+                    ? 'bg-[hsl(var(--primary))] text-white shadow-sm'
+                    : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'
+                }`}
+              >
+                {r === 'all' ? 'All Roles' : r.charAt(0).toUpperCase() + r.slice(1) + 's'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto shadow-sm">
+          {isLoading ? (
+            <div className="p-12 text-center text-sm text-[hsl(var(--muted-foreground))] flex items-center justify-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-[hsl(var(--primary))]" />
+              Loading database users...
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center text-sm text-red-500">
+              Failed to load users. Ensure you are logged in as an administrator.
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-12 text-center text-sm text-[hsl(var(--muted-foreground))]">
+              No users found matching your search or filters.
+            </div>
+          ) : (
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)]">
+                  <th className="text-left py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">User</th>
+                  <th className="text-left py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Role</th>
+                  <th className="text-left py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Details / Scholar</th>
+                  <th className="text-left py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Status</th>
+                  <th className="text-right py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((u: any) => (
+                  <tr key={u.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.4)] transition-colors">
+                    <td className="py-3 px-5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
+                          {u.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm text-[hsl(var(--foreground))]">{u.name}</div>
+                          <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-5">
+                      <span
+                        className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${
+                          u.role === 'STUDENT'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                            : u.role === 'LECTURER'
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        }`}
+                      >
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="py-3 px-5 text-xs text-[hsl(var(--muted-foreground))]">
+                      {u.role === 'STUDENT' ? (
+                        u.assignedScholar ? (
+                          <span className="text-[hsl(var(--foreground))] font-medium">Assigned: {u.assignedScholar}</span>
+                        ) : (
+                          <span className="text-amber-600 dark:text-amber-400 font-medium">Unassigned</span>
+                        )
+                      ) : u.role === 'LECTURER' ? (
+                        <span>
+                          {Array.isArray(u.specializations)
+                            ? u.specializations.join(', ')
+                            : 'Quran & Islamic Studies'}
+                        </span>
+                      ) : (
+                        <span>System Administrator</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-5">
+                      <span
+                        className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                          u.status === 'ACTIVE'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                            : u.status === 'PENDING'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        }`}
+                      >
+                        {u.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {u.role === 'STUDENT' && (
+                          <button
+                            onClick={() => setSelectedStudentForAssignment(u)}
+                            className="p-1.5 rounded-lg bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.2)] transition-colors flex items-center gap-1.5 px-3 mr-1"
+                            title="Assign Lecturer"
+                          >
+                            <UserPlus className="h-3.5 w-3.5" />
+                            <span className="text-xs font-semibold hidden md:block">Assign Scholar</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleToggleUserStatus(u)}
+                          className={`p-1.5 rounded-lg text-xs transition-colors ${
+                            u.status === 'ACTIVE'
+                              ? 'hover:bg-red-50 text-red-600 dark:hover:bg-red-950/40'
+                              : 'hover:bg-emerald-50 text-emerald-600 dark:hover:bg-emerald-950/40'
+                          }`}
+                          title={u.status === 'ACTIVE' ? 'Suspend Account' : 'Activate Account'}
+                        >
+                          {u.status === 'ACTIVE' ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
-
-      <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto">
-        <table className="w-full min-w-[600px]">
-          <thead>
-            <tr className="border-b border-[hsl(var(--border))]">
-              <th className="text-left py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">User</th>
-              <th className="text-left py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Role</th>
-              <th className="text-left py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Status</th>
-              <th className="text-right py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((u) => (
-              <tr key={u.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.5)]">
-                <td className="py-3 px-5">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                      {u.name.split(' ').map(n=>n[0]).join('').slice(0,2)}
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">{u.name}</div>
-                      <div className="text-xs text-[hsl(var(--muted-foreground))]">{u.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3 px-5">
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${u.role === 'student' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'}`}>
-                    {u.role}
-                  </span>
-                </td>
-                <td className="py-3 px-5">
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${u.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                    {u.status}
-                  </span>
-                </td>
-                <td className="py-3 px-5 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    {u.role === 'student' && (
-                      <button onClick={() => setSelectedStudentForAssignment(u)} className="p-1.5 rounded-lg bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.2)] transition-colors flex items-center gap-1.5 px-3 mr-2" title="Assign Lecturer">
-                        <UserPlus className="h-4 w-4" />
-                        <span className="text-xs font-medium hidden md:block">Assign Scholar</span>
-                      </button>
-                    )}
-                    <button className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]" title="View"><Eye className="h-4 w-4" /></button>
-                    <button className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]" title="Reset Password"><Key className="h-4 w-4" /></button>
-                    <button className="p-1.5 rounded-lg hover:bg-[hsl(var(--destructive)/0.1)] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))]" title="Suspend"><UserX className="h-4 w-4" /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
 
       {/* Assign Lecturer Modal */}
       {selectedStudentForAssignment && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={closeModal}>
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-1">Assign Lecturer</h3>
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={closeModal}
+        >
+          <div
+            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Assign Scholar</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
-              Select a lecturer for {selectedStudentForAssignment.name}.
+              Select a vetted scholar for <strong className="text-[hsl(var(--foreground))]">{selectedStudentForAssignment.name}</strong>.
             </p>
-            <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
-              {lecturers.map(l => (
-                <button
-                  key={l.id}
-                  onClick={() => {
-                    setAssignmentSuccess(true);
-                    closeModal();
-                    setTimeout(() => setAssignmentSuccess(false), 3000);
-                  }}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.05)] transition-all text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                      {l.name.split(' ').map(n=>n[0]).join('').slice(0,2)}
+
+            <div className="space-y-2.5 mb-6 max-h-[320px] overflow-y-auto pr-1">
+              {dbLecturers.length === 0 ? (
+                <div className="text-center py-6 text-sm text-[hsl(var(--muted-foreground))]">
+                  No lecturers registered yet. Click &quot;Add Lecturer&quot; first.
+                </div>
+              ) : (
+                dbLecturers.map((l: any) => (
+                  <button
+                    key={l.userId}
+                    onClick={() => handleAssignLecturer(l.userId)}
+                    className="w-full flex items-center justify-between p-3 rounded-xl border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.05)] transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {l.fullName?.slice(0, 2).toUpperCase() || 'LC'}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm group-hover:text-[hsl(var(--primary))] transition-colors">
+                          {l.fullName}
+                        </div>
+                        <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                          {Array.isArray(l.specializations)
+                            ? l.specializations.join(', ')
+                            : l.user?.email || 'Scholar'}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-semibold text-sm">{l.name}</div>
-                      <div className="text-xs text-[hsl(var(--muted-foreground))]">{l.studentsCount} active students</div>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                    <span className="text-xs font-semibold text-[hsl(var(--primary))] opacity-0 group-hover:opacity-100 transition-opacity">
+                      Select →
+                    </span>
+                  </button>
+                ))
+              )}
             </div>
-            <button onClick={closeModal} className="w-full py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">
+
+            <button
+              onClick={closeModal}
+              className="w-full py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
+            >
               Cancel
             </button>
           </div>
@@ -157,61 +381,140 @@ export default function AdminUsersPage() {
 
       {/* Add Lecturer Modal */}
       {showAddLecturerModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setShowAddLecturerModal(false)}>
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-lg w-full p-6 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-1">Create Lecturer Account</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6">
-              Manually onboard a vetted scholar to the platform.
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => !isSubmitting && setShowAddLecturerModal(false)}
+        >
+          <div
+            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-lg w-full p-6 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Create Lecturer Account</h3>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
+              Directly onboard a vetted scholar into the database.
             </p>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              setShowAddLecturerModal(false);
-              setAddLecturerSuccess(true);
-              setTimeout(() => setAddLecturerSuccess(false), 4000);
-            }} className="space-y-4">
+
+            {errorMessage && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 flex items-center gap-2 text-xs font-medium text-red-600 dark:text-red-400">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {errorMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateLecturer} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">First Name</label>
-                  <input required type="text" className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" placeholder="e.g. Ahmed" />
+                  <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">First Name</label>
+                  <input
+                    required
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                    placeholder="e.g. Ahmed"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">Last Name</label>
-                  <input required type="text" className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" placeholder="e.g. Al-Farsi" />
+                  <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Last Name</label>
+                  <input
+                    required
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                    placeholder="e.g. Al-Farsi"
+                  />
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium mb-1.5">Email Address</label>
-                <input required type="email" className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" placeholder="ahmed@example.com" />
+                <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Email Address</label>
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                  placeholder="ahmed.scholar@ilmconnect.com"
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1.5">Specializations (comma separated)</label>
-                <input required type="text" className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" placeholder="e.g. Tajweed, Hifz, Fiqh" />
+                <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">
+                  Initial Password <span className="text-[hsl(var(--muted-foreground))] font-normal">(Optional, defaults to ilmconnect123)</span>
+                </label>
+                <input
+                  type="text"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                  placeholder="ilmconnect123"
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1.5">Base Hourly Rate (LKR)</label>
-                <input required type="number" defaultValue="1250" className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
+                <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Specializations (comma separated)</label>
+                <input
+                  required
+                  type="text"
+                  value={specializations}
+                  onChange={(e) => setSpecializations(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                  placeholder="e.g. Tajweed, Hifz, Fiqh"
+                />
               </div>
 
-              <div className="pt-2">
+              <div>
+                <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Base Hourly Rate (LKR)</label>
+                <input
+                  required
+                  type="number"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                />
+              </div>
+
+              <div className="pt-1">
                 <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="mt-1 h-4 w-4 rounded border-[hsl(var(--border))]" />
+                  <input
+                    type="checkbox"
+                    checked={sendInviteEmail}
+                    onChange={(e) => setSendInviteEmail(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-[hsl(var(--border))]"
+                  />
                   <div>
-                    <div className="text-sm font-medium">Send Invitation Email</div>
-                    <div className="text-xs text-[hsl(var(--muted-foreground))]">Automatically send a welcome email with a link for the lecturer to set up their password.</div>
+                    <div className="text-xs font-semibold text-[hsl(var(--foreground))]">Account Activation Notice</div>
+                    <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                      Mark account as active and ready for immediate login.
+                    </div>
                   </div>
                 </label>
               </div>
 
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setShowAddLecturerModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors">
+              <div className="pt-3 flex gap-3">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setShowAddLecturerModal(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors disabled:opacity-50"
+                >
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-[hsl(var(--primary))] text-white hover:shadow-lg transition-all">
-                  Create Account
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-[hsl(var(--primary))] text-white hover:opacity-90 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
                 </button>
               </div>
             </form>
@@ -219,21 +522,21 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* Success Toast */}
+      {/* Success Toasts */}
       {assignmentSuccess && (
         <div className="fixed bottom-6 right-6 z-[100] animate-fade-in">
-          <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] shadow-lg flex items-center gap-2 text-sm font-medium text-[hsl(var(--success))]">
+          <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-emerald-500/30 shadow-lg flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
             <CheckCircle className="h-4 w-4" />
-            Lecturer assigned successfully!
+            Scholar assigned to student successfully in database!
           </div>
         </div>
       )}
 
       {addLecturerSuccess && (
         <div className="fixed bottom-6 right-6 z-[100] animate-fade-in">
-          <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] shadow-lg flex items-center gap-2 text-sm font-medium text-[hsl(var(--success))]">
+          <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-emerald-500/30 shadow-lg flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
             <CheckCircle className="h-4 w-4" />
-            Lecturer account created. Invitation email sent!
+            Lecturer account created and saved to database!
           </div>
         </div>
       )}

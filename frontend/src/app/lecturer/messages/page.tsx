@@ -6,13 +6,21 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { usePresenceHeartbeat, useUserPresence, formatLastSeen } from '@/lib/use-presence';
 import { Send, MessageSquare, Loader2, ArrowLeft, Info, Users, CheckCheck, Clock, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Thread {
   threadId: string;
   lastMessage: { id: string; content: string; senderId: string; createdAt: string };
-  otherUser: { id: string; name: string; role: string; initials: string };
+  otherUser: {
+    id: string;
+    name: string;
+    role: string;
+    initials: string;
+    isOnline?: boolean;
+    lastSeen?: string | null;
+  };
   unreadCount: number;
 }
 
@@ -54,7 +62,18 @@ function LecturerMessagesContent() {
   const searchParams = useSearchParams();
   const urlThreadId = searchParams.get('threadId');
 
+  // Maintain active online heartbeat while on page
+  usePresenceHeartbeat(!!user);
+
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+
+  // Live presence for selected participant
+  const { isOnline: isOtherUserOnline, lastSeen: otherUserLastSeen } = useUserPresence(
+    selectedThread?.otherUser.id,
+    selectedThread?.otherUser.isOnline,
+    selectedThread?.otherUser.lastSeen,
+  );
+
   const [input, setInput] = useState('');
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [showStudentPicker, setShowStudentPicker] = useState(false);
@@ -82,6 +101,15 @@ function LecturerMessagesContent() {
     queryKey: ['lecturerStudents'],
     queryFn: () => apiFetch('/profile/lecturer/students'),
     enabled: !!user,
+  });
+
+  // Query presence for students when picker is shown
+  const studentUserIds = myStudents.map((s) => s.userId).join(',');
+  const { data: studentsPresence = {} } = useQuery<Record<string, { isOnline: boolean; lastSeen: string | null }>>({
+    queryKey: ['studentsPresence', studentUserIds],
+    queryFn: () => apiFetch(`/messages/presence?userIds=${studentUserIds}`),
+    enabled: showStudentPicker && myStudents.length > 0,
+    refetchInterval: 8000,
   });
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
@@ -361,18 +389,38 @@ function LecturerMessagesContent() {
               <p className="text-[10px] text-[hsl(var(--muted-foreground))] px-3 pt-2 pb-1 font-medium uppercase tracking-wide">
                 Start conversation with:
               </p>
-              {studentsWithoutThreads.map((s) => (
-                <button
-                  key={s.userId}
-                  onClick={() => handleStartWithStudent(s)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-[hsl(var(--muted))] transition-colors text-sm"
-                >
-                  <div className="h-7 w-7 rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-[10px]">
-                    {s.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                  </div>
-                  {s.fullName}
-                </button>
-              ))}
+              {studentsWithoutThreads.map((s) => {
+                const sPresence = studentsPresence[s.userId];
+                const sIsOnline = sPresence?.isOnline ?? false;
+                return (
+                  <button
+                    key={s.userId}
+                    onClick={() => handleStartWithStudent(s)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-[hsl(var(--muted))] transition-colors text-sm"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative flex-shrink-0">
+                        <div className="h-7 w-7 rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-[10px]">
+                          {s.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <span
+                          className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-1 ring-[hsl(var(--card))] ${
+                            sIsOnline ? 'bg-emerald-500 shadow-sm' : 'bg-zinc-400 dark:bg-zinc-600'
+                          }`}
+                        />
+                      </div>
+                      <span className="truncate">{s.fullName}</span>
+                    </div>
+                    <span
+                      className={`text-[10px] flex-shrink-0 font-medium ${
+                        sIsOnline ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-[hsl(var(--muted-foreground))]'
+                      }`}
+                    >
+                      {sIsOnline ? 'Online' : 'Offline'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -414,10 +462,26 @@ function LecturerMessagesContent() {
                         : 'hover:bg-[hsl(var(--muted))]'
                     }`}
                   >
+                    {/* Avatar with Presence Indicator */}
                     <div className="relative flex-shrink-0">
                       <div className="h-11 w-11 rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-sm">
                         {thread.otherUser.initials}
                       </div>
+
+                      {/* Online / Offline status dot */}
+                      <span
+                        className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full ring-2 ring-[hsl(var(--card))] flex items-center justify-center transition-colors ${
+                          thread.otherUser.isOnline
+                            ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50'
+                            : 'bg-zinc-400 dark:bg-zinc-600'
+                        }`}
+                        title={thread.otherUser.isOnline ? 'Online' : formatLastSeen(thread.otherUser.lastSeen)}
+                      >
+                        {thread.otherUser.isOnline && (
+                          <span className="h-full w-full rounded-full bg-emerald-400 animate-ping opacity-60" />
+                        )}
+                      </span>
+
                       <AnimatePresence>
                         {hasUnread && (
                           <motion.span
@@ -432,15 +496,21 @@ function LecturerMessagesContent() {
                         )}
                       </AnimatePresence>
                     </div>
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
-                        <span
-                          className={`text-sm truncate transition-colors duration-300 ${
-                            hasUnread ? 'font-bold text-[hsl(var(--foreground))]' : 'font-semibold text-[hsl(var(--foreground)/0.8)]'
-                          }`}
-                        >
-                          {thread.otherUser.name}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={`text-sm truncate transition-colors duration-300 ${
+                              hasUnread ? 'font-bold text-[hsl(var(--foreground))]' : 'font-semibold text-[hsl(var(--foreground)/0.8)]'
+                            }`}
+                          >
+                            {thread.otherUser.name}
+                          </span>
+                          {thread.otherUser.isOnline && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 flex-shrink-0 animate-pulse" title="Online" />
+                          )}
+                        </div>
                         <span
                           className={`text-[10px] ml-2 flex-shrink-0 transition-colors duration-300 ${
                             hasUnread ? 'font-semibold text-red-500' : 'text-[hsl(var(--muted-foreground))]'
@@ -502,8 +572,18 @@ function LecturerMessagesContent() {
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
-              <div className="h-9 w-9 rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-sm flex-shrink-0">
-                {selectedThread.otherUser.initials}
+              <div className="relative flex-shrink-0">
+                <div className="h-9 w-9 rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-sm flex-shrink-0">
+                  {selectedThread.otherUser.initials}
+                </div>
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-[hsl(var(--card))] transition-colors ${
+                    isOtherUserOnline
+                      ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50'
+                      : 'bg-zinc-400 dark:bg-zinc-600'
+                  }`}
+                  title={isOtherUserOnline ? 'Online' : formatLastSeen(otherUserLastSeen)}
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -523,7 +603,26 @@ function LecturerMessagesContent() {
                     )}
                   </AnimatePresence>
                 </div>
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">Student</p>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="inline-flex items-center gap-1">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        isOtherUserOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400 dark:bg-zinc-600'
+                      }`}
+                    />
+                    <span
+                      className={
+                        isOtherUserOnline
+                          ? 'text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]'
+                          : 'text-[hsl(var(--muted-foreground))] text-[11px]'
+                      }
+                    >
+                      {isOtherUserOnline ? 'Online' : formatLastSeen(otherUserLastSeen)}
+                    </span>
+                  </span>
+                  <span className="text-[hsl(var(--muted-foreground)/0.4)]">•</span>
+                  <span className="text-[hsl(var(--muted-foreground))] text-[11px]">Student</span>
+                </div>
               </div>
 
               {/* Status indicator / Dismiss pill */}
@@ -553,10 +652,18 @@ function LecturerMessagesContent() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] text-[10px] font-medium">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--primary))] animate-pulse" />
-                  Platform Chat
-                </div>
+
+                {isOtherUserOnline ? (
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-500/20 shadow-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+                    Active Now
+                  </div>
+                ) : (
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] text-[10px] font-medium border border-[hsl(var(--border))]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600" />
+                    {formatLastSeen(otherUserLastSeen)}
+                  </div>
+                )}
               </div>
             </div>
 

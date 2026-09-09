@@ -1,5 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Role, UserStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { CreateLecturerDto } from './dto/create-lecturer.dto';
 
 @Injectable()
 export class AdminService {
@@ -81,8 +84,8 @@ export class AdminService {
   async getUsers(role?: string, status?: string) {
     return this.prisma.user.findMany({
       where: {
-        ...(role && { role: role as any }),
-        ...(status && { status: status as any }),
+        ...(role && role !== 'all' && { role: role.toUpperCase() as any }),
+        ...(status && status !== 'all' && { status: status.toUpperCase() as any }),
       },
       select: {
         id: true,
@@ -90,8 +93,156 @@ export class AdminService {
         role: true,
         status: true,
         createdAt: true,
+        studentProfile: {
+          select: {
+            fullName: true,
+            phone: true,
+            country: true,
+            currentTier: true,
+            assignedLecturer: {
+              select: {
+                userId: true,
+                fullName: true,
+              },
+            },
+          },
+        },
+        lecturerProfile: {
+          select: {
+            fullName: true,
+            specializations: true,
+            ratingAvg: true,
+            ratingCount: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createLecturer(dto: import('./dto/create-lecturer.dto').CreateLecturerDto, adminUserId?: string) {
+    const email = dto.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    if (existing) {
+      throw new ConflictException(`User with email ${email} already exists`);
+    }
+
+    const saltRounds = 10;
+    const defaultPassword = dto.password || 'ilmconnect123';
+    const passwordHash = await bcrypt.hash(defaultPassword, saltRounds);
+
+    const specializations = Array.isArray(dto.specializations)
+      ? dto.specializations
+      : typeof dto.specializations === 'string'
+      ? dto.specializations.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : ['Quran Recitation'];
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: Role.LECTURER,
+        status: UserStatus.ACTIVE,
+        emailVerifiedAt: new Date(),
+        lecturerProfile: {
+          create: {
+            fullName: dto.fullName.trim(),
+            bio: dto.bio || `Islamic Scholar & Lecturer in ${specializations.join(', ')}`,
+            qualifications: dto.qualifications || 'Certified Islamic Scholar',
+            specializations,
+            languages: dto.languages || ['English', 'Arabic'],
+            hourlyAvailabilityJson: [],
+            payoutMethod: 'bank_transfer',
+            payoutDetails: 'default',
+            ratingAvg: 5.0,
+            ratingCount: 0,
+            status: UserStatus.ACTIVE,
+          },
+        },
+      },
+      include: {
+        lecturerProfile: true,
       },
     });
+
+    if (adminUserId) {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'ADMIN_CREATED_LECTURER',
+          actorId: adminUserId,
+          entity: 'USER',
+          entityId: user.id,
+          details: { lecturerId: user.id, email: user.email, name: dto.fullName },
+        },
+      }).catch(() => null);
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+      lecturerProfile: user.lecturerProfile,
+    };
+  }
+
+  async assignLecturer(studentUserId: string, lecturerUserId: string, adminUserId?: string) {
+    const studentUser = await this.prisma.user.findUnique({
+      where: { id: studentUserId },
+      include: { studentProfile: true },
+    });
+    if (!studentUser) {
+      throw new NotFoundException('Student user not found');
+    }
+
+    const lecturerProfile = await this.prisma.lecturerProfile.findUnique({
+      where: { userId: lecturerUserId },
+    });
+    if (!lecturerProfile) {
+      throw new NotFoundException('Lecturer profile not found');
+    }
+
+    const updated = await this.prisma.studentProfile.upsert({
+      where: { userId: studentUserId },
+      update: { assignedLecturerId: lecturerUserId },
+      create: {
+        userId: studentUserId,
+        fullName: studentUser.email.split('@')[0],
+        phone: 'Not provided',
+        country: 'Sri Lanka',
+        timezone: 'Asia/Colombo',
+        preferredLanguage: 'English',
+        learningGoals: 'Quran Studies',
+        currentTier: 'STANDARD',
+        assignedLecturerId: lecturerUserId,
+      },
+      include: {
+        assignedLecturer: {
+          select: {
+            userId: true,
+            fullName: true,
+          },
+        },
+      },
+    });
+
+    if (adminUserId) {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'ADMIN_ASSIGNED_LECTURER',
+          actorId: adminUserId,
+          entity: 'STUDENT_PROFILE',
+          entityId: studentUserId,
+          details: { studentUserId, lecturerUserId },
+        },
+      }).catch(() => null);
+    }
+
+    return updated;
   }
 
   async updateUserStatus(id: string, status: string) {
