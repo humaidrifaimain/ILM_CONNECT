@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useRole } from '@/lib/role-context';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/components/theme-provider';
@@ -34,7 +35,7 @@ import {
   MessageSquare,
   Award,
 } from 'lucide-react';
-import { useState } from 'react';
+
 
 interface NavItem {
   href: string;
@@ -46,6 +47,7 @@ interface NavItem {
 const globalStudentNav: NavItem[] = [
   { href: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/student/courses', label: 'My Courses', icon: Library },
+  { href: '/student/messages', label: 'Messages', icon: MessageSquare },
   { href: '/student/billing', label: 'Billing', icon: CreditCard },
   { href: '/student/settings', label: 'Settings', icon: Settings },
 ];
@@ -65,6 +67,7 @@ const lecturerNav: NavItem[] = [
   { href: '/lecturer/availability', label: 'Availability', icon: CalendarClock },
   { href: '/lecturer/sessions', label: 'Sessions', icon: Clock },
   { href: '/lecturer/students', label: 'My Students', icon: GraduationCap },
+  { href: '/lecturer/messages', label: 'Messages', icon: MessageSquare },
   { href: '/lecturer/earnings', label: 'Earnings', icon: DollarSign },
   { href: '/lecturer/settings', label: 'Settings', icon: Settings },
 ];
@@ -87,11 +90,21 @@ export default function DashboardSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
   
+  const isLecturerRoute = pathname.startsWith('/lecturer');
   const { data: profile } = useQuery({
-    queryKey: ['studentProfile'],
-    queryFn: () => apiFetch('/profile/student'),
-    enabled: !!user && pathname.startsWith('/student'),
+    queryKey: ['profile', isLecturerRoute ? 'lecturer' : 'student'],
+    queryFn: () => apiFetch(isLecturerRoute ? '/profile/lecturer' : '/profile/student'),
+    enabled: !!user && (pathname.startsWith('/student') || pathname.startsWith('/lecturer')),
   });
+
+  // Live unread message count — polls every 30s
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ['unreadMessageCount'],
+    queryFn: () => apiFetch('/messages/unread-count'),
+    refetchInterval: 30000,
+    enabled: !!user && (pathname.startsWith('/student') || pathname.startsWith('/lecturer')),
+  });
+  const unreadCount = unreadData?.count ?? 0;
   
   let navItems: NavItem[] = [];
   let roleName = '';
@@ -119,8 +132,8 @@ export default function DashboardSidebar() {
   } else if (pathname.startsWith('/lecturer')) {
     navItems = lecturerNav;
     roleName = 'Lecturer';
-    userName = 'Sheikh Ahmed Al-Farsi';
-    initials = 'SA';
+    userName = profile?.fullName || 'Maulavi Ahmed Raza';
+    initials = profile?.fullName ? profile.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'MA';
   } else if (pathname.startsWith('/admin')) {
     navItems = adminRole === 'staff' 
       ? adminNav.filter(n => !['Finance', 'Configuration', 'Audit Log'].includes(n.label))
@@ -153,6 +166,11 @@ export default function DashboardSidebar() {
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
+          // Show live unread count on Messages nav item
+          const isMessages = item.href.endsWith('/messages');
+          const displayBadge = isMessages && unreadCount > 0
+            ? String(unreadCount > 99 ? '99+' : unreadCount)
+            : item.badge;
           return (
             <Link
               key={item.href}
@@ -164,13 +182,24 @@ export default function DashboardSidebar() {
               }`}
               title={collapsed ? item.label : undefined}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <div className="relative">
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {collapsed && isMessages && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? '9' : unreadCount}
+                  </span>
+                )}
+              </div>
               {!collapsed && (
                 <>
                   <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
-                      {item.badge}
+                  {displayBadge && (
+                    <span className={`px-1.5 py-0.5 text-xs font-semibold rounded-full ${
+                      isMessages && unreadCount > 0
+                        ? 'bg-red-500 text-white'
+                        : 'bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]'
+                    }`}>
+                      {displayBadge}
                     </span>
                   )}
                 </>

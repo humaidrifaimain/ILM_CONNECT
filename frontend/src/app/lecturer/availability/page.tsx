@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, List } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
@@ -32,7 +32,7 @@ export default function AvailabilityPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const queryClient = useQueryClient();
-  const { data: dbSlots = [], isLoading } = useQuery({
+  const { data: rawDbSlots, isLoading } = useQuery<any[]>({
     queryKey: ['availabilitySlots'],
     queryFn: () => apiFetch('/availability'),
   });
@@ -40,19 +40,16 @@ export default function AvailabilityPage() {
   // Map DB slots to our key format
   const dbSlotsMap = useMemo(() => {
     const map = new Map<string, any>();
-    dbSlots.forEach((slot: any) => {
-      const d = new Date(slot.startsAt);
-      const dayStr = d.toISOString().split('T')[0];
-      const hour = d.getHours();
-      map.set(getSlotKey(dayStr, hour), slot);
-    });
+    if (Array.isArray(rawDbSlots)) {
+      rawDbSlots.forEach((slot: any) => {
+        const d = new Date(slot.startsAt);
+        const dayStr = d.toISOString().split('T')[0];
+        const hour = d.getHours();
+        map.set(getSlotKey(dayStr, hour), slot);
+      });
+    }
     return map;
-  }, [dbSlots]);
-
-  // Reset local changes when DB data loads
-  useEffect(() => {
-    setLocalSlots({});
-  }, [dbSlots]);
+  }, [rawDbSlots]);
 
   const now = new Date();
   const [calYear, setCalYear] = useState(now.getFullYear());

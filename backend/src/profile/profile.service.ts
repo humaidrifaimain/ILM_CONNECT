@@ -51,4 +51,13 @@ export class ProfileService {
       },
     });
   }
+
+  async getMyStudents(lecturerUserId: string) {
+    return this.prisma.studentProfile.findMany({
+      where: { assignedLecturerId: lecturerUserId },
+      include: {
+        user: { select: { id: true, email: true } },
+      },
+    });
+  }
 }

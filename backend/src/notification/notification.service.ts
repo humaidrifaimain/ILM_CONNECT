@@ -36,4 +36,21 @@ export class NotificationService {
       },
     });
   }
+
+  /** Count unread notifications for a user */
+  async getUnreadCount(userId: string): Promise<{ count: number }> {
+    const count = await this.prisma.notification.count({
+      where: { userId, readAt: null },
+    });
+    return { count };
+  }
+
+  /** Mark all notifications as read for a user */
+  async markAllRead(userId: string): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: { userId, readAt: null },
+      data: { readAt: new Date() },
+    });
+  }
 }
+

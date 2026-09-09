@@ -39,4 +39,11 @@ export class ProfileController {
   async getLecturers() {
     return this.profileService.getAllLecturers();
   }
+
+  @Get('lecturer/students')
+  @Roles(Role.LECTURER)
+  async getMyStudents(@Req() req: any) {
+    return this.profileService.getMyStudents(req.user.id);
+  }
 }
+

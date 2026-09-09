@@ -3,13 +3,55 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from '@/components/theme-provider';
-import { Bell, Sun, Moon, BookOpen, LogOut, Inbox } from 'lucide-react';
+import { Bell, Sun, Moon, BookOpen, LogOut, Inbox, MessageSquare, CheckCheck } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+
+interface Notification {
+  id: string;
+  type: string;
+  payloadJson: {
+    threadId?: string;
+    senderName?: string;
+    preview?: string;
+    messageId?: string;
+    [key: string]: unknown;
+  };
+  readAt: string | null;
+  createdAt: string;
+  channel: string;
+}
+
+function getNotifLabel(type: string) {
+  switch (type) {
+    case 'NEW_MESSAGE': return 'New Message';
+    case 'BOOKING_CONFIRMED': return 'Session Confirmed';
+    case 'BOOKING_CANCELLED': return 'Session Cancelled';
+    case 'BOOKING_RESCHEDULED': return 'Session Rescheduled';
+    default: return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+}
+
+function formatNotifTime(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
 
 export function DashboardTopbar() {
   const { resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [showLogoutToast, setShowLogoutToast] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -26,6 +68,36 @@ export function DashboardTopbar() {
     setTimeout(() => { router.push('/'); }, 1500);
   };
 
+  // Live notifications — poll every 30s
+  const isInDashboard = pathname.startsWith('/student') || pathname.startsWith('/lecturer') || pathname.startsWith('/admin');
+  const { data: notifications = [] } = useQuery<Notification[]>({
+    queryKey: ['notifications'],
+    queryFn: () => apiFetch('/notifications'),
+    refetchInterval: 30000,
+    enabled: !!user && isInDashboard,
+  });
+
+  const unreadNotifications = notifications.filter(n => !n.readAt);
+  const unreadCount = unreadNotifications.length;
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => apiFetch('/notifications/mark-all-read', { method: 'PATCH' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['messageThreads'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadMessageCount'] });
+    },
+  });
+
+  const markOneMutation = useMutation({
+    mutationFn: (id: string) => apiFetch(`/notifications/${id}/read`, { method: 'PATCH' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['messageThreads'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadMessageCount'] });
+    },
+  });
+
   // Close notification dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -36,6 +108,11 @@ export function DashboardTopbar() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Determine messages href based on role
+  const messagesHref = pathname.startsWith('/lecturer') ? '/lecturer/messages' : '/student/messages';
+
+  const recentNotifs = notifications.slice(0, 8);
 
   return (
     <>
@@ -49,27 +126,130 @@ export function DashboardTopbar() {
           <h1 className="text-lg font-semibold">{pageTitle}</h1>
         </div>
         <div className="flex items-center gap-2">
-          {/* Notification Bell with Dropdown */}
+
+          {/* Notification Bell with Live Dropdown */}
           <div className="relative" ref={notifRef}>
             <button
+              id="notif-bell-btn"
               onClick={() => setShowNotifications(!showNotifications)}
               className="relative p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
             >
               <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
+
             {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl animate-fade-in z-50">
-                <div className="px-4 py-3 border-b border-[hsl(var(--border))]">
-                  <span className="font-semibold text-sm">Notifications</span>
+              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl animate-fade-in z-50 overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(var(--border))]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                        {unreadCount} unread
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={() => markAllReadMutation.mutate()}
+                      className="flex items-center gap-1 text-xs text-[hsl(var(--primary))] hover:underline font-medium"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      Mark all read
+                    </button>
+                  )}
                 </div>
-                <div className="py-8 px-4 flex flex-col items-center text-center">
-                  <Inbox className="h-10 w-10 text-[hsl(var(--muted-foreground)/0.4)] mb-3" />
-                  <p className="text-sm font-medium mb-1">No notifications yet</p>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">You&apos;ll see updates about your sessions and account here.</p>
-                </div>
+
+                {/* Notification list */}
+                {recentNotifs.length === 0 ? (
+                  <div className="py-8 px-4 flex flex-col items-center text-center">
+                    <Inbox className="h-10 w-10 text-[hsl(var(--muted-foreground)/0.4)] mb-3" />
+                    <p className="text-sm font-medium mb-1">No notifications yet</p>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))]">You&apos;ll see updates about your sessions and messages here.</p>
+                  </div>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    {recentNotifs.map(notif => {
+                      const isMsg = notif.type === 'NEW_MESSAGE';
+                      const threadId = notif.payloadJson?.threadId;
+                      const href = isMsg
+                        ? (threadId ? `${messagesHref}?threadId=${encodeURIComponent(threadId)}` : messagesHref)
+                        : undefined;
+
+                      const content = (
+                        <div
+                          className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[hsl(var(--muted))] cursor-pointer ${!notif.readAt ? 'bg-[hsl(var(--primary)/0.04)]' : ''}`}
+                          onClick={() => {
+                            if (!notif.readAt) markOneMutation.mutate(notif.id);
+                            if (href) { router.push(href); setShowNotifications(false); }
+                          }}
+                        >
+                          <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center mt-0.5 ${
+                            isMsg ? 'bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]' : 'bg-[hsl(var(--accent)/0.15)] text-[hsl(var(--accent))]'
+                          }`}>
+                            {isMsg ? <MessageSquare className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`text-xs font-semibold truncate ${!notif.readAt ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--foreground)/0.7)]'}`}>
+                                {getNotifLabel(notif.type)}
+                              </p>
+                              <span className="text-[10px] text-[hsl(var(--muted-foreground))] flex-shrink-0">
+                                {formatNotifTime(notif.createdAt)}
+                              </span>
+                            </div>
+                            {isMsg ? (
+                              <p className="text-xs text-[hsl(var(--muted-foreground))] truncate mt-0.5">
+                                <span className="font-medium text-[hsl(var(--foreground)/0.8)]">{notif.payloadJson.senderName}</span>
+                                {': '}{notif.payloadJson.preview}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-[hsl(var(--muted-foreground))] truncate mt-0.5">
+                                {JSON.stringify(notif.payloadJson).slice(0, 60)}
+                              </p>
+                            )}
+                          </div>
+                          {!notif.readAt && (
+                            <div className="flex-shrink-0 mt-2 h-2 w-2 rounded-full bg-[hsl(var(--primary))]" />
+                          )}
+                        </div>
+                      );
+
+                      return <div key={notif.id}>{content}</div>;
+                    })}
+                  </div>
+                )}
+
+                {/* Footer link */}
+                {recentNotifs.length > 0 && (
+                  <div className="border-t border-[hsl(var(--border))] px-4 py-2.5">
+                    <Link
+                      href={messagesHref}
+                      onClick={() => setShowNotifications(false)}
+                      className="text-xs text-[hsl(var(--primary))] hover:underline font-medium"
+                    >
+                      Go to Messages →
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          {user && (
+            <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[hsl(var(--muted)/0.6)] border border-[hsl(var(--border))] text-xs mr-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-medium text-[hsl(var(--foreground))] max-w-[140px] truncate">{user.email}</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] text-[10px] font-bold uppercase tracking-wider">
+                {user.role}
+              </span>
+            </div>
+          )}
 
           <button
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
@@ -99,3 +279,5 @@ export function DashboardTopbar() {
     </>
   );
 }
+
+
