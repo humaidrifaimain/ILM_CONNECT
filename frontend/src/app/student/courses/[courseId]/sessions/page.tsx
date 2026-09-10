@@ -14,6 +14,8 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   completed: { label: 'Completed', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
   canceled: { label: 'Canceled', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
   in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+  no_show_student: { label: 'Conducted (Absent)', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/50' },
+  no_show_lecturer: { label: 'Lecturer No-show', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 };
 
 function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
@@ -59,14 +61,24 @@ export default function StudentSessionsPage() {
 
   const sessions = useMemo(() => {
     if (!rawBookings) return [];
-    return rawBookings.map((b: any) => ({
-      id: b.id,
-      subject: b.subject || 'Quran Session',
-      status: b.status.toLowerCase(),
-      startsAt: b.startsAt,
-      endsAt: b.endsAt,
-      lecturerName: b.lecturer?.fullName || b.lecturer?.name || 'Assigned Lecturer'
-    }));
+    const now = new Date();
+    return rawBookings.map((b: any) => {
+      const endsAtDate = new Date(b.endsAt || new Date(new Date(b.startsAt).getTime() + 40 * 60 * 1000));
+      const isPast = endsAtDate < now;
+      let effectiveStatus = b.status.toLowerCase();
+      if (effectiveStatus === 'scheduled' && isPast) {
+        effectiveStatus = 'no_show_student';
+      }
+      return {
+        id: b.id,
+        subject: b.subject || 'Quran Session',
+        status: effectiveStatus,
+        isPast,
+        startsAt: b.startsAt,
+        endsAt: b.endsAt || endsAtDate.toISOString(),
+        lecturerName: b.lecturer?.fullName || b.lecturer?.name || 'Assigned Lecturer',
+      };
+    });
   }, [rawBookings]);
 
   const now = new Date();
@@ -220,7 +232,7 @@ export default function StudentSessionsPage() {
                 <div key={day} className={`min-h-[80px] p-1 border-b border-r border-[hsl(var(--border))] ${isToday ? 'bg-[hsl(var(--primary)/0.05)]' : ''}`}>
                   <div className={`text-xs font-medium mb-1 ${isToday ? 'h-5 w-5 rounded-full bg-[hsl(var(--primary))] text-white flex items-center justify-center' : 'text-[hsl(var(--muted-foreground))]'}`}>{day}</div>
                   {daySessions.map((s: any) => (
-                    <button key={s.id} onClick={() => setSelectedSession(s)} className={`w-full text-left px-1 py-0.5 rounded text-[10px] font-medium truncate mb-0.5 ${s.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                    <button key={s.id} onClick={() => setSelectedSession(s)} className={`w-full text-left px-1 py-0.5 rounded text-[10px] font-medium truncate mb-0.5 ${(statusConfig[s.status] || statusConfig.scheduled).color}`}>
                       {new Date(s.startsAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} {s.subject?.split('—')[0].trim().slice(0,15)}
                     </button>
                   ))}
@@ -244,7 +256,31 @@ export default function StudentSessionsPage() {
               <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Status</span><span className={`px-2 py-0.5 text-xs rounded-full font-medium ${(statusConfig[selectedSession.status] || statusConfig.scheduled).color}`}>{(statusConfig[selectedSession.status] || statusConfig.scheduled).label}</span></div>
             </div>
 
-            {selectedSession.status === 'scheduled' && (
+            {/* If session was scheduled and is now past / missed */}
+            {(selectedSession.status === 'no_show_student' || selectedSession.isPast) && (
+              <div className="p-4 rounded-2xl border border-amber-300 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/90 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20 text-center space-y-2 mb-5">
+                <div className="inline-flex p-2.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shadow-sm">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                  Session Conducted · You Were Absent
+                </h4>
+                <p className="text-xs text-amber-800/80 dark:text-amber-300/80 leading-relaxed max-w-xs mx-auto">
+                  This session was conducted at its scheduled time, but you were absent. If you need any assistance, please message your instructor or book a new session.
+                </p>
+                <div className="pt-1.5">
+                  <Link
+                    href={`/student/courses/${courseId}/sessions/book`}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-semibold transition-all shadow-sm"
+                  >
+                    <Calendar className="h-3.5 w-3.5" /> Book Next Session
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Active upcoming scheduled session controls */}
+            {selectedSession.status === 'scheduled' && !selectedSession.isPast && (
               <>
                 {isWithinLockWindow(selectedSession.startsAt) && (
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-[hsl(var(--warning)/0.1)] text-xs text-[hsl(var(--warning))] mb-4">
@@ -275,7 +311,7 @@ export default function StudentSessionsPage() {
 
             <div className="flex gap-2">
               <button onClick={closeDetail} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">Close</button>
-              {selectedSession.status === 'scheduled' && (
+              {selectedSession.status === 'scheduled' && !selectedSession.isPast && (
                 <Link href={`/student/courses/beginner-qaida/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center justify-center">Join Session</Link>
               )}
             </div>
@@ -365,14 +401,24 @@ export default function StudentSessionsPage() {
                       onChange={(e) => setRescheduleTime(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
                     >
-                      <option value="10:00 AM">10:00 AM (Morning Slot)</option>
-                      <option value="04:00 PM">04:00 PM (Afternoon Slot)</option>
-                      <option value="08:00 AM">08:00 AM</option>
-                      <option value="09:00 AM">09:00 AM</option>
-                      <option value="11:00 AM">11:00 AM</option>
-                      <option value="02:00 PM">02:00 PM</option>
-                      <option value="03:00 PM">03:00 PM</option>
-                      <option value="05:00 PM">05:00 PM</option>
+                      <optgroup label="10 to 2 Shift (Morning)">
+                        <option value="10:00 AM">10:00 – 10:40 AM</option>
+                        <option value="11:00 AM">11:00 – 11:40 AM</option>
+                        <option value="12:00 PM">12:00 – 12:40 PM</option>
+                        <option value="01:00 PM">01:00 – 01:40 PM</option>
+                      </optgroup>
+                      <optgroup label="2 to 6 Shift (Afternoon)">
+                        <option value="02:00 PM">02:00 – 02:40 PM</option>
+                        <option value="03:00 PM">03:00 – 03:40 PM</option>
+                        <option value="04:00 PM">04:00 – 04:40 PM</option>
+                        <option value="05:00 PM">05:00 – 05:40 PM</option>
+                      </optgroup>
+                      <optgroup label="6 to 10 Shift (Evening)">
+                        <option value="06:00 PM">06:00 – 06:40 PM</option>
+                        <option value="07:00 PM">07:00 – 07:40 PM</option>
+                        <option value="08:00 PM">08:00 – 08:40 PM</option>
+                        <option value="09:00 PM">09:00 – 09:40 PM</option>
+                      </optgroup>
                     </select>
                   </div>
                 </div>

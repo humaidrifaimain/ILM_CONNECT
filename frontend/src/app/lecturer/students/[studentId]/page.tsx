@@ -45,6 +45,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
 function SessionRow({ session, isCompleted }: { session: any; isCompleted?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const hasNotes = !!session.notes;
+  const isStudentNoShow = session.status === 'NO_SHOW_STUDENT';
 
   return (
     <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden">
@@ -65,6 +66,11 @@ function SessionRow({ session, isCompleted }: { session: any; isCompleted?: bool
           {session.lesson?.module && <div className="text-xs text-[hsl(var(--primary))] mt-0.5">{session.lesson.module.title}</div>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {isStudentNoShow && (
+            <div className="px-2 py-1 rounded-full bg-orange-500/10 text-orange-700 dark:text-orange-400 text-xs font-semibold">
+              Conducted No-show
+            </div>
+          )}
           {session.rating && (
             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold">
               <Star className="h-3 w-3" />{session.rating.score}/5
@@ -481,7 +487,7 @@ export default function StudentDetailPage() {
       {/* Canceled Sessions */}
       {canceledSessions.length > 0 && (
         <div>
-          <SectionHeader icon={XCircle} title="Canceled / No-Show Sessions" count={canceledSessions.length} />
+          <SectionHeader icon={XCircle} title="Canceled Sessions" count={canceledSessions.length} />
           <div className="space-y-2">
             {canceledSessions.map((s: any) => (
               <div key={s.id} className="flex items-center gap-4 p-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
@@ -491,7 +497,7 @@ export default function StudentDetailPage() {
                   <div className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
                 </div>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-700 dark:text-red-400">
-                  {s.status === 'NO_SHOW_STUDENT' ? 'No-Show' : 'Canceled'}
+                  Canceled
                 </span>
               </div>
             ))}

@@ -74,8 +74,8 @@ export default function StudentDashboard() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   })?.length || 0;
 
-  const completedSessions = bookings?.filter((b: any) => b.status === 'COMPLETED') || [];
-  const hoursLearned = completedSessions.length * 0.75;
+  const completedSessions = bookings?.filter((b: any) => b.status === 'COMPLETED' || b.status === 'NO_SHOW_STUDENT') || [];
+  const hoursLearned = Math.round((completedSessions.length * 40 / 60) * 10) / 10;
 
   if (!user || !profile) {
     return <div className="min-h-screen bg-[hsl(var(--background))] animate-pulse p-8">Loading dashboard...</div>;

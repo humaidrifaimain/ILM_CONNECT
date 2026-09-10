@@ -3,6 +3,7 @@ import { BookingService } from './booking.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { BadRequestException } from '@nestjs/common';
+import { SessionStatus } from '@prisma/client';
 
 describe('BookingService (3-Day Gap Rule validation)', () => {
   let service: BookingService;
@@ -55,6 +56,28 @@ describe('BookingService (3-Day Gap Rule validation)', () => {
       const testDate = new Date('2026-06-05T10:00:00Z'); // Friday
       await expect(service.validateThreeDayGap('student-id', testDate)).rejects.toThrow(
         BadRequestException,
+      );
+    });
+
+    it('should count student no-shows as used weekly sessions', async () => {
+      const findManySpy = jest.spyOn(prisma.session, 'findMany').mockResolvedValue([
+        { startsAt: new Date('2026-06-01T10:00:00Z') }, // Mon
+        { startsAt: new Date('2026-06-04T10:00:00Z') }, // Thu
+      ] as any);
+
+      const testDate = new Date('2026-06-06T10:00:00Z'); // Saturday
+      await expect(service.validateThreeDayGap('student-id', testDate)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: {
+              in: expect.arrayContaining([SessionStatus.NO_SHOW_STUDENT]),
+            },
+          }),
+        }),
       );
     });
 

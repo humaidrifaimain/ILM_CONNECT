@@ -27,14 +27,23 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   completed: { label: 'Completed', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
   canceled: { label: 'Canceled', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
   in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  no_show_student: { label: 'No-Show (Student)', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  no_show_student: { label: 'Conducted (Student Absent)', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
   no_show_lecturer: { label: 'No-Show (Lecturer)', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 };
 
 const TIME_OPTIONS = [
-  '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-  '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM',
-  '06:00 PM', '07:00 PM', '08:00 PM',
+  { value: '10:00 AM', label: '10:00 – 10:40 AM' },
+  { value: '11:00 AM', label: '11:00 – 11:40 AM' },
+  { value: '12:00 PM', label: '12:00 – 12:40 PM' },
+  { value: '01:00 PM', label: '01:00 – 01:40 PM' },
+  { value: '02:00 PM', label: '02:00 – 02:40 PM' },
+  { value: '03:00 PM', label: '03:00 – 03:40 PM' },
+  { value: '04:00 PM', label: '04:00 – 04:40 PM' },
+  { value: '05:00 PM', label: '05:00 – 05:40 PM' },
+  { value: '06:00 PM', label: '06:00 – 06:40 PM' },
+  { value: '07:00 PM', label: '07:00 – 07:40 PM' },
+  { value: '08:00 PM', label: '08:00 – 08:40 PM' },
+  { value: '09:00 PM', label: '09:00 – 09:40 PM' },
 ];
 
 export default function LecturerSessionsPage() {
@@ -198,7 +207,7 @@ export default function LecturerSessionsPage() {
                   : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'
               }`}
             >
-              {s === 'all' ? 'All' : s === 'no_show_student' ? 'No-Show' : s.charAt(0).toUpperCase() + s.slice(1)}
+              {s === 'all' ? 'All' : s === 'no_show_student' ? 'Conducted No-show' : s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
           ))}
         </div>
@@ -209,11 +218,18 @@ export default function LecturerSessionsPage() {
         {isLoading && <div className="p-8 text-center text-[hsl(var(--muted-foreground))]">Loading sessions...</div>}
         {!isLoading &&
           filtered.map((s: any) => {
-            const cfg = statusConfig[s.status.toLowerCase()] || statusConfig.scheduled;
+            const endsAtDate = new Date(s.endsAt || new Date(new Date(s.startsAt).getTime() + 40 * 60 * 1000));
+            const isPast = endsAtDate < new Date();
+            let effectiveStatus = s.status;
+            if (effectiveStatus === 'SCHEDULED' && isPast) {
+              effectiveStatus = 'NO_SHOW_STUDENT';
+            }
+
+            const cfg = statusConfig[effectiveStatus.toLowerCase()] || statusConfig.scheduled;
             const studentName = s.student?.fullName || 'Unknown Student';
             const subject = s.tier || 'Session';
-            const isScheduled = s.status === 'SCHEDULED';
-            const isInProgress = s.status === 'IN_PROGRESS';
+            const isScheduled = effectiveStatus === 'SCHEDULED' && !isPast;
+            const isInProgress = effectiveStatus === 'IN_PROGRESS';
 
             return (
               <div
@@ -240,6 +256,9 @@ export default function LecturerSessionsPage() {
                           month: 'short',
                           day: 'numeric',
                         })} · ${new Date(s.startsAt).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })} – ${endsAtDate.toLocaleTimeString('en-US', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })}`
@@ -288,7 +307,7 @@ export default function LecturerSessionsPage() {
                     </>
                   )}
 
-                  {s.status === 'COMPLETED' && (
+                  {(effectiveStatus === 'COMPLETED' || effectiveStatus === 'NO_SHOW_STUDENT') && (
                     <button
                       onClick={() => {
                         setNotesModal(s);
@@ -373,8 +392,8 @@ export default function LecturerSessionsPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
                 >
                   {TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                    <option key={t.value} value={t.value}>
+                      {t.label}
                     </option>
                   ))}
                 </select>

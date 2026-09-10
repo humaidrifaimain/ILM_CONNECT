@@ -31,6 +31,10 @@ export class CreateLecturerDto {
   @IsOptional()
   hourlyRate?: number;
 
+  @IsArray()
+  @IsOptional()
+  hourlyAvailabilityJson?: number[];
+
   @IsOptional()
   sendInvitationEmail?: boolean;
 }

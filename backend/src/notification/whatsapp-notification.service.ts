@@ -62,27 +62,6 @@ export class WhatsAppNotificationService {
       );
     }
 
-    // Persist to database if a userId is available in metadata
-    if (metadata?.userId) {
-      try {
-        await this.prisma.notification.create({
-          data: {
-            userId: metadata.userId,
-            type: eventType,
-            channel: 'WHATSAPP',
-            payloadJson: {
-              toPhone: cleanPhone,
-              message,
-              preview: message.slice(0, 120),
-              metadata,
-            },
-          },
-        });
-      } catch (e: any) {
-        this.logger.warn(`[WhatsAppNotification] Could not persist WhatsApp notification log: ${e.message}`);
-      }
-    }
-
     return true;
   }
 

@@ -25,6 +25,66 @@ export default function AdminUsersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Timeshifts: 10 to 2, 2 to 6, and 6 to 10 (slots: 10 to 11, 11 to 12, 12 to 1, 1 to 2, etc.)
+  const TIMESHIFTS = [
+    {
+      id: '10-2',
+      name: '10 to 2',
+      badge: 'Morning',
+      label: '10:00 AM – 02:00 PM',
+      slots: [
+        { hour: 10, label: '10 to 11', subLabel: '10:00 – 11:00 AM' },
+        { hour: 11, label: '11 to 12', subLabel: '11:00 AM – 12:00 PM' },
+        { hour: 12, label: '12 to 1', subLabel: '12:00 – 01:00 PM' },
+        { hour: 13, label: '1 to 2', subLabel: '01:00 – 02:00 PM' },
+      ],
+    },
+    {
+      id: '2-6',
+      name: '2 to 6',
+      badge: 'Afternoon',
+      label: '02:00 PM – 06:00 PM',
+      slots: [
+        { hour: 14, label: '2 to 3', subLabel: '02:00 – 03:00 PM' },
+        { hour: 15, label: '3 to 4', subLabel: '03:00 – 04:00 PM' },
+        { hour: 16, label: '4 to 5', subLabel: '04:00 – 05:00 PM' },
+        { hour: 17, label: '5 to 6', subLabel: '05:00 – 06:00 PM' },
+      ],
+    },
+    {
+      id: '6-10',
+      name: '6 to 10',
+      badge: 'Evening',
+      label: '06:00 PM – 10:00 PM',
+      slots: [
+        { hour: 18, label: '6 to 7', subLabel: '06:00 – 07:00 PM' },
+        { hour: 19, label: '7 to 8', subLabel: '07:00 – 08:00 PM' },
+        { hour: 20, label: '8 to 9', subLabel: '08:00 – 09:00 PM' },
+        { hour: 21, label: '9 to 10', subLabel: '09:00 – 10:00 PM' },
+      ],
+    },
+  ];
+
+  const formatHourSlot = (h: number) => {
+    const start = h > 12 ? h - 12 : h;
+    const end = (h + 1) > 12 ? (h + 1) - 12 : (h + 1);
+    return `${start} to ${end}`;
+  };
+
+  const formatShiftName = (hours: number[]) => {
+    if (!Array.isArray(hours) || hours.length === 0) return null;
+    const set = new Set(hours.map(Number));
+    const is10to2 = [10, 11, 12, 13].every(h => set.has(h)) && hours.length === 4;
+    const is2to6 = [14, 15, 16, 17].every(h => set.has(h)) && hours.length === 4;
+    const is6to10 = [18, 19, 20, 21].every(h => set.has(h)) && hours.length === 4;
+    if (is10to2) return '10 to 2 (10 to 11, 11 to 12, 12 to 1, 1 to 2)';
+    if (is2to6) return '2 to 6 (2 to 3, 3 to 4, 4 to 5, 5 to 6)';
+    if (is6to10) return '6 to 10 (6 to 7, 7 to 8, 8 to 9, 9 to 10)';
+    return hours.map(formatHourSlot).join(', ');
+  };
+
+  const [timeshiftHours, setTimeshiftHours] = useState<number[]>([10, 11, 12, 13]);
+
   // Fetch real users from database
   const { data: dbUsers = [], isLoading, error } = useQuery({
     queryKey: ['adminUsers'],
@@ -52,6 +112,12 @@ export default function AdminUsersPage() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    if (timeshiftHours.length < 4) {
+      setErrorMessage('Please select at least 4 timeshift slots for the lecturer.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
       const specs = specializations
@@ -68,6 +134,7 @@ export default function AdminUsersPage() {
           specializations: specs.length ? specs : ['Quran Recitation'],
           hourlyRate: Number(hourlyRate) || 1250,
           sendInvitationEmail: sendInviteEmail,
+          hourlyAvailabilityJson: timeshiftHours,
         }),
       });
 
@@ -85,6 +152,7 @@ export default function AdminUsersPage() {
       setEmail('');
       setPassword('');
       setSpecializations('Tajweed, Hifz, Fiqh');
+      setTimeshiftHours([10, 11, 12, 13]);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to create lecturer account');
     } finally {
@@ -138,6 +206,7 @@ export default function AdminUsersPage() {
       statusLower,
       assignedScholar: u.studentProfile?.assignedLecturer?.fullName,
       specializations: u.lecturerProfile?.specializations,
+      timeshift: u.lecturerProfile?.hourlyAvailabilityJson || [],
     };
   });
 
@@ -263,11 +332,18 @@ export default function AdminUsersPage() {
                           <span className="text-amber-600 dark:text-amber-400 font-medium">Unassigned</span>
                         )
                       ) : u.role === 'LECTURER' ? (
-                        <span>
-                          {Array.isArray(u.specializations)
-                            ? u.specializations.join(', ')
-                            : 'Quran & Islamic Studies'}
-                        </span>
+                        <div>
+                          <div>
+                            {Array.isArray(u.specializations)
+                              ? u.specializations.join(', ')
+                              : 'Quran & Islamic Studies'}
+                          </div>
+                          {Array.isArray(u.timeshift) && u.timeshift.length > 0 && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
+                              ⏰ Shift: {formatShiftName(u.timeshift)}
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <span>System Administrator</span>
                       )}
@@ -387,7 +463,7 @@ export default function AdminUsersPage() {
           onClick={() => !isSubmitting && setShowAddLecturerModal(false)}
         >
           <div
-            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-lg w-full p-6 animate-fade-in"
+            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-lg w-full p-6 animate-fade-in max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Create Lecturer Account</h3>
@@ -474,6 +550,101 @@ export default function AdminUsersPage() {
                   onChange={(e) => setHourlyRate(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
                 />
+              </div>
+
+              {/* Timeshift Selector */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-[hsl(var(--foreground))]">
+                    Working Timeshift &amp; Slots
+                    <span className="ml-1 text-[hsl(var(--muted-foreground))] font-normal">(min. 4 slots required)</span>
+                  </label>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${timeshiftHours.length >= 4 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400'}`}>
+                    {timeshiftHours.length} selected {timeshiftHours.length >= 4 ? '✓' : '(min. 4)'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))] mb-2.5">
+                  Lecturer working hours are 10 to 2, 2 to 6, and 6 to 10. Click a shift preset to auto-select its 4 slots, or pick custom slots.
+                </p>
+
+                {/* Shift Presets */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {TIMESHIFTS.map((shift) => {
+                    const shiftHourVals = shift.slots.map(s => s.hour);
+                    const isFullySelected = shiftHourVals.every(h => timeshiftHours.includes(h));
+                    return (
+                      <button
+                        key={shift.id}
+                        type="button"
+                        onClick={() => {
+                          // Toggle this shift's 4 slots
+                          if (isFullySelected) {
+                            setTimeshiftHours(timeshiftHours.filter(h => !shiftHourVals.includes(h)));
+                          } else {
+                            const merged = Array.from(new Set([...timeshiftHours, ...shiftHourVals])).sort((a, b) => a - b);
+                            setTimeshiftHours(merged);
+                          }
+                        }}
+                        className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all text-center flex flex-col items-center gap-0.5 ${
+                          isFullySelected
+                            ? 'bg-[hsl(var(--primary))] text-white border-[hsl(var(--primary))] shadow-sm'
+                            : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)]'
+                        }`}
+                      >
+                        <span className="font-bold">{shift.name}</span>
+                        <span className={`text-[10px] ${isFullySelected ? 'text-white/80' : 'text-[hsl(var(--muted-foreground))]'}`}>
+                          {shift.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Individual Slots by Shift */}
+                <div className="space-y-2.5 bg-[hsl(var(--muted)/0.3)] p-3 rounded-xl border border-[hsl(var(--border))]">
+                  {TIMESHIFTS.map((shift) => (
+                    <div key={shift.id}>
+                      <div className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))] mb-1 flex items-center justify-between">
+                        <span>{shift.name} ({shift.label})</span>
+                        <span className="text-[10px]">
+                          {shift.slots.filter(s => timeshiftHours.includes(s.hour)).length}/4 slots
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {shift.slots.map(({ hour, label, subLabel }) => {
+                          const isSelected = timeshiftHours.includes(hour);
+                          return (
+                            <button
+                              key={hour}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setTimeshiftHours(timeshiftHours.filter(h => h !== hour));
+                                } else {
+                                  setTimeshiftHours([...timeshiftHours, hour].sort((a, b) => a - b));
+                                }
+                              }}
+                              className={`py-2 px-1.5 rounded-xl border transition-all text-center flex flex-col items-center justify-center ${
+                                isSelected
+                                  ? 'bg-[hsl(var(--primary))] text-white border-[hsl(var(--primary))] shadow-xs'
+                                  : 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)]'
+                              }`}
+                            >
+                              <span className="text-xs font-bold leading-tight">{isSelected ? '✓ ' : ''}{label}</span>
+                              <span className={`text-[9px] mt-0.5 ${isSelected ? 'text-white/80' : 'text-[hsl(var(--muted-foreground))]'}`}>{subLabel}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {timeshiftHours.length < 4 && (
+                  <p className="text-[11px] text-red-500 dark:text-red-400 mt-1.5 font-medium">
+                    ⚠ Please select at least {4 - timeshiftHours.length} more slot{4 - timeshiftHours.length > 1 ? 's' : ''} (minimum 4 slots required)
+                  </p>
+                )}
               </div>
 
               <div className="pt-1">

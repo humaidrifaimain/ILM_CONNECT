@@ -31,7 +31,7 @@ export class BookingService {
     }
 
     const startsAt = new Date(dto.startsAt);
-    const endsAt = new Date(startsAt.getTime() + 45 * 60 * 1000); // 45 minutes session
+    const endsAt = new Date(startsAt.getTime() + 40 * 60 * 1000); // 40 minutes session
 
     // Enforce booking time limits (cannot book less than 12 hours in advance)
     const now = new Date();
@@ -249,7 +249,13 @@ export class BookingService {
     const existingSessions = await this.prisma.session.findMany({
       where: {
         studentId,
-        status: { in: [SessionStatus.SCHEDULED, SessionStatus.COMPLETED] },
+        status: {
+          in: [
+            SessionStatus.SCHEDULED,
+            SessionStatus.COMPLETED,
+            SessionStatus.NO_SHOW_STUDENT,
+          ],
+        },
         startsAt: {
           gte: startOfWeek,
           lte: endOfWeek,
@@ -320,19 +326,20 @@ export class BookingService {
       ? SessionStatus.NO_SHOW_STUDENT
       : SessionStatus.CANCELED;
 
-    // Release the availability slot back to OPEN if canceled
-    const slot = await this.prisma.availabilitySlot.findFirst({
-      where: {
-        lecturerId: session.lecturerId,
-        startsAt: session.startsAt,
-      },
-    });
-
-    if (slot) {
-      await this.prisma.availabilitySlot.update({
-        where: { id: slot.id },
-        data: { status: SlotStatus.OPEN },
+    if (updateStatus === SessionStatus.CANCELED) {
+      const slot = await this.prisma.availabilitySlot.findFirst({
+        where: {
+          lecturerId: session.lecturerId,
+          startsAt: session.startsAt,
+        },
       });
+
+      if (slot) {
+        await this.prisma.availabilitySlot.update({
+          where: { id: slot.id },
+          data: { status: SlotStatus.OPEN },
+        });
+      }
     }
 
     const updatedSession = await this.prisma.session.update({
@@ -343,10 +350,13 @@ export class BookingService {
     await this.prisma.auditLog.create({
       data: {
         actorId: user.id,
-        action: 'SESSION_CANCELED',
+        action:
+          updateStatus === SessionStatus.NO_SHOW_STUDENT
+            ? 'SESSION_STUDENT_NO_SHOW'
+            : 'SESSION_CANCELED',
         entity: 'SESSION',
         entityId: sessionId,
-        details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client', reason },
+        details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client', reason, status: updateStatus },
       },
     });
 
@@ -416,6 +426,17 @@ export class BookingService {
   }
 
   async getStudentBookings(studentId: string) {
+    // Automatically transition past scheduled sessions to NO_SHOW_STUDENT if endsAt has passed
+    const now = new Date();
+    await this.prisma.session.updateMany({
+      where: {
+        studentId,
+        status: SessionStatus.SCHEDULED,
+        endsAt: { lt: now },
+      },
+      data: { status: SessionStatus.NO_SHOW_STUDENT },
+    });
+
     return this.prisma.session.findMany({
       where: { studentId },
       include: { lecturer: true },
@@ -424,6 +445,17 @@ export class BookingService {
   }
 
   async getLecturerBookings(lecturerId: string) {
+    // Automatically transition past scheduled sessions to NO_SHOW_STUDENT if endsAt has passed
+    const now = new Date();
+    await this.prisma.session.updateMany({
+      where: {
+        lecturerId,
+        status: SessionStatus.SCHEDULED,
+        endsAt: { lt: now },
+      },
+      data: { status: SessionStatus.NO_SHOW_STUDENT },
+    });
+
     return this.prisma.session.findMany({
       where: { lecturerId },
       include: {
@@ -487,10 +519,24 @@ export class BookingService {
     }
 
     const newStartsAt = new Date(newStartsAtISO);
-    const newEndsAt = new Date(newStartsAt.getTime() + 45 * 60 * 1000);
+    const newEndsAt = new Date(newStartsAt.getTime() + 40 * 60 * 1000); // 40 minutes session
 
     if (newStartsAt <= new Date()) {
       throw new BadRequestException('Cannot reschedule to a past time');
+    }
+
+    // Check availability slot for new time before releasing the old slot.
+    const newSlot = await this.prisma.availabilitySlot.findFirst({
+      where: {
+        lecturerId: session.lecturerId,
+        startsAt: { lte: newStartsAt },
+        endsAt: { gte: newEndsAt },
+        status: SlotStatus.OPEN,
+      },
+    });
+
+    if (!newSlot) {
+      throw new BadRequestException('Lecturer is not available at the requested time');
     }
 
     // Release old availability slot back to OPEN if it exists
@@ -508,22 +554,10 @@ export class BookingService {
       });
     }
 
-    // Check availability slot for new time
-    const newSlot = await this.prisma.availabilitySlot.findFirst({
-      where: {
-        lecturerId: session.lecturerId,
-        startsAt: { lte: newStartsAt },
-        endsAt: { gte: newEndsAt },
-        status: SlotStatus.OPEN,
-      },
+    await this.prisma.availabilitySlot.update({
+      where: { id: newSlot.id },
+      data: { status: SlotStatus.BOOKED },
     });
-
-    if (newSlot) {
-      await this.prisma.availabilitySlot.update({
-        where: { id: newSlot.id },
-        data: { status: SlotStatus.BOOKED },
-      });
-    }
 
     const oldStartsAt = session.startsAt;
 

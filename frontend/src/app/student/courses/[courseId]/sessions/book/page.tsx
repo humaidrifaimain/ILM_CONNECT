@@ -13,6 +13,7 @@ import {
   User,
   Video,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
@@ -34,9 +35,34 @@ function getWeekDates(weekOffset: number) {
 }
 
 const timeSlots = [
-  '08:00', '09:00', '10:00', '11:00', '12:00',
-  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
+  '10:00', '11:00', '12:00', '13:00', // 10 to 2 (Morning Shift)
+  '14:00', '15:00', '16:00', '17:00', // 2 to 6 (Afternoon Shift)
+  '18:00', '19:00', '20:00', '21:00', // 6 to 10 (Evening Shift)
 ];
+
+function formatSlotRange(time: string) {
+  const [hourStr] = time.split(':');
+  const h = Number(hourStr);
+  const start = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${start}:00 – ${start}:40 ${ampm}`;
+}
+
+function formatTimeshiftDescription(hours: number[]) {
+  if (!hours || hours.length === 0) return '';
+  const set = new Set(hours);
+  const is10to2 = [10, 11, 12, 13].every(h => set.has(h)) && hours.length === 4;
+  const is2to6 = [14, 15, 16, 17].every(h => set.has(h)) && hours.length === 4;
+  const is6to10 = [18, 19, 20, 21].every(h => set.has(h)) && hours.length === 4;
+  if (is10to2) return '10 to 2 (10:00 – 10:40, 11:00 – 11:40, 12:00 – 12:40, 1:00 – 1:40)';
+  if (is2to6) return '2 to 6 (2:00 – 2:40, 3:00 – 3:40, 4:00 – 4:40, 5:00 – 5:40)';
+  if (is6to10) return '6 to 10 (6:00 – 6:40, 7:00 – 7:40, 8:00 – 8:40, 9:00 – 9:40)';
+  return hours.map(h => {
+    const s = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${s}:00 – ${s}:40 ${ampm}`;
+  }).join(', ');
+}
 
 export default function BookSessionPage() {
   const params = useParams();
@@ -48,6 +74,7 @@ export default function BookSessionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [assignedLecturer, setAssignedLecturer] = useState<any>(null);
+  const [lecturerTimeshift, setLecturerTimeshift] = useState<number[]>([]);
   const [availabilitySlots, setAvailabilitySlots] = useState<any[]>([]);
   const [studentBookings, setStudentBookings] = useState<any[]>([]);
   const [selectedBookedSession, setSelectedBookedSession] = useState<any | null>(null);
@@ -97,8 +124,15 @@ export default function BookSessionPage() {
         const lecturerData = {
            userId: lecturer.userId || lecturer.id,
            name: lecturer.fullName || lecturer.name,
-           title: lecturer.qualifications || lecturer.title || 'Quran Instructor'
+           title: lecturer.qualifications || lecturer.title || 'Quran Instructor',
+           hourlyAvailabilityJson: lecturer.hourlyAvailabilityJson || []
         };
+
+        // Extract timeshift hours from the lecturer's profile
+        const timeshiftHours = Array.isArray(lecturerData.hourlyAvailabilityJson)
+          ? lecturerData.hourlyAvailabilityJson.map(Number)
+          : [];
+        setLecturerTimeshift(timeshiftHours);
 
         setAssignedLecturer(lecturerData);
 
@@ -152,7 +186,14 @@ export default function BookSessionPage() {
     });
   };
 
+  const isInTimeshift = (time: string) => {
+    if (lecturerTimeshift.length === 0) return true; // no restriction if not set
+    const [hour] = time.split(':');
+    return lecturerTimeshift.includes(Number(hour));
+  };
+
   const isAvailable = (dateStr: string, time: string) => {
+    if (!isInTimeshift(time)) return false; // outside lecturer's timeshift
     const [year, month, day] = dateStr.split('-');
     const [hour, min] = time.split(':');
     const targetDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
@@ -274,6 +315,22 @@ export default function BookSessionPage() {
         </div>
       </div>
 
+      {/* Timeshift info banner */}
+      {lecturerTimeshift.length > 0 && (
+        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 flex items-start gap-3">
+          <span className="text-lg flex-shrink-0">⏰</span>
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-300">
+              Lecturer&apos;s Working Timeshift: {formatTimeshiftDescription(lecturerTimeshift)}
+            </p>
+            <p className="text-amber-700 dark:text-amber-400 text-xs mt-0.5">
+              This lecturer is available during: <strong>{lecturerTimeshift.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ')}</strong>.
+              Slots outside these hours are locked 🔒.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Assigned lecturer info */}
       <div className="flex items-center gap-3 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
         <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white font-bold text-sm">{assignedLecturer.name.split(' ').map((n: any)=>n[0]).join('').slice(0,2)}</div>
@@ -334,6 +391,12 @@ export default function BookSessionPage() {
           <span className="h-3 w-3 rounded bg-[hsl(var(--muted)/0.4)]" />
           <span className="text-[hsl(var(--muted-foreground))]">Unavailable</span>
         </div>
+        {lecturerTimeshift.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px]">🔒</span>
+            <span className="text-[hsl(var(--muted-foreground))]">Outside Timeshift</span>
+          </div>
+        )}
       </div>
 
       {/* Time slot grid */}
@@ -355,9 +418,23 @@ export default function BookSessionPage() {
             </tr>
           </thead>
           <tbody>
-            {timeSlots.map((time) => (
-              <tr key={time} className="border-b border-[hsl(var(--border))] last:border-0">
-                <td className="py-1 px-4 text-xs text-[hsl(var(--muted-foreground))]">{time}</td>
+            {timeSlots.map((time) => {
+              const inTimeshift = isInTimeshift(time);
+              return (
+              <tr key={time} className={`border-b border-[hsl(var(--border))] last:border-0 ${!inTimeshift ? 'opacity-40' : ''}`}>
+                <td className="py-2 px-3 text-xs text-[hsl(var(--muted-foreground))]">
+                  <div className="flex items-center gap-1.5">
+                    {!inTimeshift && <span title="Outside lecturer's timeshift" className="text-xs">🔒</span>}
+                    <div>
+                      <div className="font-bold text-[hsl(var(--foreground))] whitespace-nowrap text-xs">
+                        {formatSlotRange(time)}
+                      </div>
+                      <div className="text-[10px] text-[hsl(var(--primary))] font-medium whitespace-nowrap">
+                        40 mins session
+                      </div>
+                    </div>
+                  </div>
+                </td>
                 {weekDates.map((d, di) => {
                   const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                   const key = `${dateStr}|${time}`;
@@ -369,6 +446,20 @@ export default function BookSessionPage() {
                   const bookedSession = getBookedSessionForSlot(dateStr, time);
                   const avail = isAvailable(dateStr, time);
                   const status = getSlotStatus(key);
+
+                  // Outside lecturer's timeshift — locked
+                  if (!inTimeshift) {
+                    return (
+                      <td key={di} className="py-1 px-2">
+                        <div
+                          className="h-8 w-full rounded-lg bg-[hsl(var(--muted)/0.2)] border border-[hsl(var(--border)/0.5)] flex items-center justify-center"
+                          title="Outside lecturer's working timeshift"
+                        >
+                          <span className="text-[10px] text-[hsl(var(--muted-foreground)/0.4)]">—</span>
+                        </div>
+                      </td>
+                    );
+                  }
 
                   // 1st: Check if this slot is already booked by the student
                   if (bookedSession) {
@@ -411,7 +502,8 @@ export default function BookSessionPage() {
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -525,7 +617,7 @@ export default function BookSessionPage() {
                   {' — '}
                   {new Date(
                     selectedBookedSession.endsAt ||
-                      new Date(new Date(selectedBookedSession.startsAt).getTime() + 45 * 60 * 1000)
+                      new Date(new Date(selectedBookedSession.startsAt).getTime() + 40 * 60 * 1000)
                   ).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -541,13 +633,29 @@ export default function BookSessionPage() {
               </div>
             </div>
 
-            {/* Guidance banner */}
-            <div className="p-3.5 rounded-xl bg-[hsl(var(--primary)/0.08)] border border-[hsl(var(--primary)/0.2)] text-xs text-[hsl(var(--foreground)/0.8)] mb-5 flex items-start gap-2.5">
-              <Info className="h-4 w-4 text-[hsl(var(--primary))] flex-shrink-0 mt-0.5" />
-              <p className="leading-relaxed">
-                This session slot is already booked and reserved for you. You can enter the classroom 5 minutes before the scheduled time from your sessions dashboard.
-              </p>
-            </div>
+            {/* Status / Guidance banner */}
+            {(selectedBookedSession.status === 'no_show_student' ||
+              selectedBookedSession.status === 'NO_SHOW_STUDENT' ||
+              new Date(selectedBookedSession.endsAt || new Date(new Date(selectedBookedSession.startsAt).getTime() + 40 * 60 * 1000)) < new Date()) ? (
+              <div className="p-3.5 rounded-xl border border-amber-300 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/90 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20 text-center space-y-1.5 mb-5">
+                <div className="inline-flex p-2 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+                <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  Session Conducted · You Were Absent
+                </h4>
+                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
+                  This session was conducted at its scheduled time, but you were absent. You may select another open slot to book your next session.
+                </p>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-[hsl(var(--primary)/0.08)] border border-[hsl(var(--primary)/0.2)] text-xs text-[hsl(var(--foreground)/0.8)] mb-5 flex items-start gap-2.5">
+                <Info className="h-4 w-4 text-[hsl(var(--primary))] flex-shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  This session slot is already booked and reserved for you. You can enter the classroom 5 minutes before the scheduled time from your sessions dashboard.
+                </p>
+              </div>
+            )}
 
             {/* Modal Actions */}
             <div className="flex gap-2.5">

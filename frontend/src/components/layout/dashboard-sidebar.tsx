@@ -35,6 +35,8 @@ import {
   MessageSquare,
   Award,
   HelpCircle,
+  BookCheck,
+  Unlock,
 } from 'lucide-react';
 
 interface NavItem {
@@ -67,11 +69,17 @@ const lecturerNav: NavItem[] = [
   { href: '/lecturer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/lecturer/availability', label: 'Availability', icon: CalendarClock },
   { href: '/lecturer/sessions', label: 'Sessions', icon: Clock },
+  { href: '/lecturer/courses', label: 'Courses', icon: Library },
   { href: '/lecturer/students', label: 'My Students', icon: GraduationCap },
   { href: '/lecturer/messages', label: 'Messages', icon: MessageSquare },
   { href: '/lecturer/earnings', label: 'Earnings', icon: DollarSign },
   { href: '/lecturer/support', label: 'Support & Help', icon: HelpCircle },
   { href: '/lecturer/settings', label: 'Settings', icon: Settings },
+];
+
+const getLecturerCourseNav = (courseId: string): NavItem[] => [
+  { href: '/lecturer/courses', label: 'Back to Courses', icon: ChevronLeft },
+  { href: `/lecturer/courses/${courseId}`, label: 'Course Overview', icon: BookCheck },
 ];
 
 const adminNav: NavItem[] = [
@@ -132,10 +140,16 @@ export default function DashboardSidebar() {
       navItems = globalStudentNav;
     }
   } else if (pathname.startsWith('/lecturer')) {
-    navItems = lecturerNav;
     roleName = 'Lecturer';
     userName = profile?.fullName || 'Maulavi Ahmed Raza';
     initials = profile?.fullName ? profile.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'MA';
+    // Check if inside a specific lecturer course
+    const lecturerCourseMatch = pathname.match(/^\/lecturer\/courses\/([^/]+)/);
+    if (lecturerCourseMatch) {
+      navItems = getLecturerCourseNav(lecturerCourseMatch[1]);
+    } else {
+      navItems = lecturerNav;
+    }
   } else if (pathname.startsWith('/admin')) {
     navItems = adminRole === 'staff' 
       ? adminNav.filter(n => !['Finance', 'Configuration', 'Audit Log'].includes(n.label))

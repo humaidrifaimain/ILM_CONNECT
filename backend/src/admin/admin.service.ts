@@ -114,6 +114,7 @@ export class AdminService {
             ratingAvg: true,
             ratingCount: true,
             status: true,
+            hourlyAvailabilityJson: true,
           },
         },
       },
@@ -154,7 +155,9 @@ export class AdminService {
             qualifications: dto.qualifications || 'Certified Islamic Scholar',
             specializations,
             languages: dto.languages || ['English', 'Arabic'],
-            hourlyAvailabilityJson: [],
+            hourlyAvailabilityJson: Array.isArray(dto.hourlyAvailabilityJson) && dto.hourlyAvailabilityJson.length >= 4
+              ? dto.hourlyAvailabilityJson
+              : [10, 11, 12, 13],
             payoutMethod: 'bank_transfer',
             payoutDetails: 'default',
             ratingAvg: 5.0,

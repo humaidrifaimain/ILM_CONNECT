@@ -69,7 +69,7 @@ export class NotificationService {
 
   async getMyNotifications(userId: string) {
     return this.prisma.notification.findMany({
-      where: { userId },
+      where: { userId, channel: 'IN_APP' },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
@@ -117,7 +117,7 @@ export class NotificationService {
   /** Count unread notifications for a user */
   async getUnreadCount(userId: string): Promise<{ count: number }> {
     const count = await this.prisma.notification.count({
-      where: { userId, readAt: null },
+      where: { userId, readAt: null, channel: 'IN_APP' },
     });
     return { count };
   }
@@ -125,7 +125,7 @@ export class NotificationService {
   /** Mark all notifications as read for a user */
   async markAllRead(userId: string): Promise<void> {
     await this.prisma.notification.updateMany({
-      where: { userId, readAt: null },
+      where: { userId, readAt: null, channel: 'IN_APP' },
       data: { readAt: new Date() },
     });
   }

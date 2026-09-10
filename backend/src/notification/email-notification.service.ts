@@ -50,27 +50,6 @@ export class EmailNotificationService {
       );
     }
 
-    // Persist to database if a userId is available in metadata
-    if (metadata?.userId) {
-      try {
-        await this.prisma.notification.create({
-          data: {
-            userId: metadata.userId,
-            type: eventType,
-            channel: 'EMAIL',
-            payloadJson: {
-              toEmail,
-              subject,
-              preview: textContent.slice(0, 120),
-              metadata,
-            },
-          },
-        });
-      } catch (e: any) {
-        this.logger.warn(`[EmailNotification] Could not persist email notification log: ${e.message}`);
-      }
-    }
-
     return true;
   }
 
