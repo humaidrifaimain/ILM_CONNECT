@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { BookOpen } from 'lucide-react';
 
 interface LoadingScreenProps {
   message?: string;
@@ -21,29 +22,14 @@ export function LoadingScreen({
       {/* Ambient Emerald Radial Glow */}
       <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[hsl(168,80%,26%/0.25)] via-[hsl(168,80%,26%/0.08)] to-transparent rounded-full blur-2xl pointer-events-none -z-10 animate-pulse" />
 
-      {/* Central Animated Geometric Emblem */}
-      <div className="relative mb-6">
-        {/* Outer rotating dashed ring */}
-        <div className="h-20 w-20 rounded-full border-2 border-dashed border-[hsl(168,80%,26%/0.4)] dark:border-[hsl(168,60%,45%/0.4)] animate-[spin_12s_linear_infinite]" />
+      {/* Central Animated Logo Emblem with Single Solid Rotating Ring */}
+      <div className="relative mb-6 flex items-center justify-center">
+        {/* Single continuous solid rotating line (no dashes or dots) */}
+        <div className="h-20 w-20 rounded-full border-2 border-[hsl(168,80%,26%/0.15)] border-t-[hsl(168,80%,26%)] animate-spin" />
 
-        {/* Middle reverse-spinning gradient ring */}
-        <div className="absolute inset-1.5 rounded-full border-2 border-transparent border-t-[hsl(168,80%,26%)] border-r-[hsl(43,96%,56%)] animate-[spin_2.5s_linear_infinite_reverse]" />
-
-        {/* Center glowing Islamic star/crescent icon */}
-        <div className="absolute inset-3 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,38%)] flex items-center justify-center shadow-lg shadow-[hsl(168,80%,26%/0.35)]">
-          <svg
-            className="h-7 w-7 text-white animate-pulse"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {/* Islamic 8-Point Rub el Hizb Star */}
-            <path d="M12 2L15 6.5L20 6.5L18.5 11.5L22 15L17.5 17L16.5 22L12 19.5L7.5 22L6.5 17L2 15L5.5 11.5L4 6.5L9 6.5L12 2Z" fill="currentColor" fillOpacity="0.25" />
-            <circle cx="12" cy="12" r="3" fill="currentColor" />
-          </svg>
+        {/* Center Ilm Connect Book Logo */}
+        <div className="absolute inset-2.5 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center justify-center shadow-lg shadow-[hsl(168,80%,26%/0.25)] transition-transform">
+          <BookOpen className="h-7 w-7 text-white" strokeWidth={2.2} />
         </div>
       </div>
 
@@ -57,11 +43,10 @@ export function LoadingScreen({
         </p>
       )}
 
-      {/* Three Animated Pulse Dots */}
-      <div className="flex items-center gap-1.5 mt-4">
-        <span className="h-1.5 w-1.5 rounded-full bg-[hsl(168,80%,26%)] animate-bounce [animation-delay:-0.3s]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-[hsl(168,80%,26%)] animate-bounce [animation-delay:-0.15s]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-[hsl(43,96%,56%)] animate-bounce" />
+      {/* Brand Watermark */}
+      <div className="flex items-center gap-1 mt-3.5 opacity-85">
+        <span className="text-xs font-bold tracking-tight text-gradient-primary">Ilm</span>
+        <span className="text-xs font-bold tracking-tight text-[hsl(var(--foreground))]">Connect</span>
       </div>
     </div>
   );

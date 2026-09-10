@@ -210,15 +210,6 @@ export default function BookSessionPage() {
     });
   };
 
-  const isValidPair = (day1: number, day2: number) => {
-    const validPairs = [
-      [1, 4], [4, 1],
-      [2, 5], [5, 2],
-      [3, 6], [6, 3],
-    ];
-    return validPairs.some(([d1, d2]) => day1 === d1 && day2 === d2);
-  };
-
   const toggleSlot = (key: string) => {
     const [dateStr, time] = key.split('|');
     if (getBookedSessionForSlot(dateStr, time)) return;
@@ -226,16 +217,9 @@ export default function BookSessionPage() {
     if (selectedSlots.includes(key)) {
       setSelectedSlots(selectedSlots.filter(s => s !== key));
     } else {
-      if (bookedSessionsInWeek.length + selectedSlots.length >= 2) return;
-      if (selectedSlots.length === 1) {
-        const existingDate = new Date(selectedSlots[0].split('|')[0]);
-        const newDate = new Date(key.split('|')[0]);
-        if (!isValidPair(existingDate.getDay(), newDate.getDay())) return;
-      }
-      if (bookedSessionsInWeek.length === 1) {
-        const bookedDate = new Date(bookedSessionsInWeek[0].startsAt);
-        const newDate = new Date(key.split('|')[0]);
-        if (!isValidPair(bookedDate.getDay(), newDate.getDay())) return;
+      if (bookedSessionsInWeek.length + selectedSlots.length >= 6) {
+        toast.info('Weekly Limit', 'You can select up to 6 sessions in a single week.');
+        return;
       }
       setSelectedSlots([...selectedSlots, key]);
     }
@@ -264,8 +248,9 @@ export default function BookSessionPage() {
         const freshBookings = await apiFetch('/bookings/student');
         setStudentBookings(freshBookings || []);
       } catch (e) {}
+      setSelectedSlots([]);
       setConfirmed(true);
-      toast.success('Session Booked!', 'Your 1:1 session is confirmed and added to your schedule.');
+      toast.success('Session(s) Booked!', 'Your sessions have been confirmed and added to your schedule.');
     } catch (error: any) {
       toast.error('Booking Failed', error.message || 'Failed to book session.');
     } finally {
@@ -275,17 +260,7 @@ export default function BookSessionPage() {
 
   const getSlotStatus = (key: string) => {
     if (selectedSlots.includes(key)) return 'selected';
-    if (bookedSessionsInWeek.length + selectedSlots.length >= 2) return 'disabled';
-    if (selectedSlots.length === 1) {
-      const existingDate = new Date(selectedSlots[0].split('|')[0]);
-      const newDate = new Date(key.split('|')[0]);
-      if (!isValidPair(existingDate.getDay(), newDate.getDay())) return 'gap-blocked';
-    }
-    if (bookedSessionsInWeek.length === 1) {
-      const bookedDate = new Date(bookedSessionsInWeek[0].startsAt);
-      const newDate = new Date(key.split('|')[0]);
-      if (!isValidPair(bookedDate.getDay(), newDate.getDay())) return 'gap-blocked';
-    }
+    if (bookedSessionsInWeek.length + selectedSlots.length >= 6) return 'disabled';
     return 'available';
   };
 
@@ -310,8 +285,8 @@ export default function BookSessionPage() {
       <div className="p-4 rounded-xl bg-[hsl(var(--primary-light))] border border-[hsl(var(--primary)/0.2)] flex items-start gap-3">
         <Info className="h-5 w-5 text-[hsl(var(--primary))] flex-shrink-0 mt-0.5" />
         <div className="text-sm">
-          <p className="font-medium text-[hsl(var(--primary))]">You can book between <strong>1 and 2 sessions per week</strong> with your assigned lecturer.</p>
-          <p className="text-[hsl(var(--muted-foreground))] mt-1">A minimum 3-day gap is required between sessions booked in the same week (Mon+Thu, Tue+Fri, Wed+Sat).</p>
+          <p className="font-medium text-[hsl(var(--primary))]">Book sessions with your assigned lecturer.</p>
+          <p className="text-[hsl(var(--muted-foreground))] mt-1">You can book multiple sessions across the week to fit your personal schedule.</p>
         </div>
       </div>
 
@@ -351,9 +326,7 @@ export default function BookSessionPage() {
             </span>
           </div>
           <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-            {bookedSessionsInWeek.length >= 2
-              ? 'Weekly limit reached (2/2)'
-              : '1 more session available (3-day gap applies)'}
+            {Math.max(0, 6 - bookedSessionsInWeek.length)} more available this week
           </span>
         </div>
       )}
@@ -487,11 +460,9 @@ export default function BookSessionPage() {
                       <button
                         type="button"
                         onClick={() => toggleSlot(key)}
-                        disabled={status === 'disabled' || status === 'gap-blocked'}
-                        title={status === 'gap-blocked' ? 'Too close to your other session (3-day gap required)' : undefined}
+                        disabled={status === 'disabled'}
                         className={`h-8 w-full rounded-lg transition-all text-xs font-medium ${
                           status === 'selected' ? 'bg-[hsl(var(--primary))] text-white shadow-md' :
-                          status === 'gap-blocked' ? 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground)/0.3)] cursor-not-allowed' :
                           status === 'disabled' ? 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground)/0.3)] cursor-not-allowed' :
                           'bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.3)] hover:bg-[hsl(var(--success)/0.2)]'
                         }`}
@@ -511,7 +482,7 @@ export default function BookSessionPage() {
       {/* Selected slots summary */}
       <div className="flex items-center justify-between p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
         <div>
-          <div className="text-sm font-medium">{selectedSlots.length} of {Math.max(0, 2 - bookedSessionsInWeek.length)} slots available to select</div>
+          <div className="text-sm font-medium">{selectedSlots.length} slot{selectedSlots.length === 1 ? '' : 's'} selected</div>
           {selectedSlots.length > 0 && (
             <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
               {selectedSlots.map(s => {
@@ -521,9 +492,9 @@ export default function BookSessionPage() {
             </div>
           )}
           <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-            {bookedSessionsInWeek.length >= 2
-              ? 'You already have 2 sessions booked for this week'
-              : 'Select your preferred available slot to confirm booking'}
+            {bookedSessionsInWeek.length >= 6
+              ? 'Weekly booking allowance reached for this week'
+              : 'Select your preferred available slot(s) to confirm booking'}
           </div>
         </div>
         <button
@@ -532,7 +503,7 @@ export default function BookSessionPage() {
           disabled={selectedSlots.length < 1 || isSubmitting}
           className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${selectedSlots.length >= 1 ? 'text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] cursor-not-allowed'}`}
         >
-          {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : 'Confirm Booking'}
+          {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : `Confirm Booking (${selectedSlots.length})`}
         </button>
       </div>
     </div>

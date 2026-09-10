@@ -51,8 +51,30 @@ export class BookingService {
       throw new BadRequestException('Student does not have an active subscription');
     }
 
-    // Enforce 3-day gap rule
+    // Check student weekly allowance
     await this.validateThreeDayGap(studentId, startsAt);
+
+    // Check if student already has an overlapping session
+    const studentOverlap = await this.prisma.session.findFirst({
+      where: {
+        studentId,
+        status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] },
+        OR: [
+          {
+            startsAt: { lte: startsAt },
+            endsAt: { gt: startsAt },
+          },
+          {
+            startsAt: { lt: endsAt },
+            endsAt: { gte: endsAt },
+          },
+        ],
+      },
+    });
+
+    if (studentOverlap) {
+      throw new BadRequestException('You already have a scheduled session at this time');
+    }
 
     // Find and check availability slot
     const slot = await this.prisma.availabilitySlot.findFirst({
@@ -252,8 +274,8 @@ export class BookingService {
         status: {
           in: [
             SessionStatus.SCHEDULED,
+            SessionStatus.IN_PROGRESS,
             SessionStatus.COMPLETED,
-            SessionStatus.NO_SHOW_STUDENT,
           ],
         },
         startsAt: {
@@ -263,30 +285,9 @@ export class BookingService {
       },
     });
 
-    if (existingSessions.length >= 2) {
-      throw new BadRequestException('Maximum of 2 weekly sessions allowed');
-    }
-
-    if (existingSessions.length === 1) {
-      const existingDate = new Date(existingSessions[0].startsAt);
-      const existingDay = existingDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-      const newDay = bookingDate.getDay();
-
-      const validPairs = [
-        [1, 4], [4, 1], // Mon + Thu
-        [2, 5], [5, 2], // Tue + Fri
-        [3, 6], [6, 3], // Wed + Sat
-      ];
-
-      const isValidPair = validPairs.some(
-        ([d1, d2]) => existingDay === d1 && newDay === d2,
-      );
-
-      if (!isValidPair) {
-        throw new BadRequestException(
-          'Mandatory 3-day gap rule must be followed. Sessions must be scheduled on Mon+Thu, Tue+Fri, or Wed+Sat.',
-        );
-      }
+    // Allow students to book multiple sessions per week (up to 7 sessions)
+    if (existingSessions.length >= 7) {
+      throw new BadRequestException('Maximum weekly session allowance reached (7 sessions per week)');
     }
   }
 

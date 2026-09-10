@@ -118,7 +118,7 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-5 right-4 sm:right-6 z-[10000] flex flex-col gap-2.5 max-w-sm sm:max-w-md w-full pointer-events-none">
+    <div className="fixed top-4 right-4 sm:right-5 z-[10000] flex flex-col gap-2 max-w-[320px] sm:max-w-xs w-full pointer-events-none">
       {toasts.map((t) => {
         const isSuccess = t.type === 'success';
         const isError = t.type === 'error';
@@ -128,20 +128,20 @@ export function ToastContainer() {
         return (
           <div
             key={t.id}
-            className={`pointer-events-auto rounded-2xl border shadow-xl backdrop-blur-xl p-4 transition-all duration-300 animate-slide-in-right ${
+            className={`pointer-events-auto rounded-xl border shadow-lg backdrop-blur-md px-3 py-2.5 transition-all duration-200 animate-slide-in-right ${
               isSuccess
-                ? 'bg-emerald-950/90 dark:bg-emerald-950/95 border-emerald-500/40 text-emerald-100 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.3)]'
+                ? 'bg-emerald-950/92 dark:bg-emerald-950/95 border-emerald-500/35 text-emerald-100 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.3)]'
                 : isError
-                ? 'bg-rose-950/90 dark:bg-rose-950/95 border-rose-500/40 text-rose-100 shadow-[0_10px_30px_-10px_rgba(244,63,94,0.3)]'
+                ? 'bg-rose-950/92 dark:bg-rose-950/95 border-rose-500/35 text-rose-100 shadow-[0_8px_20px_-8px_rgba(244,63,94,0.3)]'
                 : isInfo
-                ? 'bg-sky-950/90 dark:bg-sky-950/95 border-sky-500/40 text-sky-100 shadow-[0_10px_30px_-10px_rgba(14,165,233,0.3)]'
-                : 'bg-slate-900/90 dark:bg-slate-900/95 border-amber-500/40 text-amber-100 shadow-[0_10px_30px_-10px_rgba(245,158,11,0.3)]'
+                ? 'bg-sky-950/92 dark:bg-sky-950/95 border-sky-500/35 text-sky-100 shadow-[0_8px_20px_-8px_rgba(14,165,233,0.3)]'
+                : 'bg-slate-900/92 dark:bg-slate-900/95 border-amber-500/35 text-amber-100 shadow-[0_8px_20px_-8px_rgba(245,158,11,0.3)]'
             }`}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2.5">
               {/* Icon badge */}
               <div
-                className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 ${
                   isSuccess
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : isError
@@ -151,19 +151,19 @@ export function ToastContainer() {
                     : 'bg-amber-500/20 text-amber-400'
                 }`}
               >
-                {isSuccess && <CheckCircle2 className="h-5 w-5" />}
-                {isError && <AlertCircle className="h-5 w-5" />}
-                {isInfo && <Info className="h-5 w-5" />}
-                {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+                {isSuccess && <CheckCircle2 className="h-3.5 w-3.5" />}
+                {isError && <AlertCircle className="h-3.5 w-3.5" />}
+                {isInfo && <Info className="h-3.5 w-3.5" />}
+                {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               </div>
 
               {/* Text content */}
-              <div className="flex-1 min-w-0 pr-1">
-                <h4 className="text-sm font-bold leading-snug tracking-tight text-white">
+              <div className="flex-1 min-w-0 pr-0.5">
+                <h4 className="text-xs font-semibold leading-tight tracking-tight text-white">
                   {t.title}
                 </h4>
                 {t.message && (
-                  <p className="text-xs opacity-90 leading-relaxed mt-0.5">
+                  <p className="text-[11px] opacity-80 leading-relaxed mt-0.5">
                     {t.message}
                   </p>
                 )}
@@ -172,10 +172,10 @@ export function ToastContainer() {
               {/* Dismiss button */}
               <button
                 onClick={() => toast.dismiss(t.id)}
-                className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+                className="p-0.5 rounded text-white/40 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0 mt-0.5"
                 aria-label="Close notification"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>

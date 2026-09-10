@@ -15,6 +15,7 @@ import {
   X,
   ExternalLink,
   Info,
+  Video,
 } from 'lucide-react';
 
 export interface LiveToastItem {
@@ -101,6 +102,7 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
       else if (type === 'BOOKING_CANCELLED') defaultTitle = 'Session Cancelled';
       else if (type === 'BOOKING_RESCHEDULED') defaultTitle = 'Session Rescheduled';
       else if (type === 'NEW_MESSAGE') defaultTitle = `Message from ${payload.senderName || 'Contact'}`;
+      else if (type === 'LECTURER_JOINED') defaultTitle = 'Lecturer Joined Classroom';
 
       const isLecturer = user?.role === 'LECTURER';
       let actionUrl = undefined;
@@ -108,6 +110,8 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
         actionUrl = isLecturer ? '/lecturer/sessions' : '/student/dashboard';
       } else if (type === 'NEW_MESSAGE') {
         actionUrl = isLecturer ? '/lecturer/messages' : '/student/messages';
+      } else if (type === 'LECTURER_JOINED') {
+        actionUrl = payload.actionUrl || `/student/sessions/${payload.sessionId}/room`;
       }
 
       const toastItem: LiveToastItem = {
@@ -241,12 +245,13 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
       {children}
 
       {/* Floating Real-time Live Toast Container */}
-      <div className="fixed top-20 right-4 sm:right-6 z-[9999] flex flex-col gap-3 max-w-sm sm:max-w-md w-full pointer-events-none">
+      <div className="fixed top-16 right-4 sm:right-5 z-[9999] flex flex-col gap-2 max-w-[340px] sm:max-w-xs w-full pointer-events-none">
         {toasts.map((toast) => {
           const isCancelled = toast.type === 'BOOKING_CANCELLED';
           const isRescheduled = toast.type === 'BOOKING_RESCHEDULED';
           const isConfirmed = toast.type === 'BOOKING_CONFIRMED';
           const isMessage = toast.type === 'NEW_MESSAGE';
+          const isLecturerJoined = toast.type === 'LECTURER_JOINED';
 
           let borderAccent = 'border-emerald-500/40';
           let iconBg = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400';
@@ -272,48 +277,54 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
             IconComponent = MessageSquare;
             badgeColor = 'bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.2)]';
             badgeText = 'New Message';
+          } else if (isLecturerJoined) {
+            borderAccent = 'border-emerald-500/60 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.35)]';
+            iconBg = 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 animate-pulse';
+            IconComponent = Video;
+            badgeColor = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+            badgeText = 'Classroom Active';
           }
 
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto w-full rounded-2xl border ${borderAccent} bg-[hsl(var(--card))/0.96] backdrop-blur-md shadow-2xl p-4 transition-all duration-300 animate-in fade-in slide-in-from-top-3 flex flex-col gap-2.5 overflow-hidden relative`}
+              className={`pointer-events-auto w-full rounded-xl border ${borderAccent} bg-[hsl(var(--card))/0.97] backdrop-blur-md shadow-xl p-3 transition-all duration-200 animate-in fade-in slide-in-from-top-2 flex flex-col gap-2 overflow-hidden relative`}
             >
               {/* Top Row: Icon, Badge, and Close Button */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-                    <IconComponent className="h-5 w-5" />
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+                    <IconComponent className="h-4 w-4" />
                   </div>
-                  <div>
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold border ${badgeColor}`}>
+                  <div className="min-w-0">
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${badgeColor}`}>
                       {badgeText}
                     </span>
-                    <h4 className="font-bold text-sm text-[hsl(var(--foreground))] mt-0.5 leading-snug">
+                    <h4 className="font-semibold text-xs text-[hsl(var(--foreground))] mt-0.5 leading-snug truncate">
                       {toast.title}
                     </h4>
                   </div>
                 </div>
                 <button
                   onClick={() => dismissToast(toast.id)}
-                  className="p-1 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
+                  className="p-0.5 rounded text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors flex-shrink-0"
                   aria-label="Dismiss notification"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
 
               {/* Message Content */}
-              <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed line-clamp-3">
+              <p className="text-[11px] text-[hsl(var(--muted-foreground))] leading-relaxed line-clamp-2">
                 {toast.message}
               </p>
 
               {/* Time pill info if session event */}
               {(toast.sessionTimeFormatted || toast.previousTimeFormatted) && (
-                <div className="flex flex-wrap items-center gap-2 text-[11px] py-1 px-2 rounded-lg bg-[hsl(var(--muted)/0.6)] text-[hsl(var(--foreground))] font-medium">
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] py-0.5 px-2 rounded-md bg-[hsl(var(--muted)/0.6)] text-[hsl(var(--foreground))] font-medium">
                   {toast.sessionTimeFormatted && (
                     <span>
-                      🕒 <strong>New Time:</strong> {toast.sessionTimeFormatted}
+                      🕒 <strong>Time:</strong> {toast.sessionTimeFormatted}
                     </span>
                   )}
                   {toast.previousTimeFormatted && (
@@ -325,10 +336,10 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
               )}
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 mt-1 pt-2 border-t border-[hsl(var(--border)/0.6)]">
+              <div className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-[hsl(var(--border)/0.5)]">
                 <button
                   onClick={() => dismissToast(toast.id)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
+                  className="px-2 py-1 rounded-md text-[11px] font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
                 >
                   Dismiss
                 </button>
@@ -338,9 +349,9 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
                       dismissToast(toast.id);
                       router.push(toast.actionUrl!);
                     }}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5"
+                    className="px-2.5 py-1 rounded-md text-[11px] font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-sm transition-all flex items-center gap-1"
                   >
-                    View Details <ExternalLink className="h-3 w-3" />
+                    {isLecturerJoined ? 'Join Classroom' : 'View'} <ExternalLink className="h-2.5 w-2.5" />
                   </button>
                 )}
               </div>

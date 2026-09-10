@@ -1,15 +1,19 @@
-import { Controller, Get, Post, Query, Param, UseGuards, Req, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Query, Param, UseGuards, Req, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { LivekitService } from './livekit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SessionStatus } from '@prisma/client';
 
 @Controller('livekit')
 @UseGuards(JwtAuthGuard)
 export class LivekitController {
+  private readonly logger = new Logger(LivekitController.name);
+
   constructor(
     private readonly livekitService: LivekitService,
     private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -173,6 +177,40 @@ export class LivekitController {
 
     const tokenResult = await this.livekitService.generateToken(identity, participantName, roomName);
     const { token, wsUrl, isSimulation, warning } = tokenResult;
+
+    // If lecturer is joining, notify the student via real-time in-app notification & SSE
+    if (isLecturer && session.studentId) {
+      try {
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+        const recentNotif = await this.prisma.notification.findFirst({
+          where: {
+            userId: session.studentId,
+            type: 'LECTURER_JOINED',
+            createdAt: { gte: tenMinutesAgo },
+          },
+        });
+
+        if (!recentNotif) {
+          const lecturerName = session.lecturer?.fullName || 'Your Instructor';
+          await this.notificationService.createNotification(
+            session.studentId,
+            'LECTURER_JOINED',
+            {
+              sessionId: session.id,
+              title: `${lecturerName} Joined Classroom`,
+              message: `${lecturerName} has entered the session room. Click Join Classroom to enter your lesson!`,
+              actorName: lecturerName,
+              actorRole: 'LECTURER',
+              actionUrl: `/student/sessions/${session.id}/room`,
+            },
+            'IN_APP',
+          );
+          this.logger.log(`Dispatched LECTURER_JOINED notification to student ${session.studentId} for session ${session.id}`);
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to dispatch LECTURER_JOINED notification: ${err.message}`);
+      }
+    }
 
     return {
       token,

@@ -167,7 +167,6 @@ export function InteractiveClassroom({
       const next = !micEnabled;
       stream.getAudioTracks().forEach(t => { t.enabled = next; });
       setMicEnabled(next);
-      toast.info(next ? 'Microphone On' : 'Microphone Muted');
     }
   };
 
@@ -206,12 +205,10 @@ export function InteractiveClassroom({
         localVideoRef.current.srcObject = activeStream;
         localVideoRef.current.play().catch(() => {});
       }
-      toast.info('Camera Started');
     } else {
       // Turning camera OFF
       stream?.getVideoTracks().forEach(t => { t.enabled = false; });
       setCamEnabled(false);
-      toast.info('Camera Stopped');
     }
   };
 
@@ -223,13 +220,11 @@ export function InteractiveClassroom({
       if (screenVideoRef.current) {
         screenVideoRef.current.srcObject = null;
       }
-      toast.info('Screen Sharing Stopped');
     } else {
       try {
         const sStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
         setScreenStream(sStream);
         setIsScreenSharing(true);
-        setShowSlides(false);
 
         // Assign immediately if element is already available
         if (screenVideoRef.current) {
@@ -245,11 +240,8 @@ export function InteractiveClassroom({
             if (screenVideoRef.current) {
               screenVideoRef.current.srcObject = null;
             }
-            toast.info('Screen Sharing Ended');
           };
         });
-
-        toast.success('Screen Sharing Active');
       } catch (err: any) {
         if (err.name !== 'NotAllowedError') {
           toast.error('Screen Share Error', err.message || 'Could not start screen share');
