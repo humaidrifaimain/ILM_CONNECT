@@ -50,8 +50,8 @@ function LecturerSupportContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'contact';
 
-  const [activeTab, setActiveTab] = useState<'contact' | 'direct' | 'tickets'>(
-    initialTab === 'contact' || initialTab === 'direct' || initialTab === 'tickets' ? initialTab : 'contact'
+  const [activeTab, setActiveTab] = useState<'contact' | 'tickets'>(
+    initialTab === 'contact' || initialTab === 'tickets' ? initialTab : 'contact'
   );
 
   const [issueCategory, setIssueCategory] = useState(LECTURER_ISSUE_CATEGORIES[0].value);
@@ -95,21 +95,11 @@ function LecturerSupportContent() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-12">
-      {/* ─── Hero Banner ─── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[hsl(168,85%,22%)] via-[hsl(168,75%,28%)] to-[hsl(168,60%,36%)] text-white p-6 sm:p-10 shadow-xl shadow-[hsl(168,80%,26%)/0.15]">
-        <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(circle_at_top_right,white_1px,transparent_1px)] [background-size:24px_24px]" />
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold text-emerald-100 border border-white/20 shadow-sm">
-            <GraduationCap className="h-3.5 w-3.5 text-amber-300" />
-            Scholar & Faculty Advisory Desk
-          </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
-            Scholar Support & Coordination
-          </h1>
-          <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">
-            We are dedicated to supporting our scholars with classroom tools, scheduling, student matching, and payout inquiries.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Scholar Support & Coordination</h1>
+        <p className="text-sm text-[hsl(var(--muted-foreground))]">
+          Submit scholar assistance inquiries, student reassignment requests, or connect with academic operations.
+        </p>
       </div>
 
       {/* ─── Quick Cards ─── */}
@@ -140,24 +130,24 @@ function LecturerSupportContent() {
         </button>
 
         <button
-          onClick={() => setActiveTab('direct')}
+          onClick={() => setActiveTab('tickets')}
           className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden group ${
-            activeTab === 'direct'
-              ? 'bg-[hsl(var(--card))] border-[#25D366] shadow-lg ring-1 ring-[#25D366]'
-              : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[#25D366]/60 hover:shadow-md'
+            activeTab === 'tickets'
+              ? 'bg-[hsl(var(--card))] border-[hsl(var(--primary))] shadow-lg ring-1 ring-[hsl(var(--primary))]'
+              : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)] hover:shadow-md'
           }`}
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="h-11 w-11 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center font-bold">
-              <Phone className="h-5 w-5" />
+            <div className="h-11 w-11 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+              <Clock className="h-5 w-5" />
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#25D366]/15 text-[#128C7E] dark:text-[#25D366]">
-              Direct Contact
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              {tickets.length} Logged
             </span>
           </div>
-          <h2 className="font-bold text-base mb-1 text-[hsl(var(--foreground))]">Scholar WhatsApp & Hotline</h2>
+          <h2 className="font-bold text-base mb-1 text-[hsl(var(--foreground))]">My Faculty Tickets</h2>
           <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-            Connect directly with the Academic Operations coordinator on WhatsApp.
+            Track inquiries, administrative replies, and resolution status for your requests.
           </p>
         </button>
       </div>
@@ -166,7 +156,6 @@ function LecturerSupportContent() {
       <div className="flex border-b border-[hsl(var(--border))] overflow-x-auto gap-2">
         {[
           { id: 'contact', label: 'Support Request Form', icon: MessageSquare },
-          { id: 'direct', label: 'WhatsApp & Direct Hotline', icon: Phone },
           { id: 'tickets', label: `My Tickets (${tickets.length})`, icon: Clock },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -292,74 +281,99 @@ function LecturerSupportContent() {
             </div>
           </div>
 
+          {/* Quick FAQ / Policy & Direct Channels */}
           <div className="space-y-6">
+            {/* Common Policy & Tips Card */}
             <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-3 text-xs">
               <h3 className="font-bold text-sm text-[hsl(var(--foreground))] flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-[hsl(var(--primary))]" /> Scholar Assistance Policy
+                <ShieldCheck className="h-4 w-4 text-[hsl(var(--primary))]" /> Common Solutions & Policy
               </h3>
-              <p className="text-[hsl(var(--muted-foreground))] leading-relaxed">
-                If a student has significant scheduling conflicts or curriculum level mismatches, you may request student reassignment without any penalty to your faculty standing.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── TAB 2: DIRECT CONTACT ─── */}
-      {activeTab === 'direct' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-5">
-            <div className="flex items-center gap-3.5">
-              <div className="h-12 w-12 rounded-2xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center flex-shrink-0">
-                <Phone className="h-6 w-6" />
+              <div className="space-y-3 text-xs text-[hsl(var(--muted-foreground))]">
+                <div>
+                  <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Student Level or Schedule Conflict?</p>
+                  <p className="leading-relaxed">You may request student reassignment without any penalty to your faculty standing.</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Classroom Audio/Video Issues?</p>
+                  <p className="leading-relaxed">Check browser camera and mic permissions before entering LiveKit classrooms.</p>
+                </div>
               </div>
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#25D366]/15 text-[#128C7E] dark:text-[#25D366] text-[10px] font-bold">
-                  Fastest Channel
+            </div>
+
+            {/* Scholar WhatsApp Coordinator Card */}
+            <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-[#25D366]/5 rounded-bl-full pointer-events-none" />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center flex-shrink-0">
+                    <Phone className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-[hsl(var(--foreground))]">Scholar WhatsApp Coordinator</h3>
+                    <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Academic Operations Desk</p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#25D366]/15 text-[#128C7E] dark:text-[#25D366] text-[10px] font-bold">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#25D366] animate-pulse" /> Fastest Channel
                 </span>
-                <h2 className="text-xl font-bold mt-1">Scholar WhatsApp Coordinator</h2>
               </div>
+
+              <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
+                Reach the Academic Operations coordinator on WhatsApp for immediate assistance regarding live sessions, slot releases, or student attendance.
+              </p>
+
+              <div className="space-y-1.5 p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))] text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[hsl(var(--muted-foreground))]">Operating Hours:</span>
+                  <span className="font-semibold text-[hsl(var(--foreground))]">Mon – Sat: 8:00 AM – 10:00 PM</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[hsl(var(--muted-foreground))]">Typical Response:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Within 10 minutes</span>
+                </div>
+              </div>
+
+              <a
+                href="https://wa.me/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs text-white bg-[#25D366] hover:bg-[#20ba59] shadow-md shadow-[#25D366]/20 transition-all hover:scale-[1.01]"
+              >
+                <Phone className="h-3.5 w-3.5" /> Message WhatsApp Coordinator <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+              </a>
             </div>
 
-            <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-              Reach the Academic Operations manager directly on WhatsApp for immediate assistance regarding live sessions, slot releases, or student attendance.
-            </p>
-
-            <a
-              href="https://wa.me/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2.5 w-full py-3 rounded-xl font-bold text-sm text-white bg-[#25D366] hover:bg-[#20ba59] shadow-lg shadow-[#25D366]/20 transition-all hover:scale-[1.01]"
-            >
-              <Phone className="h-4 w-4" /> Message WhatsApp Coordinator <ExternalLink className="h-4 w-4 opacity-80" />
-            </a>
-          </div>
-
-          <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-5">
-            <div className="flex items-center gap-3.5">
-              <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
-                <Headphones className="h-6 w-6" />
-              </div>
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
+            {/* Faculty Hotline Card */}
+            <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-3.5 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                    <Headphones className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-[hsl(var(--foreground))]">Faculty Direct Hotline</h3>
+                    <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Toll-Free Telephone Line</p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
                   Coming Soon
                 </span>
-                <h2 className="text-xl font-bold mt-1">Faculty Hotline</h2>
               </div>
-            </div>
 
-            <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-              Dedicated telephone lines for faculty and scholars will be published shortly. For immediate assistance right now, please reach out on WhatsApp.
-            </p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
+                Dedicated telephone lines for scholars will be published shortly. For immediate assistance right now, please reach out on WhatsApp.
+              </p>
 
-            <div className="pt-2 border-t border-[hsl(var(--border))] flex items-center justify-between text-xs">
-              <span className="text-[hsl(var(--muted-foreground))]">Academic Desk Email:</span>
-              <a
-                href="mailto:support@ilmconnect.com"
-                className="font-semibold text-[hsl(var(--primary))] hover:underline"
-              >
-                support@ilmconnect.com
-              </a>
+              <div className="pt-2 border-t border-[hsl(var(--border))] flex items-center justify-between text-xs">
+                <span className="text-[hsl(var(--muted-foreground))]">Academic Desk Email:</span>
+                <a
+                  href="mailto:support@ilmconnect.com"
+                  className="font-semibold text-[hsl(var(--primary))] hover:underline"
+                >
+                  support@ilmconnect.com
+                </a>
+              </div>
             </div>
           </div>
         </div>

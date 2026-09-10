@@ -64,8 +64,8 @@ function StudentSupportContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'change-lecturer';
 
-  const [activeTab, setActiveTab] = useState<'change-lecturer' | 'contact' | 'direct' | 'tickets'>(
-    initialTab === 'change-lecturer' || initialTab === 'contact' || initialTab === 'direct' || initialTab === 'tickets'
+  const [activeTab, setActiveTab] = useState<'change-lecturer' | 'contact' | 'tickets'>(
+    initialTab === 'change-lecturer' || initialTab === 'contact' || initialTab === 'tickets'
       ? initialTab
       : 'change-lecturer'
   );
@@ -143,24 +143,11 @@ function StudentSupportContent() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-12">
-      {/* ─── Hero Banner with Islamic Aesthetic ─── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[hsl(168,85%,22%)] via-[hsl(168,75%,28%)] to-[hsl(168,60%,36%)] text-white p-6 sm:p-10 shadow-xl shadow-[hsl(168,80%,26%)/0.15]">
-        {/* Decorative Background Mosque / Star Glow */}
-        <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(circle_at_top_right,white_1px,transparent_1px)] [background-size:24px_24px]" />
-        <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold text-emerald-100 border border-white/20 shadow-sm">
-            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-            IlmConnect Care & Student Advisory
-          </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
-            How can we support your Quranic journey?
-          </h1>
-          <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">
-            Whether you need to adjust your learning scholar, report a technical issue, or speak with student advisory on WhatsApp, we are here to assist you promptly.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold">Support & Student Advisory</h1>
+        <p className="text-sm text-[hsl(var(--muted-foreground))]">
+          Submit scholar change requests, report issues, or connect directly with our advisory desk.
+        </p>
       </div>
 
       {/* ─── 3 Key Action Quick Cards (TL Requirements) ─── */}
@@ -217,26 +204,26 @@ function StudentSupportContent() {
           </p>
         </button>
 
-        {/* Card 3: WhatsApp & Phone Support */}
+        {/* Card 3: Track Support Tickets */}
         <button
-          onClick={() => setActiveTab('direct')}
+          onClick={() => setActiveTab('tickets')}
           className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden group ${
-            activeTab === 'direct'
-              ? 'bg-[hsl(var(--card))] border-[#25D366] shadow-lg ring-1 ring-[#25D366]'
-              : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[#25D366]/60 hover:shadow-md'
+            activeTab === 'tickets'
+              ? 'bg-[hsl(var(--card))] border-[hsl(var(--primary))] shadow-lg ring-1 ring-[hsl(var(--primary))]'
+              : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)] hover:shadow-md'
           }`}
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="h-11 w-11 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center font-bold">
-              <Phone className="h-5 w-5" />
+            <div className="h-11 w-11 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+              <Clock className="h-5 w-5" />
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#25D366]/15 text-[#128C7E] dark:text-[#25D366]">
-              Direct Contact
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+              {tickets.length} Logged
             </span>
           </div>
-          <h2 className="font-bold text-base mb-1 text-[hsl(var(--foreground))]">Direct WhatsApp & Hotline</h2>
+          <h2 className="font-bold text-base mb-1 text-[hsl(var(--foreground))]">My Support Tickets</h2>
           <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-            Chat instantly with support coordinators via WhatsApp or view hotline information.
+            Track open inquiries, coordinator replies, and resolution status for your requests.
           </p>
         </button>
       </div>
@@ -245,8 +232,7 @@ function StudentSupportContent() {
       <div className="flex border-b border-[hsl(var(--border))] overflow-x-auto gap-2">
         {[
           { id: 'change-lecturer', label: 'Change Lecturer Request', icon: RefreshCw },
-          { id: 'contact', label: 'Contact Support Form', icon: MessageSquare },
-          { id: 'direct', label: 'WhatsApp & Direct Hotline', icon: Phone },
+          { id: 'contact', label: 'Contact Support & Help Desk', icon: MessageSquare },
           { id: 'tickets', label: `My Tickets (${tickets.length})`, icon: Clock },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -548,8 +534,9 @@ function StudentSupportContent() {
             </div>
           </div>
 
-          {/* Quick FAQ / Info */}
+          {/* Quick FAQ / Info & Direct Channels */}
           <div className="space-y-6">
+            {/* Common Solutions Card */}
             <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-3">
               <h3 className="font-bold text-sm text-[hsl(var(--foreground))] flex items-center gap-2">
                 <HelpCircle className="h-4 w-4 text-[hsl(var(--primary))]" /> Common Solutions
@@ -561,95 +548,85 @@ function StudentSupportContent() {
                 </div>
                 <div>
                   <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Need to Reschedule a Class?</p>
-                  <p className="leading-relaxed">You can cancel or reschedule any scheduled session directly from your Sessions calendar up to 6 hours before class starts.</p>
+                  <p className="leading-relaxed">You can cancel or reschedule any scheduled session directly from your Sessions calendar up to 12 hours before class starts.</p>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* ─── TAB 3: DIRECT WHATSAPP & PHONE HOTLINE ─── */}
-      {activeTab === 'direct' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* WhatsApp Direct Card */}
-          <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#25D366]/5 rounded-bl-full pointer-events-none" />
+            {/* Direct WhatsApp Support Card */}
+            <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-[#25D366]/5 rounded-bl-full pointer-events-none" />
 
-            <div className="flex items-center gap-3.5">
-              <div className="h-12 w-12 rounded-2xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center flex-shrink-0">
-                <Phone className="h-6 w-6" />
-              </div>
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#25D366]/15 text-[#128C7E] dark:text-[#25D366] text-[10px] font-bold">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#25D366] animate-pulse" /> Recommended
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center flex-shrink-0">
+                    <Phone className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-[hsl(var(--foreground))]">Direct WhatsApp Support</h3>
+                    <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Student Advisory & Technical Desk</p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#25D366]/15 text-[#128C7E] dark:text-[#25D366] text-[10px] font-bold">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#25D366] animate-pulse" /> Fast Reply
                 </span>
-                <h2 className="text-xl font-bold mt-1">Direct WhatsApp Support</h2>
               </div>
+
+              <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
+                Connect directly with our Student Advisory team on WhatsApp for fast, friendly responses regarding your class schedules, bookings, or questions.
+              </p>
+
+              <div className="space-y-1.5 p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))] text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[hsl(var(--muted-foreground))]">Operating Hours:</span>
+                  <span className="font-semibold text-[hsl(var(--foreground))]">Mon – Sat: 8:00 AM – 10:00 PM</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[hsl(var(--muted-foreground))]">Typical Response:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Within 15 minutes</span>
+                </div>
+              </div>
+
+              <a
+                href="https://wa.me/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs text-white bg-[#25D366] hover:bg-[#20ba59] shadow-md shadow-[#25D366]/20 transition-all hover:scale-[1.01]"
+              >
+                <Phone className="h-3.5 w-3.5" /> Open WhatsApp Support <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+              </a>
             </div>
 
-            <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-              Connect directly with our Student Advisory & Technical Desk on WhatsApp for fast, friendly responses regarding your class schedules, bookings, or questions.
-            </p>
-
-            <div className="space-y-2 p-4 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))] text-xs">
+            {/* Direct Phone Hotline Card */}
+            <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-3.5 relative overflow-hidden">
               <div className="flex items-center justify-between">
-                <span className="text-[hsl(var(--muted-foreground))]">Operating Hours:</span>
-                <span className="font-semibold">Mon – Sat: 8:00 AM – 10:00 PM (GMT+5:30)</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[hsl(var(--muted-foreground))]">Typical Response Time:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Within 15 minutes</span>
-              </div>
-            </div>
-
-            {/* WhatsApp Link Button */}
-            <a
-              href="https://wa.me/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2.5 w-full py-3 rounded-xl font-bold text-sm text-white bg-[#25D366] hover:bg-[#20ba59] shadow-lg shadow-[#25D366]/20 transition-all hover:scale-[1.01]"
-            >
-              <Phone className="h-4 w-4" /> Open WhatsApp Support <ExternalLink className="h-4 w-4 opacity-80" />
-            </a>
-          </div>
-
-          {/* Support Phone Hotline Card (No number added yet as instructed) */}
-          <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-5 relative overflow-hidden">
-            <div className="flex items-center gap-3.5">
-              <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
-                <Headphones className="h-6 w-6" />
-              </div>
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                    <Headphones className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-[hsl(var(--foreground))]">Direct Phone Hotline</h3>
+                    <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Toll-Free Telephone Line</p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
                   Coming Soon
                 </span>
-                <h2 className="text-xl font-bold mt-1">Direct Phone Hotline</h2>
               </div>
-            </div>
 
-            <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-              Our toll-free telephone support service is currently undergoing line integration. Official telephone contact numbers will be activated and published here shortly.
-            </p>
-
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
-              <p className="font-bold flex items-center gap-1.5">
-                <Info className="h-3.5 w-3.5" /> Support Telephone Line
+              <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
+                Our toll-free telephone support line is undergoing integration. Direct numbers will be published here shortly.
               </p>
-              <p className="leading-relaxed">
-                Direct phone numbers will be available soon. For immediate assistance right now, please use the WhatsApp button or submit an online support request.
-              </p>
-            </div>
 
-            {/* Email backup */}
-            <div className="pt-2 border-t border-[hsl(var(--border))] flex items-center justify-between text-xs">
-              <span className="text-[hsl(var(--muted-foreground))]">Official Support Email:</span>
-              <a
-                href="mailto:support@ilmconnect.com"
-                className="font-semibold text-[hsl(var(--primary))] hover:underline"
-              >
-                support@ilmconnect.com
-              </a>
+              <div className="pt-2 border-t border-[hsl(var(--border))] flex items-center justify-between text-xs">
+                <span className="text-[hsl(var(--muted-foreground))]">Official Support Email:</span>
+                <a
+                  href="mailto:support@ilmconnect.com"
+                  className="font-semibold text-[hsl(var(--primary))] hover:underline"
+                >
+                  support@ilmconnect.com
+                </a>
+              </div>
             </div>
           </div>
         </div>
