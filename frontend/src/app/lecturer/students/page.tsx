@@ -5,6 +5,7 @@ import { Search, Eye, GraduationCap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { TableSkeleton } from '@/components/ui/loading-screen';
 
 export default function LecturerStudentsPage() {
   const [search, setSearch] = useState('');
@@ -119,25 +120,22 @@ export default function LecturerStudentsPage() {
       </div>
 
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-x-auto">
-        <table className="w-full min-w-[750px]">
-          <thead>
-            <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.2)]">
-              <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Student</th>
-              <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Course / Program</th>
-              <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Tier</th>
-              <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Completed</th>
-              <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Next Session</th>
-              <th className="text-right py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="py-12 text-center text-[hsl(var(--muted-foreground))]">
-                  Loading student performance list...
-                </td>
+        {isLoading ? (
+          <TableSkeleton rows={5} cols={6} />
+        ) : (
+          <table className="w-full min-w-[750px]">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.2)]">
+                <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Student</th>
+                <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Course / Program</th>
+                <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Tier</th>
+                <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Completed</th>
+                <th className="text-left py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Next Session</th>
+                <th className="text-right py-3.5 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Action</th>
               </tr>
-            ) : filtered.length === 0 ? (
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-12 text-center">
                   <GraduationCap className="h-10 w-10 mx-auto text-[hsl(var(--muted-foreground))] mb-3" />
@@ -191,6 +189,7 @@ export default function LecturerStudentsPage() {
             )}
           </tbody>
         </table>
+        )}
       </div>
 
     </div>

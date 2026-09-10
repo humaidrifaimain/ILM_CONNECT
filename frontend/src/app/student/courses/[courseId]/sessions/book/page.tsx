@@ -18,6 +18,8 @@ import {
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 function getWeekDates(weekOffset: number) {
   const today = new Date();
@@ -142,9 +144,9 @@ export default function BookSessionPage() {
         }
       } catch (error: any) {
         if (error.message === 'Forbidden resource') {
-           alert('Access Denied: You must be logged in as a Student to book sessions.');
+          toast.error('Access Denied', 'You must be logged in as a Student to book sessions.');
         } else {
-           console.warn('Failed to load booking data:', error);
+          console.warn('Failed to load booking data:', error);
         }
         setAssignedLecturer({ name: 'Sheikh Ahmed Al-Farsi', title: 'Senior Quran Instructor' });
       } finally {
@@ -263,8 +265,9 @@ export default function BookSessionPage() {
         setStudentBookings(freshBookings || []);
       } catch (e) {}
       setConfirmed(true);
+      toast.success('Session Booked!', 'Your 1:1 session is confirmed and added to your schedule.');
     } catch (error: any) {
-      alert(`Failed to book session: ${error.message}`);
+      toast.error('Booking Failed', error.message || 'Failed to book session.');
     } finally {
       setIsSubmitting(false);
     }
@@ -288,10 +291,7 @@ export default function BookSessionPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
-        <p className="text-[hsl(var(--muted-foreground))]">Loading availability...</p>
-      </div>
+      <LoadingScreen message="Loading Schedule..." subtitle="Fetching lecturer availability and open calendar slots" />
     );
   }
 
@@ -658,7 +658,21 @@ export default function BookSessionPage() {
             )}
 
             {/* Modal Actions */}
-            <div className="flex gap-2.5">
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              {!(
+                selectedBookedSession.status === 'no_show_student' ||
+                selectedBookedSession.status === 'NO_SHOW_STUDENT' ||
+                selectedBookedSession.status === 'canceled' ||
+                selectedBookedSession.status === 'CANCELED' ||
+                new Date(selectedBookedSession.endsAt || new Date(new Date(selectedBookedSession.startsAt).getTime() + 40 * 60 * 1000)) < new Date()
+              ) && (
+                <Link
+                  href={`/student/courses/${courseId}/sessions/${selectedBookedSession.id}/room`}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center justify-center gap-1.5 order-first sm:order-none"
+                >
+                  <Video className="h-3.5 w-3.5" /> Enter Classroom
+                </Link>
+              )}
               <Link
                 href={`/student/courses/${courseId}/sessions`}
                 className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] text-center transition-colors flex items-center justify-center gap-1.5"
@@ -668,11 +682,12 @@ export default function BookSessionPage() {
               <button
                 type="button"
                 onClick={() => setSelectedBookedSession(null)}
-                className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
               >
                 Close
               </button>
             </div>
+
           </div>
         </div>
       )}

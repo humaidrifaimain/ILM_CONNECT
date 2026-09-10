@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import {
   Video,
   Search,
@@ -98,10 +100,11 @@ export default function LecturerSessionsPage() {
         method: 'PATCH',
         body: JSON.stringify({ notes: noteText }),
       });
-      queryClient.invalidateQueries({ queryKey: ['lecturerBookings'] });
+      await queryClient.invalidateQueries({ queryKey: ['lecturerBookings'] });
+      toast.success('Notes Saved', 'Session notes updated successfully.');
       setNotesModal(null);
-    } catch {
-      alert('Failed to save notes');
+    } catch (err: any) {
+      toast.error('Failed to Save Notes', err?.message || 'Please check your connection.');
     } finally {
       setIsSavingNotes(false);
     }
@@ -110,6 +113,7 @@ export default function LecturerSessionsPage() {
   const handleRescheduleSubmit = async () => {
     if (!rescheduleModal || !rescheduleDate) {
       setRescheduleError('Please select a new date.');
+      toast.error('Date Required', 'Please select a new date.');
       return;
     }
 
@@ -128,6 +132,7 @@ export default function LecturerSessionsPage() {
 
       if (newStartsAt <= new Date()) {
         setRescheduleError('Please select a future date and time.');
+        toast.error('Invalid Date', 'Please select a future date and time.');
         setIsRescheduling(false);
         return;
       }
@@ -141,10 +146,13 @@ export default function LecturerSessionsPage() {
       });
 
       await queryClient.invalidateQueries({ queryKey: ['lecturerBookings'] });
+      toast.success('Session Rescheduled', 'Student has been notified of the new schedule.');
       setRescheduleModal(null);
       setRescheduleReason('');
     } catch (err: any) {
-      setRescheduleError(err.message || 'Failed to reschedule session');
+      const msg = err.message || 'Failed to reschedule session';
+      setRescheduleError(msg);
+      toast.error('Reschedule Failed', msg);
     } finally {
       setIsRescheduling(false);
     }
@@ -164,10 +172,13 @@ export default function LecturerSessionsPage() {
       });
 
       await queryClient.invalidateQueries({ queryKey: ['lecturerBookings'] });
+      toast.success('Session Cancelled', 'The session was successfully cancelled.');
       setCancelModal(null);
       setCancelReason('');
     } catch (err: any) {
-      setCancelError(err.message || 'Failed to cancel session');
+      const msg = err.message || 'Failed to cancel session';
+      setCancelError(msg);
+      toast.error('Cancellation Failed', msg);
     } finally {
       setIsCanceling(false);
     }
@@ -215,7 +226,9 @@ export default function LecturerSessionsPage() {
 
       {/* Sessions list */}
       <div className="space-y-3">
-        {isLoading && <div className="p-8 text-center text-[hsl(var(--muted-foreground))]">Loading sessions...</div>}
+        {isLoading && (
+          <LoadingScreen message="Loading Sessions..." subtitle="Fetching your scheduled and upcoming classes" />
+        )}
         {!isLoading &&
           filtered.map((s: any) => {
             const endsAtDate = new Date(s.endsAt || new Date(new Date(s.startsAt).getTime() + 40 * 60 * 1000));

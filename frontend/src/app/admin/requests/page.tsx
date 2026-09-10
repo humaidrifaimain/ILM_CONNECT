@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { Search, UserPlus, RefreshCw, CheckCircle, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
+import { TableSkeleton } from '@/components/ui/loading-screen';
 
 export default function AdminRequestsPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL');
   
-  const { data: tickets = [], refetch } = useQuery({
+  const { data: tickets = [], isLoading, refetch } = useQuery({
     queryKey: ['supportTickets'],
     queryFn: () => apiFetch('/support/tickets'),
   });
@@ -22,15 +24,15 @@ export default function AdminRequestsPage() {
   });
 
   const handleResolve = async (id: string) => {
-    if (!confirm('Mark this request as resolved?')) return;
     try {
       await apiFetch(`/support/tickets/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'RESOLVED' }),
       });
-      refetch();
-    } catch (err) {
-      alert('Failed to resolve request');
+      await refetch();
+      toast.success('Request Resolved', 'Operational ticket has been marked as resolved.');
+    } catch (err: any) {
+      toast.error('Resolution Failed', err?.message || 'Failed to resolve request');
     }
   };
 
@@ -56,7 +58,10 @@ export default function AdminRequestsPage() {
       </div>
 
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        {isLoading ? (
+          <TableSkeleton rows={4} cols={5} />
+        ) : (
+          <table className="w-full min-w-[800px]">
           <thead>
             <tr className="border-b border-[hsl(var(--border))]">
               <th className="text-left py-3 px-5 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Student</th>
@@ -119,6 +124,7 @@ export default function AdminRequestsPage() {
             )}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   );

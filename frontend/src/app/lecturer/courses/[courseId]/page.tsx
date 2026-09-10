@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import {
   ChevronLeft,
   BookOpen,
@@ -42,6 +44,11 @@ export default function LecturerCourseDetailPage() {
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
+    if (type === 'success') {
+      toast.success('Access Updated', message);
+    } else {
+      toast.error('Update Failed', message);
+    }
     setTimeout(() => setNotification(null), 4000);
   };
 
@@ -182,11 +189,7 @@ export default function LecturerCourseDetailPage() {
 
   if (loadingCourse) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6 animate-fade-in p-6">
-        <div className="h-8 w-48 bg-[hsl(var(--muted)/0.5)] rounded animate-pulse" />
-        <div className="h-32 bg-[hsl(var(--muted)/0.4)] rounded-2xl animate-pulse" />
-        <div className="h-64 bg-[hsl(var(--muted)/0.4)] rounded-2xl animate-pulse" />
-      </div>
+      <LoadingScreen message="Loading Course Curriculum..." subtitle="Fetching learning modules and student access permissions" />
     );
   }
 

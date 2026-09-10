@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import {
   ArrowLeft,
   Globe,
@@ -171,10 +172,7 @@ export default function StudentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
-        <p className="text-sm text-[hsl(var(--muted-foreground))]">Loading student profile...</p>
-      </div>
+      <LoadingScreen message="Loading Student Profile..." subtitle="Retrieving attendance history, session notes, and mastery metrics" />
     );
   }
 

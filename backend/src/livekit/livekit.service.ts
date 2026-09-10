@@ -1,11 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AccessToken } from 'livekit-server-sdk';
+
+export interface LivekitTokenResult {
+  token: string;
+  wsUrl: string;
+  isSimulation: boolean;
+  warning?: string;
+}
 
 @Injectable()
 export class LivekitService {
+  private readonly logger = new Logger(LivekitService.name);
   private readonly apiKey = process.env.LIVEKIT_API_KEY;
   private readonly apiSecret = process.env.LIVEKIT_API_SECRET;
   private readonly wsUrl = process.env.LIVEKIT_URL;
+
+  /**
+   * Check if the API secret has masked bullet dots (•).
+   */
+  isSecretMasked(): boolean {
+    const secret = process.env.LIVEKIT_API_SECRET || this.apiSecret || '';
+    return secret.includes('\u2022') || secret.includes('•');
+  }
+
+  /**
+   * Check if LiveKit is properly configured with credentials.
+   */
+  isConfigured(): boolean {
+    const key = process.env.LIVEKIT_API_KEY || this.apiKey;
+    const secret = process.env.LIVEKIT_API_SECRET || this.apiSecret;
+    const url = process.env.LIVEKIT_URL || this.wsUrl;
+    return Boolean(key && secret && url && !this.isSecretMasked());
+  }
 
   /**
    * Generate a deterministic LiveKit room name from a session ID.
@@ -16,26 +42,53 @@ export class LivekitService {
 
   /**
    * Generate a LiveKit access token for a participant.
-   * @param identity  Unique participant identity (e.g., "student:userId")
-   * @param name      Display name (e.g., "Zayd Al-Faisal")
-   * @param roomName  The LiveKit room to join
+   * If credentials are not configured or contain masked bullets, returns
+   * an interactive simulation session so video meetings always work smoothly.
    */
-  async generateToken(identity: string, name: string, roomName: string): Promise<{ token: string; wsUrl: string }> {
-    const at = new AccessToken(this.apiKey, this.apiSecret, {
-      identity,
-      name,
-      ttl: '2h', // 2 hours — covers a 45-min session with generous buffer
-    });
+  async generateToken(identity: string, name: string, roomName: string): Promise<LivekitTokenResult> {
+    const apiKey = process.env.LIVEKIT_API_KEY || this.apiKey;
+    const apiSecret = process.env.LIVEKIT_API_SECRET || this.apiSecret;
+    const wsUrl = process.env.LIVEKIT_URL || this.wsUrl;
 
-    at.addGrant({
-      roomJoin: true,
-      room: roomName,
-      canPublish: true,
-      canSubscribe: true,
-      canPublishData: true, // For chat messages via DataChannel
-    });
+    if (!this.isConfigured()) {
+      const reason = this.isSecretMasked()
+        ? 'LIVEKIT_API_SECRET in backend/.env contains masked bullet characters (•).'
+        : 'LiveKit credentials are not fully configured in backend/.env.';
+      this.logger.warn(`${reason} Entering interactive virtual classroom mode.`);
+      return {
+        token: `sim_${identity}_${Date.now()}`,
+        wsUrl: '',
+        isSimulation: true,
+        warning: `${reason} Running in Interactive Classroom mode. To connect to LiveKit Cloud, paste your unmasked secret in backend/.env.`,
+      };
+    }
 
-    const token = await at.toJwt();
-    return { token, wsUrl: this.wsUrl! };
+    try {
+      const at = new AccessToken(apiKey!, apiSecret!, {
+        identity,
+        name,
+        ttl: '2h', // 2 hours — covers a 45-min session with generous buffer
+      });
+
+      at.addGrant({
+        roomJoin: true,
+        room: roomName,
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true, // For chat messages via DataChannel
+      });
+
+      const token = await at.toJwt();
+      return { token, wsUrl: wsUrl!, isSimulation: false };
+    } catch (err: any) {
+      this.logger.error(`LiveKit token generation failed: ${err.message}. Falling back to simulation mode.`);
+      return {
+        token: `sim_${identity}_${Date.now()}`,
+        wsUrl: '',
+        isSimulation: true,
+        warning: `LiveKit generation error: ${err.message}. Running in Interactive Classroom mode.`,
+      };
+    }
   }
 }
+

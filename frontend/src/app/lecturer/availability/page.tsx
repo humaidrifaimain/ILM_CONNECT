@@ -4,6 +4,9 @@ import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, List } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
+
 
 type ViewMode = 'weekly' | 'monthly';
 const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -29,20 +32,31 @@ function formatShiftName(shiftHours: number[]) {
   return shiftHours.map(formatHourSlot).join(', ');
 }
 
+function formatDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function getWeekDates(weekOffset: number) {
   const today = new Date();
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay() + 1 + weekOffset * 7); // Monday
+  const currentDay = today.getDay(); // 0 = Sun, 1 = Mon...
+  const distanceToMonday = (currentDay + 6) % 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - distanceToMonday + weekOffset * 7);
+  monday.setHours(0, 0, 0, 0);
+
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(startOfWeek);
-    d.setDate(startOfWeek.getDate() + i);
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
     return d;
   });
 }
 
 function getDaysInMonth(year: number, month: number) { return new Date(year, month + 1, 0).getDate(); }
 function getFirstDayOfMonth(year: number, month: number) { return new Date(year, month, 1).getDay(); }
-const getSlotKey = (dayStr: string, hour: number) => `${dayStr}-${hour}`;
+const getSlotKey = (dayStr: string, hour: number) => `${dayStr}@${hour}`;
 
 export default function AvailabilityPage() {
   const [view, setView] = useState<ViewMode>('weekly');
@@ -65,13 +79,13 @@ export default function AvailabilityPage() {
     ? lecturerProfile.hourlyAvailabilityJson.map(Number)
     : [];
 
-  // Map DB slots to our key format
+  // Map DB slots to our key format using consistent local dates
   const dbSlotsMap = useMemo(() => {
     const map = new Map<string, any>();
     if (Array.isArray(rawDbSlots)) {
       rawDbSlots.forEach((slot: any) => {
         const d = new Date(slot.startsAt);
-        const dayStr = d.toISOString().split('T')[0];
+        const dayStr = formatDateKey(d);
         const hour = d.getHours();
         map.set(getSlotKey(dayStr, hour), slot);
       });
@@ -92,38 +106,63 @@ export default function AvailabilityPage() {
   };
 
   const toggleSlot = (key: string) => {
+    const dbSlot = dbSlotsMap.get(key);
+    if (dbSlot?.status === 'BOOKED') {
+      toast.info('Slot Booked', 'This slot is already booked for a student session and cannot be modified.');
+      return;
+    }
     setLocalSlots(prev => ({ ...prev, [key]: !isAvailable(key) }));
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const creates: any[] = [];
-      const deletes: any[] = [];
+      const creates: Promise<any>[] = [];
+      const deletes: Promise<any>[] = [];
 
       Object.entries(localSlots).forEach(([key, active]) => {
         const hasInDb = dbSlotsMap.has(key);
         if (active && !hasInDb) {
-          const [dayStr, hourStr] = key.split('-');
-          const d = new Date(dayStr);
-          d.setHours(parseInt(hourStr), 0, 0, 0);
-          const endsAt = new Date(d);
-          endsAt.setHours(d.getHours() + 1);
+          const [dayStr, hourStr] = key.split('@');
+          const [year, month, dateNum] = dayStr.split('-').map(Number);
+          const hour = parseInt(hourStr, 10);
+          const startsAt = new Date(year, month - 1, dateNum, hour, 0, 0, 0);
+          const endsAt = new Date(year, month - 1, dateNum, hour + 1, 0, 0, 0);
+
           creates.push(apiFetch('/availability', {
             method: 'POST',
-            body: JSON.stringify({ startsAt: d.toISOString(), endsAt: endsAt.toISOString() }),
+            body: JSON.stringify({ startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() }),
           }));
         } else if (!active && hasInDb) {
-          const slotId = dbSlotsMap.get(key).id;
-          deletes.push(apiFetch(`/availability/${slotId}`, { method: 'DELETE' }));
+          const slot = dbSlotsMap.get(key);
+          if (slot && slot.status !== 'BOOKED') {
+            deletes.push(apiFetch(`/availability/${slot.id}`, { method: 'DELETE' }));
+          }
         }
       });
 
-      await Promise.all([...creates, ...deletes]);
+      if (creates.length === 0 && deletes.length === 0) {
+        setLocalSlots({});
+        toast.info('No Changes', 'No schedule modifications to save.');
+        return;
+      }
+
+      const results = await Promise.allSettled([...creates, ...deletes]);
+      const rejected = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
+
       await queryClient.invalidateQueries({ queryKey: ['availabilitySlots'] });
       setLocalSlots({});
-    } catch (err) {
-      alert('Failed to save some availability changes.');
+
+      if (rejected.length > 0) {
+        console.error('Failed to save some availability changes:', rejected);
+        const firstReason = rejected[0]?.reason?.message || 'Some changes could not be applied';
+        toast.error('Partial Save Warning', `${rejected.length} slot(s) could not be updated: ${firstReason}`);
+      } else {
+        toast.success('Availability Saved!', 'Your working schedule has been updated.');
+      }
+    } catch (err: any) {
+      console.error('Failed to save availability:', err);
+      toast.error('Save Failed', err?.message || 'Failed to save availability changes.');
     } finally {
       setIsSaving(false);
     }
@@ -137,9 +176,10 @@ export default function AvailabilityPage() {
 
   const getSlotsCount = (day: number) => {
     const d = new Date(calYear, calMonth, day);
-    const dayStr = d.toISOString().split('T')[0];
+    const dayStr = formatDateKey(d);
     return hours.filter(h => isAvailable(getSlotKey(dayStr, h))).length;
   };
+
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -181,7 +221,9 @@ export default function AvailabilityPage() {
         </div>
       )}
 
-      {isLoading && <div className="text-[hsl(var(--muted-foreground))] text-sm p-4">Loading your schedule...</div>}
+      {isLoading && (
+        <LoadingScreen message="Loading Schedule..." subtitle="Fetching your lecturer working hours & open slots" />
+      )}
 
       {/* WEEKLY VIEW */}
       {!isLoading && view === 'weekly' && (
@@ -230,10 +272,11 @@ export default function AvailabilityPage() {
                   </div>
                 </td>
                 {weekDates.map((d, di) => {
-                  // Use local ISO format without timezone shift to match exact date components reliably
-                  const d2 = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
-                  const key = getSlotKey(d2.toISOString().split('T')[0], h);
+                  const dayStr = formatDateKey(d);
+                  const key = getSlotKey(dayStr, h);
                   const avail = isAvailable(key);
+                  const dbSlot = dbSlotsMap.get(key);
+                  const isBooked = dbSlot?.status === 'BOOKED';
 
                   if (!inTimeshift) {
                     return (
@@ -248,6 +291,19 @@ export default function AvailabilityPage() {
                     );
                   }
 
+                  if (isBooked) {
+                    return (
+                      <td key={di} className="py-1 px-2 text-center">
+                        <div
+                          className="h-8 w-full rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-semibold"
+                          title="Booked for a student session"
+                        >
+                          Booked
+                        </div>
+                      </td>
+                    );
+                  }
+
                   return (
                     <td key={di} className="py-1 px-2 text-center">
                       <button onClick={() => toggleSlot(key)} className={`h-8 w-full rounded-lg transition-all text-xs font-medium ${avail ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.3)]' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground)/0.3)] hover:bg-[hsl(var(--border))]'}`}>
@@ -256,6 +312,7 @@ export default function AvailabilityPage() {
                     </td>
                   );
                 })}
+
               </tr>
               );
             })}
@@ -289,12 +346,17 @@ export default function AvailabilityPage() {
               const density = slotsCount / hours.length;
               return (
                 <button key={day} onClick={() => {
-                  const d = new Date(calYear, calMonth, day);
+                  const targetDate = new Date(calYear, calMonth, day);
                   const today = new Date();
-                  const diff = Math.floor((d.getTime() - today.getTime()) / (7 * 24 * 60 * 60 * 1000));
-                  setWeekOffset(diff);
+                  const targetMonday = new Date(targetDate);
+                  targetMonday.setDate(targetDate.getDate() - ((targetDate.getDay() + 6) % 7));
+                  const todayMonday = new Date(today);
+                  todayMonday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+                  const weekDiff = Math.round((targetMonday.getTime() - todayMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+                  setWeekOffset(weekDiff);
                   setView('weekly');
                 }} className={`min-h-[80px] p-2 border-b border-r border-[hsl(var(--border))] text-left hover:bg-[hsl(var(--muted)/0.5)] transition-colors ${isToday ? 'bg-[hsl(var(--primary)/0.05)]' : ''}`}>
+
                   <div className={`text-xs font-medium mb-2 ${isToday ? 'h-5 w-5 rounded-full bg-[hsl(var(--primary))] text-white flex items-center justify-center' : ''}`}>{day}</div>
                   <div className={`h-2 rounded-full ${density > 0.5 ? 'bg-[hsl(var(--success)/0.4)]' : density > 0 ? 'bg-[hsl(var(--warning)/0.3)]' : 'bg-[hsl(var(--muted))]'}`} />
                   <div className="text-[10px] text-[hsl(var(--muted-foreground))] mt-1">{slotsCount} slots</div>

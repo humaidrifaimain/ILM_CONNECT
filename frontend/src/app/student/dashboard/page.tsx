@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -56,16 +58,21 @@ export default function StudentDashboard() {
         body: JSON.stringify({ type: 'LECTURER_CHANGE', reason: changeReason }),
       });
       setChangeRequested(true);
+      toast.success('Request Submitted', 'Our academic coordinator team has received your lecturer change request.');
       closeModal();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to submit request:', err);
-      alert('Failed to submit request. Please try again later.');
+      toast.error('Submission Failed', err?.message || 'Failed to submit request. Please try again later.');
     } finally {
       setIsSubmittingChange(false);
     }
   };
 
-  const upcomingSessions = bookings?.filter((b: any) => new Date(b.startsAt) > new Date()) || [];
+  const upcomingSessions = bookings?.filter((b: any) => {
+    const status = (b.status || '').toUpperCase();
+    const isCanceled = status === 'CANCELED' || status === 'NO_SHOW_STUDENT';
+    return !isCanceled && new Date(b.startsAt) > new Date();
+  }) || [];
   const assignedLecturer = profile?.assignedLecturer || upcomingSessions[0]?.lecturer || null;
 
   const now = new Date();
@@ -78,7 +85,7 @@ export default function StudentDashboard() {
   const hoursLearned = Math.round((completedSessions.length * 40 / 60) * 10) / 10;
 
   if (!user || !profile) {
-    return <div className="min-h-screen bg-[hsl(var(--background))] animate-pulse p-8">Loading dashboard...</div>;
+    return <LoadingScreen message="Loading Student Dashboard..." subtitle="Personalizing your Quranic learning overview" fullScreen />;
   }
 
   return (
@@ -193,13 +200,13 @@ export default function StudentDashboard() {
                       <div className="text-xs text-[hsl(var(--muted-foreground))]">with {s.lecturer?.fullName}</div>
                       <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{new Date(s.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(s.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                     </div>
-                    {s.livekitRoomName ? (
-                      <Link href={`/student/courses/beginner-qaida/sessions/${s.id}/room`} className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5">
-                        <Play className="h-3 w-3" /> Join
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-[hsl(var(--muted-foreground))]">Link pending</span>
-                    )}
+                    <Link
+                      href={`/student/courses/beginner-qaida/sessions/${s.id}/room`}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      <Play className="h-3 w-3 fill-current" /> Join
+                    </Link>
+
                   </div>
                 ))}
                 {upcomingSessions.length === 0 && (

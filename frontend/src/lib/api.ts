@@ -16,8 +16,9 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     let errorMessage = 'An error occurred';
+    let errorData: any = null;
     try {
-      const errorData = await response.json();
+      errorData = await response.json();
       errorMessage = errorData.message || errorMessage;
     } catch (e) {
       errorMessage = response.statusText;
@@ -31,7 +32,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       }
     }
 
-    throw new Error(errorMessage);
+    const error: any = new Error(errorMessage);
+    error.data = errorData;
+    error.status = response.status;
+    throw error;
   }
 
   // If the response is empty (like a 204 No Content), don't try to parse JSON

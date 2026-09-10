@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock } from 'lucide-react';
+import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock, Play } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -107,11 +109,14 @@ export default function StudentSessionsPage() {
       await apiFetch(`/bookings/${selectedSession.id}`, { method: 'DELETE' });
       await queryClient.invalidateQueries({ queryKey: ['studentBookings'] });
       setActionSuccessMessage('Session has been canceled.');
+      toast.success('Session Cancelled', 'Your scheduled session has been removed.');
       setTimeout(() => {
         closeDetail();
       }, 1200);
     } catch (err: any) {
-      setActionErrorMessage(err.message || 'Failed to cancel session');
+      const msg = err.message || 'Failed to cancel session';
+      setActionErrorMessage(msg);
+      toast.error('Cancellation Failed', msg);
     } finally {
       setIsCanceling(false);
     }
@@ -120,6 +125,7 @@ export default function StudentSessionsPage() {
   const handleRescheduleSession = async () => {
     if (!selectedSession || !rescheduleDate) {
       setActionErrorMessage('Please select a new date for rescheduling');
+      toast.error('Date Required', 'Please select a new date for rescheduling');
       return;
     }
     setIsRescheduling(true);
@@ -136,6 +142,7 @@ export default function StudentSessionsPage() {
 
       if (startsAtDate <= new Date()) {
         setActionErrorMessage('Please select a future date and time');
+        toast.error('Invalid Time', 'Please select a future date and time');
         setIsRescheduling(false);
         return;
       }
@@ -147,11 +154,14 @@ export default function StudentSessionsPage() {
 
       await queryClient.invalidateQueries({ queryKey: ['studentBookings'] });
       setActionSuccessMessage('Session has been rescheduled successfully!');
+      toast.success('Session Rescheduled', 'Your session timing has been updated.');
       setTimeout(() => {
         closeDetail();
       }, 1200);
     } catch (err: any) {
-      setActionErrorMessage(err.message || 'Failed to reschedule session');
+      const msg = err.message || 'Failed to reschedule session';
+      setActionErrorMessage(msg);
+      toast.error('Reschedule Failed', msg);
     } finally {
       setIsRescheduling(false);
     }
@@ -184,7 +194,7 @@ export default function StudentSessionsPage() {
       {view === 'list' && (
         <div className="space-y-3">
           {isLoading ? (
-            <div className="text-center py-8 text-[hsl(var(--muted-foreground))]">Loading sessions...</div>
+            <LoadingScreen message="Loading Sessions..." subtitle="Fetching your scheduled classes and learning calendar" />
           ) : sessions.length === 0 ? (
             <div className="text-center py-12 rounded-xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card))]">
               <Calendar className="h-8 w-8 mx-auto text-[hsl(var(--muted-foreground))] opacity-50 mb-3" />
@@ -194,20 +204,39 @@ export default function StudentSessionsPage() {
             </div>
           ) : sessions.map((s: any) => {
             const cfg = statusConfig[s.status] || statusConfig.scheduled;
+            const canJoin = (s.status === 'scheduled' || s.status === 'in_progress') && !s.isPast;
             return (
-              <button key={s.id} onClick={() => setSelectedSession(s)} className="w-full text-left flex items-center gap-4 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--primary)/0.3)] transition-colors">
-                <div className="h-11 w-11 rounded-xl bg-[hsl(var(--primary-light))] flex items-center justify-center flex-shrink-0">
-                  <Video className="h-5 w-5 text-[hsl(var(--primary))]" />
+              <div
+                key={s.id}
+                onClick={() => setSelectedSession(s)}
+                className="w-full text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--primary)/0.4)] transition-all cursor-pointer shadow-sm hover:shadow-md"
+              >
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="h-11 w-11 rounded-xl bg-[hsl(var(--primary-light))] flex items-center justify-center flex-shrink-0">
+                    <Video className="h-5 w-5 text-[hsl(var(--primary))]" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm truncate text-[hsl(var(--foreground))]">{s.subject}</div>
+                    <div className="text-xs text-[hsl(var(--muted-foreground))]">with {s.lecturerName} · {new Date(s.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                    <div className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — {new Date(s.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{s.subject}</div>
-                  <div className="text-xs text-[hsl(var(--muted-foreground))]">with {s.lecturerName} · {new Date(s.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                  <div className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — {new Date(s.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+
+                <div className="flex items-center gap-2.5 self-end sm:self-center flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${cfg.color}`}>{cfg.label}</span>
+                  {canJoin && (
+                    <Link
+                      href={`/student/courses/${courseId}/sessions/${s.id}/room`}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5"
+                    >
+                      <Play className="h-3 w-3 fill-current" /> Join Class
+                    </Link>
+                  )}
                 </div>
-                <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${cfg.color}`}>{cfg.label}</span>
-              </button>
+              </div>
             );
           })}
+
         </div>
       )}
 
@@ -311,9 +340,12 @@ export default function StudentSessionsPage() {
 
             <div className="flex gap-2">
               <button onClick={closeDetail} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">Close</button>
-              {selectedSession.status === 'scheduled' && !selectedSession.isPast && (
-                <Link href={`/student/courses/beginner-qaida/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center justify-center">Join Session</Link>
+              {(selectedSession.status === 'scheduled' || selectedSession.status === 'in_progress') && !selectedSession.isPast && (
+                <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center justify-center gap-1.5">
+                  <Play className="h-4 w-4 fill-current" /> Join Session
+                </Link>
               )}
+
             </div>
           </div>
         </div>

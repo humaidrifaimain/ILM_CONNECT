@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { Search, Shield, UserX, UserCheck, Key, Eye, UserPlus, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
+import { TableSkeleton } from '@/components/ui/loading-screen';
 
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
@@ -144,6 +146,7 @@ export default function AdminUsersPage() {
 
       setShowAddLecturerModal(false);
       setAddLecturerSuccess(true);
+      toast.success('Lecturer Created', `Account for ${fullName} has been successfully created.`);
       setTimeout(() => setAddLecturerSuccess(false), 4000);
 
       // Reset form fields
@@ -154,7 +157,9 @@ export default function AdminUsersPage() {
       setSpecializations('Tajweed, Hifz, Fiqh');
       setTimeshiftHours([10, 11, 12, 13]);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to create lecturer account');
+      const msg = err.message || 'Failed to create lecturer account';
+      setErrorMessage(msg);
+      toast.error('Creation Failed', msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -170,10 +175,11 @@ export default function AdminUsersPage() {
 
       await queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
       setAssignmentSuccess(true);
+      toast.success('Lecturer Assigned', 'Student has been assigned to the selected lecturer.');
       closeModal();
       setTimeout(() => setAssignmentSuccess(false), 3000);
     } catch (err: any) {
-      alert(err.message || 'Failed to assign lecturer');
+      toast.error('Assignment Failed', err.message || 'Failed to assign lecturer');
     }
   };
 
@@ -185,8 +191,12 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       await queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      toast.success(
+        newStatus === 'ACTIVE' ? 'User Activated' : 'User Suspended',
+        `Account status updated to ${newStatus.toLowerCase()}.`
+      );
     } catch (err: any) {
-      alert(err.message || 'Failed to update user status');
+      toast.error('Update Failed', err.message || 'Failed to update user status');
     }
   };
 
@@ -274,10 +284,7 @@ export default function AdminUsersPage() {
 
         <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto shadow-sm">
           {isLoading ? (
-            <div className="p-12 text-center text-sm text-[hsl(var(--muted-foreground))] flex items-center justify-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-[hsl(var(--primary))]" />
-              Loading database users...
-            </div>
+            <TableSkeleton rows={5} cols={5} />
           ) : error ? (
             <div className="p-8 text-center text-sm text-red-500">
               Failed to load users. Ensure you are logged in as an administrator.

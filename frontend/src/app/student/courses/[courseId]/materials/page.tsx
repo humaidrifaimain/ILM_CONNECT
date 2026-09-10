@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { FileText, Lock, PlayCircle, Download, X, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 const fallbackSlides = [
   { id: '1', title: 'Introduction to Noorani Qaida', objectives: 'Single Letters (Mufradat) - Alif to Khaa', durationMinutes: 45 },
@@ -68,6 +70,12 @@ export default function CourseMaterialsPage() {
   });
 
   const unlockedCount = slidesWithStatus.filter(s => s.unlocked).length;
+
+  if (loadingProfile || loadingPaths) {
+    return (
+      <LoadingScreen message="Loading Course Materials..." subtitle="Fetching curriculum slides and lesson resources" />
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -136,7 +144,7 @@ export default function CourseMaterialsPage() {
                   <PlayCircle className="h-4 w-4" /> View
                 </button>
                 <button
-                  onClick={() => alert(`Downloading slides for "${slide.title}"...`)}
+                  onClick={() => toast.info('Downloading Material', `Preparing download for "${slide.title}"...`)}
                   className="p-2 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
                   title="Download Slides"
                 >
