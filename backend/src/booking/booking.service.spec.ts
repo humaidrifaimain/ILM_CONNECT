@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookingService } from './booking.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { BadRequestException } from '@nestjs/common';
+import { SessionStatus } from '@prisma/client';
 
 describe('BookingService (3-Day Gap Rule validation)', () => {
   let service: BookingService;
@@ -17,6 +19,13 @@ describe('BookingService (3-Day Gap Rule validation)', () => {
             session: {
               findMany: jest.fn(),
             },
+          },
+        },
+        {
+          provide: NotificationService,
+          useValue: {
+            dispatchBookingNotification: jest.fn(),
+            createNotification: jest.fn(),
           },
         },
       ],
@@ -38,36 +47,40 @@ describe('BookingService (3-Day Gap Rule validation)', () => {
       await expect(service.validateThreeDayGap('student-id', testDate)).resolves.not.toThrow();
     });
 
-    it('should throw if student already has 2 or more sessions that week', async () => {
+    it('should allow student to book multiple sessions in the same week across different days', async () => {
       jest.spyOn(prisma.session, 'findMany').mockResolvedValue([
         { startsAt: new Date('2026-06-01T10:00:00Z') }, // Mon
-        { startsAt: new Date('2026-06-04T10:00:00Z') }, // Thu
+        { startsAt: new Date('2026-06-02T10:00:00Z') }, // Tue
       ] as any);
 
-      const testDate = new Date('2026-06-05T10:00:00Z'); // Friday
+      const testDate = new Date('2026-06-04T10:00:00Z'); // Thursday
+      await expect(service.validateThreeDayGap('student-id', testDate)).resolves.not.toThrow();
+    });
+
+    it('should throw if student reaches maximum weekly sessions allowance (7 sessions)', async () => {
+      jest.spyOn(prisma.session, 'findMany').mockResolvedValue([
+        { startsAt: new Date('2026-06-01T10:00:00Z') },
+        { startsAt: new Date('2026-06-02T10:00:00Z') },
+        { startsAt: new Date('2026-06-03T10:00:00Z') },
+        { startsAt: new Date('2026-06-04T10:00:00Z') },
+        { startsAt: new Date('2026-06-05T10:00:00Z') },
+        { startsAt: new Date('2026-06-06T10:00:00Z') },
+        { startsAt: new Date('2026-06-07T10:00:00Z') },
+      ] as any);
+
+      const testDate = new Date('2026-06-07T14:00:00Z');
       await expect(service.validateThreeDayGap('student-id', testDate)).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('should pass if pairing Monday booking with existing Thursday session', async () => {
-      jest.spyOn(prisma.session, 'findMany').mockResolvedValue([
-        { startsAt: new Date('2026-06-04T10:00:00Z') }, // Thursday (4)
-      ] as any);
-
-      const testDate = new Date('2026-06-01T10:00:00Z'); // Monday (1)
-      await expect(service.validateThreeDayGap('student-id', testDate)).resolves.not.toThrow();
-    });
-
-    it('should fail if pairing Monday booking with existing Tuesday session (violates gap rule)', async () => {
+    it('should pass if pairing Monday booking with existing Tuesday or Thursday session', async () => {
       jest.spyOn(prisma.session, 'findMany').mockResolvedValue([
         { startsAt: new Date('2026-06-02T10:00:00Z') }, // Tuesday (2)
       ] as any);
 
       const testDate = new Date('2026-06-01T10:00:00Z'); // Monday (1)
-      await expect(service.validateThreeDayGap('student-id', testDate)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.validateThreeDayGap('student-id', testDate)).resolves.not.toThrow();
     });
   });
 });

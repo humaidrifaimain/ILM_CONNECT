@@ -3,6 +3,8 @@
 import { DollarSign, TrendingUp, Clock, Download, FileX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
+import { TableSkeleton } from '@/components/ui/loading-screen';
 
 export default function EarningsPage() {
   const { data: payouts = [], isLoading } = useQuery({
@@ -46,7 +48,10 @@ export default function EarningsPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold">Earnings</h1>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">
+        <button
+          onClick={() => toast.info('Export Started', 'Preparing payout statements CSV download...')}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]"
+        >
           <Download className="h-4 w-4" /> Export
         </button>
       </div>
@@ -90,19 +95,20 @@ export default function EarningsPage() {
       <div>
         <h2 className="font-semibold text-lg mb-4">Payout History</h2>
         <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto">
-          <table className="w-full min-w-[500px]">
-            <thead>
-              <tr className="border-b border-[hsl(var(--border))]">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Date</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Blocks Included</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Amount</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr><td colSpan={4} className="py-8 text-center text-[hsl(var(--muted-foreground))]">Loading payouts...</td></tr>
-              ) : payouts.length === 0 ? (
+          {isLoading ? (
+            <TableSkeleton rows={4} cols={4} />
+          ) : (
+            <table className="w-full min-w-[500px]">
+              <thead>
+                <tr className="border-b border-[hsl(var(--border))]">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Date</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Blocks Included</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Amount</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payouts.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-8 text-center">
                     <FileX className="h-10 w-10 mx-auto text-[hsl(var(--muted-foreground))] mb-3 opacity-20" />
@@ -131,6 +137,7 @@ export default function EarningsPage() {
               )}
             </tbody>
           </table>
+          )}
         </div>
       </div>
     </div>

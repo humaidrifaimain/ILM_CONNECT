@@ -93,44 +93,52 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase() },
-      include: {
-        studentProfile: true,
-        lecturerProfile: true,
-      },
-    });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email: dto.email.toLowerCase() },
+        include: {
+          studentProfile: true,
+          lecturerProfile: true,
+        },
+      });
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      if (!user) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      if (user.status === UserStatus.SUSPENDED) {
+        throw new UnauthorizedException('Account suspended. Please contact administrator.');
+      }
+
+      const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
+      if (!passwordMatches) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      // Log active login in audit
+      await this.prisma.auditLog.create({
+        data: {
+          actorId: user.id,
+          action: 'USER_LOGIN',
+          entity: 'USER',
+          entityId: user.id,
+          details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client' },
+        },
+      });
+
+      const token = this.generateJwtToken(user.id, user.email, user.role);
+
+      return {
+        user: this.sanitizeUser(user),
+        token,
+      };
+    } catch (err: any) {
+      console.error('CRITICAL AUTH LOGIN ERROR:', err);
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
+      throw new InternalServerErrorException(err.message || 'Login failed');
     }
-
-    if (user.status === UserStatus.SUSPENDED) {
-      throw new UnauthorizedException('Account suspended. Please contact administrator.');
-    }
-
-    const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!passwordMatches) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    // Log active login in audit
-    await this.prisma.auditLog.create({
-      data: {
-        actorId: user.id,
-        action: 'USER_LOGIN',
-        entity: 'USER',
-        entityId: user.id,
-        details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client' },
-      },
-    });
-
-    const token = this.generateJwtToken(user.id, user.email, user.role);
-
-    return {
-      user: this.sanitizeUser(user),
-      token,
-    };
   }
 
   generateJwtToken(userId: string, email: string, role: Role) {

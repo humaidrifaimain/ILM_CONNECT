@@ -9,7 +9,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   completed: { label: 'Completed', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
   canceled: { label: 'Canceled', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
   in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  no_show_student: { label: 'No-Show (Student)', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+  no_show_student: { label: 'Conducted (Student No-show)', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
   no_show_lecturer: { label: 'No-Show (Lecturer)', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 };
 
@@ -72,7 +72,7 @@ export default function AdminSessionsPage() {
       <div className="flex flex-wrap gap-2">
         {(['all','scheduled','in_progress','completed','no_show_student','canceled'] as StatusFilter[]).map(s => (
           <button key={s} onClick={() => { setStatusFilter(s); setPage(0); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${statusFilter === s ? 'bg-[hsl(var(--primary))] text-white' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'}`}>
-            {s === 'all' ? 'All' : s === 'no_show_student' ? 'No-Show' : s === 'in_progress' ? 'In Progress' : s.charAt(0).toUpperCase() + s.slice(1)}
+            {s === 'all' ? 'All' : s === 'no_show_student' ? 'Conducted No-show' : s === 'in_progress' ? 'In Progress' : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
       </div>
@@ -158,7 +158,7 @@ export default function AdminSessionsPage() {
             )}
             {actionModal.action === 'noshow' && (
               <>
-                <h3 className="font-bold text-lg mb-2">Mark as No-Show</h3>
+                <h3 className="font-bold text-lg mb-2">Mark Conducted No-Show</h3>
                 <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">Who did not attend?</p>
                 <div className="flex gap-3 mb-4">
                   <button className="flex-1 py-3 rounded-xl text-sm font-medium border-2 border-[hsl(var(--border))] hover:border-[hsl(var(--primary))]">Student</button>

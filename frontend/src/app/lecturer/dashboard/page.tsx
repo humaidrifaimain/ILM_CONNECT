@@ -1,11 +1,13 @@
 'use client';
 
-import { Clock, Users, DollarSign, Star, Video, Calendar, TrendingUp, Play, Wallet } from 'lucide-react';
+import { Clock, Users, DollarSign, Star, Video, Calendar, TrendingUp, Play, Wallet, HelpCircle, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 export default function LecturerDashboard() {
   const { user } = useAuth();
@@ -29,6 +31,9 @@ export default function LecturerDashboard() {
   });
 
   const todaySessions = bookings?.filter((b: any) => {
+    const status = (b.status || '').toUpperCase();
+    const isCanceled = status === 'CANCELED' || status === 'NO_SHOW_STUDENT';
+    if (isCanceled) return false;
     const d = new Date(b.startsAt);
     const today = new Date();
     return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
@@ -49,16 +54,18 @@ export default function LecturerDashboard() {
         body: JSON.stringify({ amountLkr: pendingEarnings, method: 'bank_transfer' }),
       });
       setShowWithdrawModal(false);
-      refetchPayouts();
-    } catch (err) {
+      await refetchPayouts();
+      toast.success('Payout Requested', 'Your payout request has been submitted for review.');
+    } catch (err: any) {
       console.error('Withdrawal failed', err);
+      toast.error('Withdrawal Failed', err?.message || 'Failed to submit withdrawal request.');
     } finally {
       setIsWithdrawing(false);
     }
   };
 
   if (!user || !profile) {
-    return <div className="min-h-screen bg-[hsl(var(--background))] animate-pulse p-8">Loading dashboard...</div>;
+    return <LoadingScreen message="Loading Lecturer Portal..." subtitle="Preparing your classes, earnings, and student activity" fullScreen />;
   }
 
   return (
@@ -68,8 +75,37 @@ export default function LecturerDashboard() {
           <h1 className="text-2xl font-bold">Assalamu Alaikum, {profile.fullName.split(' ')[0]}!</h1>
           <p className="text-[hsl(var(--muted-foreground))]">You have {todaySessions.length} sessions today</p>
         </div>
-        <Link href="/lecturer/availability" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all">
-          <Calendar className="h-4 w-4" /> Manage Availability
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            href="/lecturer/support"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] transition-all shadow-sm"
+          >
+            <HelpCircle className="h-4 w-4 text-[hsl(var(--primary))]" /> Get Support
+          </Link>
+          <Link href="/lecturer/availability" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all">
+            <Calendar className="h-4 w-4" /> Manage Availability
+          </Link>
+        </div>
+      </div>
+
+      {/* Need Scholar Support Quick Banner */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[hsl(168,80%,26%)/0.08] via-[hsl(168,80%,26%)/0.04] to-transparent border border-[hsl(168,80%,26%)/0.2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="h-10 w-10 rounded-xl bg-[hsl(168,80%,26%)/0.15] text-[hsl(var(--primary))] flex items-center justify-center flex-shrink-0">
+            <HelpCircle className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-bold text-sm text-[hsl(var(--foreground))]">Scholar Assistance & Coordinator Support</p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Need student reassignment, classroom technical help, or direct WhatsApp coordinator contact? We are here to help.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/lecturer/support"
+          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all whitespace-nowrap flex items-center gap-1.5 flex-shrink-0"
+        >
+          Get Support <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
 
@@ -132,13 +168,10 @@ export default function LecturerDashboard() {
                 <div className="text-xs text-[hsl(var(--muted-foreground))]">Quran Session</div>
                 <div className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
-              {s.livekitRoomName ? (
-                <Link href={`/lecturer/sessions/${s.id}/room`} className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center gap-1.5">
-                  <Play className="h-3 w-3" /> Start
-                </Link>
-              ) : (
-                <span className="text-xs text-[hsl(var(--muted-foreground))]">Link pending</span>
-              )}
+              <Link href={`/lecturer/sessions/${s.id}/room`} className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5 flex-shrink-0">
+                <Play className="h-3 w-3 fill-current" /> Start
+              </Link>
+
             </div>
           ))}
           {todaySessions.length === 0 && (

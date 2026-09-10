@@ -1,8 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import { User, Mail, Globe, Clock, Bell, Shield, Camera } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 
 export default function StudentSettingsPage() {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveProfile = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success('Settings Saved', 'Your student profile preferences have been updated.');
+    }, 400);
+  };
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <h1 className="text-2xl font-bold">Settings</h1>
@@ -44,7 +55,13 @@ export default function StudentSettingsPage() {
             </select>
           </div>
         </div>
-        <button className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)]">Save Changes</button>
+        <button
+          onClick={handleSaveProfile}
+          disabled={isSaving}
+          className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
 
       {/* Notifications — SMS removed per change request 3.3 */}

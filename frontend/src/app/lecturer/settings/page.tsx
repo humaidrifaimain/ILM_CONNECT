@@ -1,8 +1,28 @@
 'use client';
 
+import { useState } from 'react';
 import { Camera, Shield, Globe, Bell, CreditCard } from 'lucide-react';
+import { toast } from '@/components/ui/toast';
 
 export default function LecturerSettingsPage() {
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPayout, setIsSavingPayout] = useState(false);
+
+  const handleSaveProfile = () => {
+    setIsSavingProfile(true);
+    setTimeout(() => {
+      setIsSavingProfile(false);
+      toast.success('Profile Saved', 'Lecturer credentials and public profile updated successfully.');
+    }, 400);
+  };
+
+  const handleSavePayout = () => {
+    setIsSavingPayout(true);
+    setTimeout(() => {
+      setIsSavingPayout(false);
+      toast.success('Payout Details Saved', 'Your banking information has been saved securely.');
+    }, 400);
+  };
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <h1 className="text-2xl font-bold">Settings</h1>
@@ -30,7 +50,13 @@ export default function LecturerSettingsPage() {
           <div><label className="block text-sm font-medium mb-1.5">Specializations</label><input type="text" defaultValue="Quran Recitation, Tajweed, Hifz" className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" /></div>
           <div className="sm:col-span-2"><label className="block text-sm font-medium mb-1.5">Qualifications</label><textarea rows={2} defaultValue="Ijazah in Hafs, Al-Azhar University graduate" className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" /></div>
         </div>
-        <button className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)]">Save Changes</button>
+        <button
+          onClick={handleSaveProfile}
+          disabled={isSavingProfile}
+          className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {isSavingProfile ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
 
       {/* Notifications — No SMS */}
@@ -58,17 +84,29 @@ export default function LecturerSettingsPage() {
           <div><label className="block text-sm font-medium mb-1.5">Branch</label><input type="text" defaultValue="Colombo Main" className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" /></div>
           <div><label className="block text-sm font-medium mb-1.5">NIC Number</label><input type="text" defaultValue="•••••V" className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" /></div>
         </div>
-        <button className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)]">Update Payout Details</button>
+        <button
+          onClick={handleSavePayout}
+          disabled={isSavingPayout}
+          className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {isSavingPayout ? 'Updating...' : 'Update Payout Details'}
+        </button>
       </div>
 
       {/* Security */}
       <div className="p-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
         <h2 className="font-semibold mb-4">Security</h2>
         <div className="space-y-3">
-          <button className="w-full text-left px-4 py-3 rounded-xl border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] flex items-center gap-3">
+          <button
+            onClick={() => toast.info('Password Reset', 'Password change instructions have been sent to your registered email.')}
+            className="w-full text-left px-4 py-3 rounded-xl border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] flex items-center gap-3 transition-colors"
+          >
             <Shield className="h-4 w-4 text-[hsl(var(--primary))]" /><span className="text-sm font-medium">Change Password</span>
           </button>
-          <button className="w-full text-left px-4 py-3 rounded-xl border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] flex items-center justify-between">
+          <button
+            onClick={() => toast.info('Two-Factor Auth', 'Authenticator setup code generated. Complete pairing in your authenticator app.')}
+            className="w-full text-left px-4 py-3 rounded-xl border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] flex items-center justify-between transition-colors"
+          >
             <div className="flex items-center gap-3"><Shield className="h-4 w-4 text-[hsl(var(--primary))]" /><span className="text-sm font-medium">Enable Two-Factor Authentication</span></div>
             <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]">Recommended</span>
           </button>

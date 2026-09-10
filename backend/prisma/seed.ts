@@ -1,20 +1,26 @@
 import 'dotenv/config';
-import { PrismaClient, Role, UserStatus, SessionStatus, SlotStatus, BlockStatus } from '@prisma/client';
+import { PrismaClient, Role, UserStatus, SessionStatus, SlotStatus, BlockStatus, SubscriptionStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as crypto from 'crypto';
 
 const connectionString = process.env.DATABASE_URL;
-const pool = new Pool({ connectionString, ssl: true });
+const isLocal = connectionString?.includes('localhost') || connectionString?.includes('127.0.0.1');
+const ssl = isLocal ? false : { rejectUnauthorized: false };
+const pool = new Pool({ connectionString, ssl });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Starting simplified database seeding...');
 
-  // 1. Clean existing records in reverse dependency order
-  console.log('🧹 Cleaning old database records...');
+  // Clean curriculum records
+  await prisma.certificate.deleteMany();
+  await prisma.studentProgress.deleteMany();
+  await prisma.lesson.deleteMany();
+  await prisma.module.deleteMany();
+  await prisma.learningPath.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.rating.deleteMany();
@@ -105,6 +111,8 @@ async function main() {
             timezone: 'Asia/Colombo',
             preferredLanguage: 'English',
             learningGoals: 'Memorize Juz Amma',
+            assignedLecturerId: lecturer.id,
+            currentTier: 'Quran Basic',
           }
         }
       }
@@ -112,13 +120,26 @@ async function main() {
     students.push(student);
   }
 
-  // 7. Generate simplified availability slots for the lecturer
+  // 7. Create Active Subscription for Student 1
+  console.log('💳 Creating subscription for Student 1...');
+  await prisma.subscription.create({
+    data: {
+      studentId: students[0].id,
+      tier: 'Quran Basic',
+      status: SubscriptionStatus.ACTIVE,
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      lkrAmount: 15000,
+      fxRateApplied: 300,
+    }
+  });
+
+  // 8. Generate simplified availability slots for the lecturer
   console.log('📅 Creating availability slots...');
   const today = new Date();
   for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
     const date = new Date(today);
     date.setDate(today.getDate() + dayOffset);
-    // Add slots at 10 AM and 4 PM
     const hours = [10, 16];
     for (const hour of hours) {
       const startsAt = new Date(date);
@@ -139,10 +160,50 @@ async function main() {
     }
   }
 
-  // 8. Create basic sessions
+  // 9. Seed Curriculum & Learning Paths
+  console.log('📖 Creating Curriculum & Learning Paths...');
+  const qaida = await prisma.learningPath.create({
+    data: {
+      title: 'Noorani Qaida',
+      level: 'Foundation',
+      difficulty: 'Beginner',
+      description: 'Foundational Arabic alphabet, pronunciation, vowels, and reading skills.',
+      targetAudience: 'Beginners and children starting Quran education.',
+      objectives: 'Recognize letters, apply Harakat, read simple Quranic words.',
+    }
+  });
+
+  const qaidaFirstModule = await prisma.module.create({
+    data: {
+      learningPathId: qaida.id,
+      title: 'Arabic Alphabet & Pronunciation',
+      orderIndex: 1,
+    }
+  });
+
+  const qaidaFirstLesson = await prisma.lesson.create({
+    data: {
+      moduleId: qaidaFirstModule.id,
+      title: 'Alif to Khaa',
+      objectives: 'Master basic pronunciation and Makharij of initial letters',
+      durationMinutes: 45,
+      orderIndex: 1,
+    }
+  });
+
+  // Assign Student 1 progress
+  await prisma.studentProgress.create({
+    data: {
+      studentId: students[0].id,
+      currentLearningPathId: qaida.id,
+      currentModuleId: qaidaFirstModule.id,
+      currentLessonId: qaidaFirstLesson.id,
+      progressPercentage: 15,
+    }
+  });
+
+  // 10. Create basic sessions
   console.log('📚 Creating basic sessions...');
-  
-  // Give Student 1 a session today
   const session1Id = crypto.randomUUID();
   const s1Start = new Date();
   s1Start.setHours(s1Start.getHours() + 1);

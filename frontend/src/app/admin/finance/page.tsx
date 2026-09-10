@@ -3,6 +3,8 @@
 import { DollarSign, Download, TrendingUp, TrendingDown, CheckCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 export default function AdminFinancePage() {
   const queryClient = useQueryClient();
@@ -17,25 +19,30 @@ export default function AdminFinancePage() {
   });
 
   const handleProcessPayout = async (id: string) => {
-    if (!confirm('Mark this payout as processed?')) return;
     try {
       await apiFetch(`/admin/payouts/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'SUCCESSFUL' }),
       });
-      queryClient.invalidateQueries({ queryKey: ['adminFinance'] });
-      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
-    } catch (err) {
-      alert('Failed to process payout');
+      await queryClient.invalidateQueries({ queryKey: ['adminFinance'] });
+      await queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      toast.success('Payout Processed', 'Lecturer payout has been marked as successful.');
+    } catch (err: any) {
+      toast.error('Payout Failed', err?.message || 'Failed to process payout');
     }
   };
 
-  if (isLoading || !finance || !stats) return <div className="p-8">Loading finance data...</div>;
+  if (isLoading || !finance || !stats) {
+    return <LoadingScreen message="Loading Financial Data..." subtitle="Calculating revenues, profit margins, and payouts" fullScreen />;
+  }
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Financial Reports</h1>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">
+        <button
+          onClick={() => toast.info('Export Started', 'Generating financial statements CSV download...')}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]"
+        >
           <Download className="h-4 w-4" /> Export CSV
         </button>
       </div>

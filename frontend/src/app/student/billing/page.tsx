@@ -4,6 +4,8 @@ import { CreditCard, Check, ChevronRight, Download, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 const invoices = [
   { id: 'INV-2025-04', date: 'Apr 1, 2025', amount: '$55.00', status: 'Paid' },
@@ -19,7 +21,7 @@ export default function BillingPage() {
   });
 
   if (isLoading) {
-    return <div className="min-h-screen bg-[hsl(var(--background))] animate-pulse p-8">Loading billing info...</div>;
+    return <LoadingScreen message="Loading Billing Info..." subtitle="Fetching subscription status and invoice history" />;
   }
 
   return (
@@ -39,13 +41,18 @@ export default function BillingPage() {
             </p>
             <div className="text-3xl font-bold">${subscription?.lkrAmount === 17700 ? '59' : subscription?.lkrAmount === 26700 ? '89' : '0'}<span className="text-base font-normal text-[hsl(var(--muted-foreground))]">/month</span></div>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-              Next billing date: {subscription ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'N/A'}
+              Next billing date: {subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'N/A'}
             </p>
           </div>
         </div>
         <div className="flex gap-3 mt-6">
           <Link href="/pricing" className="px-4 py-2 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors">Change Plan</Link>
-          <button className="px-4 py-2 rounded-xl text-sm font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors">Cancel Subscription</button>
+          <button
+            onClick={() => toast.info('Subscription Assistance', 'To cancel or adjust your subscription, please visit Support or message your advisor.')}
+            className="px-4 py-2 rounded-xl text-sm font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors"
+          >
+            Cancel Subscription
+          </button>
         </div>
       </div>
 
@@ -58,7 +65,12 @@ export default function BillingPage() {
             <div className="text-sm font-medium">•••• •••• •••• 4242</div>
             <div className="text-xs text-[hsl(var(--muted-foreground))]">Expires 12/26</div>
           </div>
-          <button className="ml-auto text-sm text-[hsl(var(--primary))] font-medium hover:underline">Update</button>
+          <button
+            onClick={() => toast.info('Payment Methods', 'Payment details can be updated via your Stripe customer portal.')}
+            className="ml-auto text-sm text-[hsl(var(--primary))] font-medium hover:underline"
+          >
+            Update
+          </button>
         </div>
       </div>
 
@@ -72,7 +84,13 @@ export default function BillingPage() {
               <span className="text-[hsl(var(--muted-foreground))] flex-1">{inv.date}</span>
               <span className="font-medium w-20 text-right">{inv.amount}</span>
               <span className="px-2 py-0.5 text-xs rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-medium">{inv.status}</span>
-              <button className="p-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"><Download className="h-4 w-4" /></button>
+              <button
+                onClick={() => toast.info('Invoice Download', `Downloading receipt for ${inv.id}...`)}
+                className="p-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                title="Download invoice"
+              >
+                <Download className="h-4 w-4" />
+              </button>
             </div>
           ))}
         </div>

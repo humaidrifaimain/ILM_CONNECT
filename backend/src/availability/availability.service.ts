@@ -21,6 +21,19 @@ export class AvailabilityService {
       throw new BadRequestException('Slot start time must be before end time');
     }
 
+    // If identical slot already exists for this lecturer, return it (idempotent)
+    const existingSame = await this.prisma.availabilitySlot.findFirst({
+      where: {
+        lecturerId,
+        startsAt,
+        endsAt,
+      },
+    });
+
+    if (existingSame) {
+      return existingSame;
+    }
+
     // Check for overlap
     const overlap = await this.prisma.availabilitySlot.findFirst({
       where: {
@@ -59,7 +72,7 @@ export class AvailabilityService {
     });
 
     if (!slot) {
-      throw new BadRequestException('Slot not found');
+      return { success: true, message: 'Slot already deleted' };
     }
 
     if (slot.status === 'BOOKED') {
@@ -71,3 +84,4 @@ export class AvailabilityService {
     });
   }
 }
+

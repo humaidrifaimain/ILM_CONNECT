@@ -11,7 +11,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     if (!connectionString) {
       console.error('CRITICAL: DATABASE_URL is undefined in PrismaService constructor!');
     }
-    const pool = new Pool({ connectionString, ssl: true });
+    const isLocal = connectionString?.includes('localhost') || connectionString?.includes('127.0.0.1');
+    const ssl = isLocal ? false : { rejectUnauthorized: false };
+    const pool = new Pool({ connectionString, ssl });
     const adapter = new PrismaPg(pool);
 
     super({
