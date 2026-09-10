@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, BookOpen, LogOut, Inbox, MessageSquare, CheckCheck } from 'lucide-react';
+import { Bell, BookOpen, LogOut, Inbox, MessageSquare, CheckCheck, CalendarCheck, CalendarX, CalendarClock } from 'lucide-react';
 import WhatsAppIcon from '@/components/icons/whatsapp-icon';
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,11 +13,14 @@ interface Notification {
   id: string;
   type: string;
   payloadJson: {
+    title?: string;
+    message?: string;
+    actorName?: string;
     threadId?: string;
     senderName?: string;
     preview?: string;
     messageId?: string;
-    [key: string]: unknown;
+    [key: string]: any;
   };
   readAt: string | null;
   createdAt: string;
@@ -188,13 +191,22 @@ export function DashboardTopbar() {
                   <div className="max-h-80 overflow-y-auto">
                     {recentNotifs.map(notif => {
                       const isMsg = notif.type === 'NEW_MESSAGE';
+                      const isCancelled = notif.type === 'BOOKING_CANCELLED';
+                      const isRescheduled = notif.type === 'BOOKING_RESCHEDULED';
+                      const isConfirmed = notif.type === 'BOOKING_CONFIRMED';
                       const threadId = notif.payloadJson?.threadId;
+
                       const href = isMsg
                         ? (threadId ? `${messagesHref}?threadId=${encodeURIComponent(threadId)}` : messagesHref)
-                        : undefined;
+                        : (pathname.startsWith('/lecturer') ? '/lecturer/sessions' : '/student/dashboard');
 
-                      const content = (
+                      const previewText = notif.payloadJson?.message
+                        || notif.payloadJson?.preview
+                        || (notif.payloadJson?.actorName ? `Update from ${notif.payloadJson.actorName}` : 'Session update');
+
+                      return (
                         <div
+                          key={notif.id}
                           className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[hsl(var(--muted))] cursor-pointer ${!notif.readAt ? 'bg-[hsl(var(--primary)/0.04)]' : ''}`}
                           onClick={() => {
                             if (!notif.readAt) markOneMutation.mutate(notif.id);
@@ -202,14 +214,22 @@ export function DashboardTopbar() {
                           }}
                         >
                           <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center mt-0.5 ${
-                            isMsg ? 'bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]' : 'bg-[hsl(var(--accent)/0.15)] text-[hsl(var(--accent))]'
+                            isCancelled ? 'bg-red-500/15 text-red-600' :
+                            isRescheduled ? 'bg-amber-500/15 text-amber-600' :
+                            isConfirmed ? 'bg-emerald-500/15 text-emerald-600' :
+                            isMsg ? 'bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]' :
+                            'bg-[hsl(var(--accent)/0.15)] text-[hsl(var(--accent))]'
                           }`}>
-                            {isMsg ? <MessageSquare className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                            {isCancelled ? <CalendarX className="h-4 w-4" /> :
+                             isRescheduled ? <CalendarClock className="h-4 w-4" /> :
+                             isConfirmed ? <CalendarCheck className="h-4 w-4" /> :
+                             isMsg ? <MessageSquare className="h-4 w-4" /> :
+                             <Bell className="h-4 w-4" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                               <p className={`text-xs font-semibold truncate ${!notif.readAt ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--foreground)/0.7)]'}`}>
-                                {getNotifLabel(notif.type)}
+                                {notif.payloadJson?.title || getNotifLabel(notif.type)}
                               </p>
                               <span className="text-[10px] text-[hsl(var(--muted-foreground))] flex-shrink-0">
                                 {formatNotifTime(notif.createdAt)}
@@ -221,8 +241,8 @@ export function DashboardTopbar() {
                                 {': '}{notif.payloadJson.preview}
                               </p>
                             ) : (
-                              <p className="text-xs text-[hsl(var(--muted-foreground))] truncate mt-0.5">
-                                {JSON.stringify(notif.payloadJson).slice(0, 60)}
+                              <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-2 mt-0.5">
+                                {previewText}
                               </p>
                             )}
                           </div>
@@ -231,8 +251,6 @@ export function DashboardTopbar() {
                           )}
                         </div>
                       );
-
-                      return <div key={notif.id}>{content}</div>;
                     })}
                   </div>
                 )}

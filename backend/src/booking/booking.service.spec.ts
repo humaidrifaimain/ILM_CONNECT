@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookingService } from './booking.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { BadRequestException } from '@nestjs/common';
 
 describe('BookingService (3-Day Gap Rule validation)', () => {
@@ -17,6 +18,13 @@ describe('BookingService (3-Day Gap Rule validation)', () => {
             session: {
               findMany: jest.fn(),
             },
+          },
+        },
+        {
+          provide: NotificationService,
+          useValue: {
+            dispatchBookingNotification: jest.fn(),
+            createNotification: jest.fn(),
           },
         },
       ],

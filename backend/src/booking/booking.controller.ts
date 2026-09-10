@@ -12,25 +12,29 @@ export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Post()
-  @Roles(Role.STUDENT)
+  @Roles(Role.STUDENT, Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
   async createBooking(@Req() req: any, @Body() dto: CreateBookingDto) {
-    return this.bookingService.createBooking(req.user.id, dto);
+    return this.bookingService.createBooking(req.user, dto);
   }
 
   @Delete(':id')
-  @Roles(Role.STUDENT, Role.ADMIN, Role.SUPER_ADMIN)
-  async cancelBooking(@Req() req: any, @Param('id') id: string) {
-    return this.bookingService.cancelBooking(req.user, id);
+  @Roles(Role.STUDENT, Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
+  async cancelBooking(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body?: { reason?: string },
+  ) {
+    return this.bookingService.cancelBooking(req.user, id, body?.reason);
   }
 
   @Post(':id/reschedule')
-  @Roles(Role.STUDENT, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.STUDENT, Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
   async rescheduleBooking(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { startsAt: string }
+    @Body() body: { startsAt: string; reason?: string },
   ) {
-    return this.bookingService.rescheduleBooking(req.user, id, body.startsAt);
+    return this.bookingService.rescheduleBooking(req.user, id, body.startsAt, body.reason);
   }
 
   @Get('student')
@@ -50,7 +54,7 @@ export class BookingController {
   async updateBooking(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { notes?: string; status?: string }
+    @Body() body: { notes?: string; status?: string },
   ) {
     return this.bookingService.updateBooking(id, body);
   }

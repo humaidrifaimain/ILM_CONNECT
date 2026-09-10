@@ -1,13 +1,35 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/booking.dto';
 import { SessionStatus, SlotStatus, Role } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class BookingService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(BookingService.name);
 
-  async createBooking(studentId: string, dto: CreateBookingDto) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
+
+  async createBooking(caller: string | { id: string; role?: Role }, dto: CreateBookingDto) {
+    const userRole = typeof caller === 'object' ? caller.role : Role.STUDENT;
+    const callerId = typeof caller === 'object' ? caller.id : caller;
+
+    const isLecturer = userRole === Role.LECTURER;
+    const isStudent = userRole === Role.STUDENT;
+
+    const studentId = isStudent ? callerId : (dto.studentId || callerId);
+    const lecturerId = isLecturer ? callerId : (dto.lecturerId || callerId);
+
+    if (!studentId) {
+      throw new BadRequestException('Student ID is required to book a session');
+    }
+    if (!lecturerId) {
+      throw new BadRequestException('Lecturer ID is required to book a session');
+    }
+
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(startsAt.getTime() + 45 * 60 * 1000); // 45 minutes session
 
@@ -35,7 +57,7 @@ export class BookingService {
     // Find and check availability slot
     const slot = await this.prisma.availabilitySlot.findFirst({
       where: {
-        lecturerId: dto.lecturerId,
+        lecturerId,
         startsAt: { lte: startsAt },
         endsAt: { gte: endsAt },
         status: SlotStatus.OPEN,
@@ -49,7 +71,7 @@ export class BookingService {
     // Check if lecturer has any overlapping session
     const overlappingSession = await this.prisma.session.findFirst({
       where: {
-        lecturerId: dto.lecturerId,
+        lecturerId,
         status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] },
         OR: [
           {
@@ -78,7 +100,7 @@ export class BookingService {
         data: {
           id: sessionId,
           studentId,
-          lecturerId: dto.lecturerId,
+          lecturerId,
           startsAt,
           endsAt,
           status: SessionStatus.SCHEDULED,
@@ -94,13 +116,118 @@ export class BookingService {
     // Create Audit Log
     await this.prisma.auditLog.create({
       data: {
-        actorId: studentId,
+        actorId: callerId,
         action: 'SESSION_BOOKED',
         entity: 'SESSION',
         entityId: session.id,
-        details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client' },
+        details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client', bookedByRole: userRole },
       },
     });
+
+    // Notify counterpart (and booker) across Live In-App Pop-up, Email, and WhatsApp
+    try {
+      const [studentUser, lecturerUser] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: studentId },
+          include: { studentProfile: true },
+        }),
+        this.prisma.user.findUnique({
+          where: { id: lecturerId },
+          include: { lecturerProfile: true },
+        }),
+      ]);
+
+      const studentName = studentUser?.studentProfile?.fullName || 'Student';
+      const lecturerName = lecturerUser?.lecturerProfile?.fullName || 'Lecturer';
+      const studentEmail = studentUser?.email || '';
+      const studentPhone = studentUser?.studentProfile?.phone || null;
+      const lecturerEmail = lecturerUser?.email || '';
+
+      const sessionTimeFormatted = startsAt.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      if (isLecturer) {
+        // Lecturer booked session -> Student is the recipient!
+        await this.notificationService.dispatchBookingNotification({
+          eventType: 'BOOKING_CONFIRMED',
+          sessionId: session.id,
+          actor: {
+            id: lecturerId,
+            name: lecturerName,
+            role: 'LECTURER',
+          },
+          recipient: {
+            id: studentId,
+            name: studentName,
+            role: 'STUDENT',
+            email: studentEmail,
+            phone: studentPhone,
+          },
+          sessionDate: startsAt,
+          sessionTimeFormatted,
+        });
+
+        // In-app confirmation for Lecturer
+        await this.notificationService.createNotification(
+          lecturerId,
+          'BOOKING_CONFIRMED',
+          {
+            sessionId: session.id,
+            title: 'Session Scheduled',
+            message: `You scheduled a session with ${studentName} for ${startsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${sessionTimeFormatted}.`,
+            actorId: lecturerId,
+            actorName: lecturerName,
+            actorRole: 'LECTURER',
+            sessionDate: startsAt.toISOString(),
+          },
+          'IN_APP',
+        );
+      } else {
+        // Student booked session -> Lecturer is the recipient!
+        if (lecturerUser) {
+          await this.notificationService.dispatchBookingNotification({
+            eventType: 'BOOKING_CONFIRMED',
+            sessionId: session.id,
+            actor: {
+              id: studentId,
+              name: studentName,
+              role: 'STUDENT',
+            },
+            recipient: {
+              id: lecturerId,
+              name: lecturerName,
+              role: 'LECTURER',
+              email: lecturerEmail,
+              phone: null,
+            },
+            sessionDate: startsAt,
+            sessionTimeFormatted,
+          });
+        }
+
+        // Also notify Student across In-App, Email, and WhatsApp
+        if (studentUser) {
+          await this.notificationService.createNotification(
+            studentId,
+            'BOOKING_CONFIRMED',
+            {
+              sessionId: session.id,
+              title: 'Session Confirmed',
+              message: `Your session with ${lecturerName} has been booked for ${startsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${sessionTimeFormatted}.`,
+              actorId: studentId,
+              actorName: studentName,
+              actorRole: 'STUDENT',
+              sessionDate: startsAt.toISOString(),
+            },
+            'IN_APP',
+          );
+        }
+      }
+    } catch (notifErr: any) {
+      this.logger.error(`Error dispatching booking notifications: ${notifErr.message}`);
+    }
 
     return session;
   }
@@ -157,9 +284,13 @@ export class BookingService {
     }
   }
 
-  async cancelBooking(user: { id: string; role?: Role }, sessionId: string) {
+  async cancelBooking(user: { id: string; role?: Role }, sessionId: string, reason?: string) {
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
+      include: {
+        student: { include: { user: true } },
+        lecturer: { include: { user: true } },
+      },
     });
 
     if (!session) {
@@ -167,9 +298,12 @@ export class BookingService {
     }
 
     const isAdmin = user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
-    if (!isAdmin && session.studentId !== user.id) {
+    const isStudent = session.studentId === user.id;
+    const isLecturer = session.lecturerId === user.id;
+
+    if (!isAdmin && !isStudent && !isLecturer) {
       throw new ForbiddenException(
-        'You are not authorized to cancel this session. It was booked under a different student account.'
+        'You are not authorized to cancel this session.'
       );
     }
 
@@ -180,25 +314,25 @@ export class BookingService {
     const now = new Date();
     const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-    const updateStatus = session.startsAt < twentyFourHoursFromNow 
-      ? SessionStatus.NO_SHOW_STUDENT // within 24h: counts as used
+    // If lecturer cancels, student should never be penalized (always CANCELED).
+    // If student cancels within 24h, counts as NO_SHOW_STUDENT.
+    const updateStatus = (isStudent && session.startsAt < twentyFourHoursFromNow)
+      ? SessionStatus.NO_SHOW_STUDENT
       : SessionStatus.CANCELED;
 
-    // Release the availability slot back to OPEN if canceled early
-    if (updateStatus === SessionStatus.CANCELED) {
-      const slot = await this.prisma.availabilitySlot.findFirst({
-        where: {
-          lecturerId: session.lecturerId,
-          startsAt: session.startsAt,
-        },
-      });
+    // Release the availability slot back to OPEN if canceled
+    const slot = await this.prisma.availabilitySlot.findFirst({
+      where: {
+        lecturerId: session.lecturerId,
+        startsAt: session.startsAt,
+      },
+    });
 
-      if (slot) {
-        await this.prisma.availabilitySlot.update({
-          where: { id: slot.id },
-          data: { status: SlotStatus.OPEN },
-        });
-      }
+    if (slot) {
+      await this.prisma.availabilitySlot.update({
+        where: { id: slot.id },
+        data: { status: SlotStatus.OPEN },
+      });
     }
 
     const updatedSession = await this.prisma.session.update({
@@ -212,9 +346,71 @@ export class BookingService {
         action: 'SESSION_CANCELED',
         entity: 'SESSION',
         entityId: sessionId,
-        details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client' },
+        details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client', reason },
       },
     });
+
+    // Notify the other party (Student <-> Lecturer)
+    try {
+      const studentName = session.student?.fullName || 'Student';
+      const lecturerName = session.lecturer?.fullName || 'Lecturer';
+      const studentEmail = session.student?.user?.email || '';
+      const studentPhone = session.student?.phone || null;
+      const lecturerEmail = session.lecturer?.user?.email || '';
+
+      const sessionTimeFormatted = session.startsAt.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      // If Student cancelled -> Lecturer is recipient
+      if (isStudent || isAdmin) {
+        await this.notificationService.dispatchBookingNotification({
+          eventType: 'BOOKING_CANCELLED',
+          sessionId,
+          actor: {
+            id: user.id,
+            name: studentName,
+            role: 'STUDENT',
+          },
+          recipient: {
+            id: session.lecturerId,
+            name: lecturerName,
+            role: 'LECTURER',
+            email: lecturerEmail,
+            phone: null,
+          },
+          sessionDate: session.startsAt,
+          sessionTimeFormatted,
+          reason,
+        });
+      }
+
+      // If Lecturer cancelled -> Student is recipient
+      if (isLecturer || isAdmin) {
+        await this.notificationService.dispatchBookingNotification({
+          eventType: 'BOOKING_CANCELLED',
+          sessionId,
+          actor: {
+            id: user.id,
+            name: lecturerName,
+            role: 'LECTURER',
+          },
+          recipient: {
+            id: session.studentId,
+            name: studentName,
+            role: 'STUDENT',
+            email: studentEmail,
+            phone: studentPhone,
+          },
+          sessionDate: session.startsAt,
+          sessionTimeFormatted,
+          reason,
+        });
+      }
+    } catch (notifErr: any) {
+      this.logger.error(`Failed to dispatch cancellation notifications: ${notifErr.message}`);
+    }
 
     return updatedSession;
   }
@@ -258,9 +454,18 @@ export class BookingService {
     });
   }
 
-  async rescheduleBooking(user: { id: string; role?: Role }, sessionId: string, newStartsAtISO: string) {
+  async rescheduleBooking(
+    user: { id: string; role?: Role },
+    sessionId: string,
+    newStartsAtISO: string,
+    reason?: string,
+  ) {
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
+      include: {
+        student: { include: { user: true } },
+        lecturer: { include: { user: true } },
+      },
     });
 
     if (!session) {
@@ -268,9 +473,12 @@ export class BookingService {
     }
 
     const isAdmin = user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
-    if (!isAdmin && session.studentId !== user.id) {
+    const isStudent = session.studentId === user.id;
+    const isLecturer = session.lecturerId === user.id;
+
+    if (!isAdmin && !isStudent && !isLecturer) {
       throw new ForbiddenException(
-        'You are not authorized to reschedule this session. It was booked under a different student account.'
+        'You are not authorized to reschedule this session.'
       );
     }
 
@@ -317,6 +525,8 @@ export class BookingService {
       });
     }
 
+    const oldStartsAt = session.startsAt;
+
     // Update the session times
     const updated = await this.prisma.session.update({
       where: { id: sessionId },
@@ -324,7 +534,7 @@ export class BookingService {
         startsAt: newStartsAt,
         endsAt: newEndsAt,
       },
-      include: { lecturer: true },
+      include: { lecturer: true, student: true },
     });
 
     await this.prisma.auditLog.create({
@@ -333,9 +543,80 @@ export class BookingService {
         action: 'SESSION_RESCHEDULED',
         entity: 'SESSION',
         entityId: sessionId,
-        details: { oldStartsAt: session.startsAt, newStartsAt },
+        details: { oldStartsAt, newStartsAt, reason },
       },
     });
+
+    // Notify the other party (Student <-> Lecturer)
+    try {
+      const studentName = session.student?.fullName || 'Student';
+      const lecturerName = session.lecturer?.fullName || 'Lecturer';
+      const studentEmail = session.student?.user?.email || '';
+      const studentPhone = session.student?.phone || null;
+      const lecturerEmail = session.lecturer?.user?.email || '';
+
+      const sessionTimeFormatted = newStartsAt.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const previousTimeFormatted = oldStartsAt.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      // If Student rescheduled -> Lecturer is recipient
+      if (isStudent || isAdmin) {
+        await this.notificationService.dispatchBookingNotification({
+          eventType: 'BOOKING_RESCHEDULED',
+          sessionId,
+          actor: {
+            id: user.id,
+            name: studentName,
+            role: 'STUDENT',
+          },
+          recipient: {
+            id: session.lecturerId,
+            name: lecturerName,
+            role: 'LECTURER',
+            email: lecturerEmail,
+            phone: null,
+          },
+          sessionDate: newStartsAt,
+          sessionTimeFormatted,
+          previousTimeFormatted,
+          reason,
+        });
+      }
+
+      // If Lecturer rescheduled -> Student is recipient
+      if (isLecturer || isAdmin) {
+        await this.notificationService.dispatchBookingNotification({
+          eventType: 'BOOKING_RESCHEDULED',
+          sessionId,
+          actor: {
+            id: user.id,
+            name: lecturerName,
+            role: 'LECTURER',
+          },
+          recipient: {
+            id: session.studentId,
+            name: studentName,
+            role: 'STUDENT',
+            email: studentEmail,
+            phone: studentPhone,
+          },
+          sessionDate: newStartsAt,
+          sessionTimeFormatted,
+          previousTimeFormatted,
+          reason,
+        });
+      }
+    } catch (notifErr: any) {
+      this.logger.error(`Failed to dispatch reschedule notifications: ${notifErr.message}`);
+    }
 
     return updated;
   }

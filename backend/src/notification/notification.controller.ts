@@ -1,11 +1,18 @@
-import { Controller, Get, Patch, Param, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Sse, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Observable } from 'rxjs';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
+
+  /** SSE Stream for real-time notification push to clients */
+  @Sse('stream')
+  streamNotifications(@Request() req: any): Observable<{ data: any }> {
+    return this.notificationService.getNotificationStream(req.user.id);
+  }
 
   /** GET /notifications — all notifications for current user */
   @Get()
@@ -32,4 +39,3 @@ export class NotificationController {
     return this.notificationService.markAsRead(req.user.id, id);
   }
 }
-
