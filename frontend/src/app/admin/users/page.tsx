@@ -27,65 +27,59 @@ export default function AdminUsersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Timeshifts: 10 to 2, 2 to 6, and 6 to 10 (slots: 10 to 11, 11 to 12, 12 to 1, 1 to 2, etc.)
+  // Timeshifts: 10 to 2, 2 to 6, and 6 to 10 (each unlocks 40-min slots in lecturer portal)
   const TIMESHIFTS = [
     {
       id: '10-2',
       name: '10 to 2',
-      badge: 'Morning',
+      badge: 'Morning Shift',
       label: '10:00 AM – 02:00 PM',
-      slots: [
-        { hour: 10, label: '10 to 11', subLabel: '10:00 – 11:00 AM' },
-        { hour: 11, label: '11 to 12', subLabel: '11:00 AM – 12:00 PM' },
-        { hour: 12, label: '12 to 1', subLabel: '12:00 – 01:00 PM' },
-        { hour: 13, label: '1 to 2', subLabel: '01:00 – 02:00 PM' },
-      ],
+      hours: [10, 11, 12, 13],
     },
     {
       id: '2-6',
       name: '2 to 6',
-      badge: 'Afternoon',
+      badge: 'Afternoon Shift',
       label: '02:00 PM – 06:00 PM',
-      slots: [
-        { hour: 14, label: '2 to 3', subLabel: '02:00 – 03:00 PM' },
-        { hour: 15, label: '3 to 4', subLabel: '03:00 – 04:00 PM' },
-        { hour: 16, label: '4 to 5', subLabel: '04:00 – 05:00 PM' },
-        { hour: 17, label: '5 to 6', subLabel: '05:00 – 06:00 PM' },
-      ],
+      hours: [14, 15, 16, 17],
     },
     {
       id: '6-10',
       name: '6 to 10',
-      badge: 'Evening',
+      badge: 'Evening Shift',
       label: '06:00 PM – 10:00 PM',
-      slots: [
-        { hour: 18, label: '6 to 7', subLabel: '06:00 – 07:00 PM' },
-        { hour: 19, label: '7 to 8', subLabel: '07:00 – 08:00 PM' },
-        { hour: 20, label: '8 to 9', subLabel: '08:00 – 09:00 PM' },
-        { hour: 21, label: '9 to 10', subLabel: '09:00 – 10:00 PM' },
-      ],
+      hours: [18, 19, 20, 21],
     },
   ];
-
-  const formatHourSlot = (h: number) => {
-    const start = h > 12 ? h - 12 : h;
-    const end = (h + 1) > 12 ? (h + 1) - 12 : (h + 1);
-    return `${start} to ${end}`;
-  };
 
   const formatShiftName = (hours: number[]) => {
     if (!Array.isArray(hours) || hours.length === 0) return null;
     const set = new Set(hours.map(Number));
-    const is10to2 = [10, 11, 12, 13].every(h => set.has(h)) && hours.length === 4;
-    const is2to6 = [14, 15, 16, 17].every(h => set.has(h)) && hours.length === 4;
-    const is6to10 = [18, 19, 20, 21].every(h => set.has(h)) && hours.length === 4;
-    if (is10to2) return '10 to 2 (10 to 11, 11 to 12, 12 to 1, 1 to 2)';
-    if (is2to6) return '2 to 6 (2 to 3, 3 to 4, 4 to 5, 5 to 6)';
-    if (is6to10) return '6 to 10 (6 to 7, 7 to 8, 8 to 9, 9 to 10)';
-    return hours.map(formatHourSlot).join(', ');
+    const is10to2 = [10, 11, 12, 13].every((h) => set.has(h));
+    const is2to6 = [14, 15, 16, 17].every((h) => set.has(h));
+    const is6to10 = [18, 19, 20, 21].every((h) => set.has(h));
+    const shifts: string[] = [];
+    if (is10to2) shifts.push('10 to 2');
+    if (is2to6) shifts.push('2 to 6');
+    if (is6to10) shifts.push('6 to 10');
+    if (shifts.length === 3) return 'All Shifts (10 to 10)';
+    if (shifts.length > 0) return shifts.join(' & ');
+    return hours.map((h) => `${h > 12 ? h - 12 : h}`).join(', ');
   };
 
-  const [timeshiftHours, setTimeshiftHours] = useState<number[]>([10, 11, 12, 13]);
+  const [selectedShifts, setSelectedShifts] = useState<string[]>(['10-2']);
+
+  const toggleShift = (shiftId: string) => {
+    if (selectedShifts.includes(shiftId)) {
+      if (selectedShifts.length === 1) {
+        toast.info('Minimum 1 Required', 'A lecturer must have at least 1 assigned timeshift.');
+        return;
+      }
+      setSelectedShifts(selectedShifts.filter((id) => id !== shiftId));
+    } else {
+      setSelectedShifts([...selectedShifts, shiftId]);
+    }
+  };
 
   // Fetch real users from database
   const { data: dbUsers = [], isLoading, error } = useQuery({
@@ -114,18 +108,25 @@ export default function AdminUsersPage() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    if (timeshiftHours.length < 4) {
-      setErrorMessage('Please select at least 4 timeshift slots for the lecturer.');
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
       const specs = specializations
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+
+      if (selectedShifts.length === 0) {
+        toast.error('Timeshift Required', 'Please select at least 1 working timeshift (10 to 2, 2 to 6, or 6 to 10).');
+        return;
+      }
+
+      const calculatedHours = Array.from(
+        new Set(
+          selectedShifts.flatMap(
+            (sId) => TIMESHIFTS.find((s) => s.id === sId)?.hours || []
+          )
+        )
+      ).sort((a, b) => a - b);
 
       await apiFetch('/admin/lecturers', {
         method: 'POST',
@@ -136,7 +137,7 @@ export default function AdminUsersPage() {
           specializations: specs.length ? specs : ['Quran Recitation'],
           hourlyRate: Number(hourlyRate) || 1250,
           sendInvitationEmail: sendInviteEmail,
-          hourlyAvailabilityJson: timeshiftHours,
+          hourlyAvailabilityJson: calculatedHours,
         }),
       });
 
@@ -155,7 +156,7 @@ export default function AdminUsersPage() {
       setEmail('');
       setPassword('');
       setSpecializations('Tajweed, Hifz, Fiqh');
-      setTimeshiftHours([10, 11, 12, 13]);
+      setSelectedShifts(['10-2']);
     } catch (err: any) {
       const msg = err.message || 'Failed to create lecturer account';
       setErrorMessage(msg);
@@ -559,99 +560,92 @@ export default function AdminUsersPage() {
                 />
               </div>
 
-              {/* Timeshift Selector */}
+              {/* Working Timeshift Selector */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-semibold text-[hsl(var(--foreground))]">
-                    Working Timeshift &amp; Slots
-                    <span className="ml-1 text-[hsl(var(--muted-foreground))] font-normal">(min. 4 slots required)</span>
+                    Working Timeshifts
+                    <span className="ml-1 text-[hsl(var(--muted-foreground))] font-normal">(Select 1, 2, or all 3 shifts)</span>
                   </label>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${timeshiftHours.length >= 4 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400'}`}>
-                    {timeshiftHours.length} selected {timeshiftHours.length >= 4 ? '✓' : '(min. 4)'}
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selectedShifts.length > 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400'}`}>
+                    {selectedShifts.length === 3 ? 'All 3 Shifts Selected ✓' : `${selectedShifts.length} Selected ✓`}
                   </span>
                 </div>
-                <p className="text-[11px] text-[hsl(var(--muted-foreground))] mb-2.5">
-                  Lecturer working hours are 10 to 2, 2 to 6, and 6 to 10. Click a shift preset to auto-select its 4 slots, or pick custom slots.
+                <p className="text-[11px] text-[hsl(var(--muted-foreground))] mb-3">
+                  Assign the scholar&apos;s working shifts (minimum 1, maximum 3). 40-minute session slots within the selected shifts will be automatically unlocked in the lecturer&apos;s portal.
                 </p>
 
-                {/* Shift Presets */}
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                {/* 3 Shift Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {TIMESHIFTS.map((shift) => {
-                    const shiftHourVals = shift.slots.map(s => s.hour);
-                    const isFullySelected = shiftHourVals.every(h => timeshiftHours.includes(h));
+                    const isSelected = selectedShifts.includes(shift.id);
                     return (
                       <button
                         key={shift.id}
                         type="button"
-                        onClick={() => {
-                          // Toggle this shift's 4 slots
-                          if (isFullySelected) {
-                            setTimeshiftHours(timeshiftHours.filter(h => !shiftHourVals.includes(h)));
-                          } else {
-                            const merged = Array.from(new Set([...timeshiftHours, ...shiftHourVals])).sort((a, b) => a - b);
-                            setTimeshiftHours(merged);
-                          }
-                        }}
-                        className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all text-center flex flex-col items-center gap-0.5 ${
-                          isFullySelected
-                            ? 'bg-[hsl(var(--primary))] text-white border-[hsl(var(--primary))] shadow-sm'
-                            : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)]'
+                        onClick={() => toggleShift(shift.id)}
+                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                          isSelected
+                            ? 'bg-[hsl(var(--primary)/0.08)] border-[hsl(var(--primary))] ring-1 ring-[hsl(var(--primary))] shadow-sm'
+                            : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)]'
                         }`}
                       >
-                        <span className="font-bold">{shift.name}</span>
-                        <span className={`text-[10px] ${isFullySelected ? 'text-white/80' : 'text-[hsl(var(--muted-foreground))]'}`}>
-                          {shift.label}
-                        </span>
+                        <div className="flex items-center justify-between w-full mb-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            isSelected
+                              ? 'bg-[hsl(var(--primary))] text-white'
+                              : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]'
+                          }`}>
+                            {shift.badge}
+                          </span>
+                          <span className={`h-4 w-4 rounded-full border flex items-center justify-center text-[10px] ${
+                            isSelected
+                              ? 'bg-[hsl(var(--primary))] border-[hsl(var(--primary))] text-white font-bold'
+                              : 'border-[hsl(var(--border))]'
+                          }`}>
+                            {isSelected ? '✓' : ''}
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="font-bold text-sm text-[hsl(var(--foreground))]">
+                            {shift.name}
+                          </div>
+                          <div className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
+                            {shift.label}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 pt-2 border-t border-[hsl(var(--border)/0.5)] flex items-center justify-between text-[10px]">
+                          <span className="text-[hsl(var(--muted-foreground))]">40-min slots</span>
+                          <span className={`font-semibold ${isSelected ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
+                            {isSelected ? 'Active' : 'Click to add'}
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Individual Slots by Shift */}
-                <div className="space-y-2.5 bg-[hsl(var(--muted)/0.3)] p-3 rounded-xl border border-[hsl(var(--border))]">
-                  {TIMESHIFTS.map((shift) => (
-                    <div key={shift.id}>
-                      <div className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))] mb-1 flex items-center justify-between">
-                        <span>{shift.name} ({shift.label})</span>
-                        <span className="text-[10px]">
-                          {shift.slots.filter(s => timeshiftHours.includes(s.hour)).length}/4 slots
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {shift.slots.map(({ hour, label, subLabel }) => {
-                          const isSelected = timeshiftHours.includes(hour);
-                          return (
-                            <button
-                              key={hour}
-                              type="button"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setTimeshiftHours(timeshiftHours.filter(h => h !== hour));
-                                } else {
-                                  setTimeshiftHours([...timeshiftHours, hour].sort((a, b) => a - b));
-                                }
-                              }}
-                              className={`py-2 px-1.5 rounded-xl border transition-all text-center flex flex-col items-center justify-center ${
-                                isSelected
-                                  ? 'bg-[hsl(var(--primary))] text-white border-[hsl(var(--primary))] shadow-xs'
-                                  : 'bg-[hsl(var(--card))] text-[hsl(var(--foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)]'
-                              }`}
-                            >
-                              <span className="text-xs font-bold leading-tight">{isSelected ? '✓ ' : ''}{label}</span>
-                              <span className={`text-[9px] mt-0.5 ${isSelected ? 'text-white/80' : 'text-[hsl(var(--muted-foreground))]'}`}>{subLabel}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                {/* Quick Toggle Helper */}
+                <div className="mt-2.5 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                    Min 1 shift, Max 3 shifts
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedShifts.length === 3) {
+                        setSelectedShifts(['10-2']);
+                      } else {
+                        setSelectedShifts(['10-2', '2-6', '6-10']);
+                      }
+                    }}
+                    className="text-[11px] font-semibold text-[hsl(var(--primary))] hover:underline cursor-pointer"
+                  >
+                    {selectedShifts.length === 3 ? 'Reset to Single Shift' : 'Select All 3 Shifts'}
+                  </button>
                 </div>
-
-                {timeshiftHours.length < 4 && (
-                  <p className="text-[11px] text-red-500 dark:text-red-400 mt-1.5 font-medium">
-                    ⚠ Please select at least {4 - timeshiftHours.length} more slot{4 - timeshiftHours.length > 1 ? 's' : ''} (minimum 4 slots required)
-                  </p>
-                )}
               </div>
 
               <div className="pt-1">

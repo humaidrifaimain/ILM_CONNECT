@@ -21,6 +21,7 @@ import {
   X,
   ChevronRight,
   UserX,
+  Lock,
 } from 'lucide-react';
 
 type StatusFilter = 'all' | 'scheduled' | 'completed' | 'no_show_student' | 'no_show_lecturer' | 'canceled';
@@ -264,8 +265,14 @@ export default function LecturerSessionsPage() {
         )}
         {!isLoading &&
           filtered.map((s: any) => {
-            const endsAtDate = new Date(s.endsAt || new Date(new Date(s.startsAt).getTime() + 40 * 60 * 1000));
-            const isPast = endsAtDate < new Date();
+            const startsAtDate = new Date(s.startsAt);
+            const endsAtDate = new Date(s.endsAt || new Date(startsAtDate.getTime() + 40 * 60 * 1000));
+            const now = new Date();
+            const startsAtTime = startsAtDate.getTime();
+            const endsAtTime = endsAtDate.getTime();
+            const nowTime = now.getTime();
+
+            const isPast = endsAtTime < nowTime;
             let effectiveStatus = s.status;
             if (effectiveStatus === 'SCHEDULED' && isPast) {
               effectiveStatus = 'NO_SHOW_STUDENT';
@@ -276,6 +283,18 @@ export default function LecturerSessionsPage() {
             const subject = s.tier || 'Session';
             const isScheduled = effectiveStatus === 'SCHEDULED' && !isPast;
             const isInProgress = effectiveStatus === 'IN_PROGRESS';
+
+            // Lecturer 6-hour policy:
+            // 1. Reschedule: Allowed at least 6 hours before start, OR within 6 hours after class ends.
+            const isBeforeRescheduleAllowed = startsAtTime - nowTime >= 6 * 60 * 60 * 1000;
+            const isAfterRescheduleAllowed = nowTime >= endsAtTime && (nowTime - endsAtTime) <= 6 * 60 * 60 * 1000;
+            const canReschedule = s.status !== 'CANCELED' && (isBeforeRescheduleAllowed || isAfterRescheduleAllowed);
+
+            // 2. Pre-session lock indicator (< 6h before start, while still upcoming):
+            const isPreSessionLocked = !isPast && !isBeforeRescheduleAllowed && s.status !== 'CANCELED';
+
+            // 3. Cancellation: Allowed strictly >= 6 hours before start
+            const canCancel = isScheduled && isBeforeRescheduleAllowed;
 
             return (
               <div
@@ -297,11 +316,11 @@ export default function LecturerSessionsPage() {
                     <div className="text-xs text-[hsl(var(--foreground)/0.8)] font-medium mt-1 flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
                       {mounted ? (
-                        `${new Date(s.startsAt).toLocaleDateString('en-US', {
+                        `${startsAtDate.toLocaleDateString('en-US', {
                           weekday: 'short',
                           month: 'short',
                           day: 'numeric',
-                        })} · ${new Date(s.startsAt).toLocaleTimeString('en-US', {
+                        })} · ${startsAtDate.toLocaleTimeString('en-US', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })} – ${endsAtDate.toLocaleTimeString('en-US', {
@@ -326,43 +345,65 @@ export default function LecturerSessionsPage() {
                     </Link>
                   )}
 
+                  {/* Reschedule button: available >= 6h before start OR <= 6h after completion */}
+                  {canReschedule && (
+                    <button
+                      onClick={() => {
+                        setRescheduleModal(s);
+                        const sessionStartDate = new Date(s.startsAt);
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const initialDate = sessionStartDate < new Date() ? todayStr : sessionStartDate.toISOString().split('T')[0];
+                        setRescheduleDate(initialDate);
+                        setRescheduleReason('');
+                        setRescheduleError(null);
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all flex items-center gap-1.5"
+                      title={isAfterRescheduleAllowed ? 'Reschedule within 6-hour post-session window' : 'Reschedule Session (6+ hours before start)'}
+                    >
+                      <CalendarClock className="h-3.5 w-3.5 text-amber-500" />
+                      {isAfterRescheduleAllowed ? 'Reschedule (6h window)' : 'Reschedule'}
+                    </button>
+                  )}
+
+                  {/* Absent button: active for upcoming scheduled sessions */}
                   {isScheduled && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setRescheduleModal(s);
-                          setRescheduleDate(new Date(s.startsAt).toISOString().split('T')[0]);
-                          setRescheduleError(null);
-                        }}
-                        className="px-3 py-2 rounded-xl text-xs font-semibold border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] transition-all flex items-center gap-1.5"
-                        title="Reschedule Session"
-                      >
-                        <CalendarClock className="h-3.5 w-3.5 text-amber-500" /> Reschedule
-                      </button>
+                    <button
+                      onClick={() => {
+                        setAbsentModal(s);
+                        setAbsentReason('');
+                        setAbsentError(null);
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all flex items-center gap-1.5"
+                      title="Mark Student Absent"
+                    >
+                      <UserX className="h-3.5 w-3.5" /> Absent
+                    </button>
+                  )}
 
-                      <button
-                        onClick={() => {
-                          setAbsentModal(s);
-                          setAbsentReason('');
-                          setAbsentError(null);
-                        }}
-                        className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all flex items-center gap-1.5"
-                        title="Mark Student Absent"
-                      >
-                        <UserX className="h-3.5 w-3.5" /> Absent
-                      </button>
+                  {/* Cancel button: available strictly >= 6h before start */}
+                  {canCancel && (
+                    <button
+                      onClick={() => {
+                        setCancelModal(s);
+                        setCancelReason('');
+                        setCancelError(null);
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-red-200 dark:border-red-900/40 bg-red-500/5 hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-all flex items-center gap-1.5"
+                      title="Cancel Session (Allowed up to 6 hours before start)"
+                    >
+                      <CalendarX className="h-3.5 w-3.5" /> Cancel
+                    </button>
+                  )}
 
-                      <button
-                        onClick={() => {
-                          setCancelModal(s);
-                          setCancelError(null);
-                        }}
-                        className="px-3 py-2 rounded-xl text-xs font-semibold border border-red-200 dark:border-red-900/40 bg-red-500/5 hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-all flex items-center gap-1.5"
-                        title="Cancel Session"
-                      >
-                        <CalendarX className="h-3.5 w-3.5" /> Cancel
-                      </button>
-                    </>
+                  {/* Locked notice within 6h of session start */}
+                  {isPreSessionLocked && (
+                    <Link
+                      href="/lecturer/support?tab=contact"
+                      className="px-3 py-2 rounded-xl text-xs font-medium border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-300 transition-colors flex items-center gap-1.5"
+                      title="Locked within 6 hours before class. Contact Admin for emergency reschedule or cancel."
+                    >
+                      <Lock className="h-3.5 w-3.5 text-amber-500" /> Locked (&lt;6h) · Contact Support
+                    </Link>
                   )}
 
                   {(effectiveStatus === 'COMPLETED' || effectiveStatus === 'NO_SHOW_STUDENT') && (
@@ -427,6 +468,10 @@ export default function LecturerSessionsPage() {
               </div>
             )}
 
+            <div className="p-3 mb-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
+              <span className="font-semibold">Reschedule Policy:</span> Lecturers can reschedule up to 6 hours before class start, or within 6 hours after class concludes. Outside these windows, please contact Support.
+            </div>
+
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-xs font-semibold text-[hsl(var(--foreground))] mb-1.5">
@@ -434,6 +479,7 @@ export default function LecturerSessionsPage() {
                 </label>
                 <input
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   value={rescheduleDate}
                   onChange={(e) => setRescheduleDate(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
@@ -526,6 +572,10 @@ export default function LecturerSessionsPage() {
                 {cancelError}
               </div>
             )}
+
+            <div className="p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-800 dark:text-red-300">
+              <span className="font-semibold">Cancellation Policy:</span> Lecturers can cancel scheduled classes up to 6 hours before start time. Inside 6 hours, please contact Support.
+            </div>
 
             <div className="mb-6">
               <label className="block text-xs font-semibold text-[hsl(var(--foreground))] mb-1.5">

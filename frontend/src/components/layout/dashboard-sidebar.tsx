@@ -84,7 +84,7 @@ const getLecturerCourseNav = (courseId: string): NavItem[] => [
 
 const adminNav: NavItem[] = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/requests', label: 'Requests', icon: ClipboardList, badge: '2' },
+  { href: '/admin/requests', label: 'Requests', icon: ClipboardList },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/sessions', label: 'Sessions', icon: Clock },
   { href: '/admin/feedback', label: 'Feedback', icon: MessageSquare },
@@ -115,6 +115,18 @@ export default function DashboardSidebar() {
     enabled: !!user && (pathname.startsWith('/student') || pathname.startsWith('/lecturer')),
   });
   const unreadCount = unreadData?.count ?? 0;
+
+  // Live admin pending requests count — polls every 30s
+  const isAdminRoute = pathname.startsWith('/admin');
+  const { data: adminTickets } = useQuery<any[]>({
+    queryKey: ['adminSupportTickets'],
+    queryFn: () => apiFetch('/support/tickets'),
+    enabled: !!user && isAdminRoute,
+    refetchInterval: 30000,
+  });
+  const pendingRequestsCount = adminTickets?.filter(
+    (t: any) => t.status === 'PENDING' || t.status === 'IN_REVIEW'
+  ).length ?? 0;
   
   let navItems: NavItem[] = [];
   let roleName = '';
@@ -184,9 +196,13 @@ export default function DashboardSidebar() {
           const isActive = pathname === item.href;
           // Show live unread count on Messages nav item
           const isMessages = item.href.endsWith('/messages');
-          const displayBadge = isMessages && unreadCount > 0
-            ? String(unreadCount > 99 ? '99+' : unreadCount)
-            : item.badge;
+          const isRequests = item.href === '/admin/requests';
+          let displayBadge = item.badge;
+          if (isMessages && unreadCount > 0) {
+            displayBadge = String(unreadCount > 99 ? '99+' : unreadCount);
+          } else if (isRequests) {
+            displayBadge = pendingRequestsCount > 0 ? String(pendingRequestsCount > 99 ? '99+' : pendingRequestsCount) : undefined;
+          }
           return (
             <Link
               key={item.href}
@@ -205,6 +221,11 @@ export default function DashboardSidebar() {
                     {unreadCount > 9 ? '9' : unreadCount}
                   </span>
                 )}
+                {collapsed && isRequests && pendingRequestsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-amber-500 text-white text-[8px] font-bold flex items-center justify-center">
+                    {pendingRequestsCount > 9 ? '9' : pendingRequestsCount}
+                  </span>
+                )}
               </div>
               {!collapsed && (
                 <>
@@ -213,6 +234,8 @@ export default function DashboardSidebar() {
                     <span className={`px-1.5 py-0.5 text-xs font-semibold rounded-full ${
                       isMessages && unreadCount > 0
                         ? 'bg-red-500 text-white'
+                        : isRequests && pendingRequestsCount > 0
+                        ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold'
                         : 'bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]'
                     }`}>
                       {displayBadge}

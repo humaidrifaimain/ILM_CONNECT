@@ -27,8 +27,20 @@ import {
   Headphones,
   Calendar,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Portal } from '@/components/ui/portal';
+
+interface TicketMessage {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  senderRole: string;
+  senderName: string;
+  message: string;
+  createdAt: string;
+}
 
 interface SupportTicket {
   id: string;
@@ -38,6 +50,7 @@ interface SupportTicket {
   status: string;
   createdAt: string;
   resolvedAt: string | null;
+  messages?: TicketMessage[];
 }
 
 const LECTURER_CHANGE_REASONS = [
@@ -89,12 +102,39 @@ function StudentSupportContent() {
     enabled: !!user,
   });
 
-  // Fetch user's support tickets
+  // Fetch user's support tickets with 10s silent background updates
   const { data: tickets = [], isLoading: ticketsLoading } = useQuery<SupportTicket[]>({
     queryKey: ['mySupportTickets'],
     queryFn: () => apiFetch('/support/my-tickets'),
     enabled: !!user,
+    refetchInterval: 10000,
   });
+
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [studentReply, setStudentReply] = useState('');
+  const [sendingStudentReply, setSendingStudentReply] = useState(false);
+
+  // Sync selectedTicket with live query
+  const currentSelectedTicket = selectedTicket
+    ? tickets.find((t) => t.id === selectedTicket.id) || selectedTicket
+    : null;
+
+  const handleSendStudentReply = async () => {
+    if (!currentSelectedTicket || !studentReply.trim()) return;
+    setSendingStudentReply(true);
+    try {
+      await apiFetch(`/support/tickets/${currentSelectedTicket.id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ message: studentReply.trim() }),
+      });
+      setStudentReply('');
+      await queryClient.invalidateQueries({ queryKey: ['mySupportTickets'] });
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setSendingStudentReply(false);
+    }
+  };
 
   // Mutation: Submit Support Ticket
   const createTicketMutation = useMutation({
@@ -148,84 +188,6 @@ function StudentSupportContent() {
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
           Submit scholar change requests, report issues, or connect directly with our advisory desk.
         </p>
-      </div>
-
-      {/* ─── 3 Key Action Quick Cards (TL Requirements) ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Card 1: Change Lecturer */}
-        <button
-          onClick={() => {
-            setActiveTab('change-lecturer');
-            setChangeSubmitted(false);
-          }}
-          className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden group ${
-            activeTab === 'change-lecturer'
-              ? 'bg-[hsl(var(--card))] border-[hsl(var(--primary))] shadow-lg ring-1 ring-[hsl(var(--primary))]'
-              : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)] hover:shadow-md'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-11 w-11 rounded-xl bg-[hsl(168,80%,26%)/0.12] text-[hsl(var(--primary))] flex items-center justify-center font-bold">
-              <RefreshCw className={`h-5 w-5 ${activeTab === 'change-lecturer' ? 'rotate-180 transition-transform duration-700' : ''}`} />
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]">
-              1-Click Request
-            </span>
-          </div>
-          <h2 className="font-bold text-base mb-1 text-[hsl(var(--foreground))]">Change Lecturer Request</h2>
-          <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-            Need a different teaching pace or timing? Request a seamless, confidential scholar reassignment.
-          </p>
-        </button>
-
-        {/* Card 2: Contact Form */}
-        <button
-          onClick={() => {
-            setActiveTab('contact');
-            setIssueSubmitted(false);
-          }}
-          className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden group ${
-            activeTab === 'contact'
-              ? 'bg-[hsl(var(--card))] border-[hsl(var(--primary))] shadow-lg ring-1 ring-[hsl(var(--primary))]'
-              : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)] hover:shadow-md'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-11 w-11 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-              <MessageSquare className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              Submit Issue
-            </span>
-          </div>
-          <h2 className="font-bold text-base mb-1 text-[hsl(var(--foreground))]">Contact Form for Issues</h2>
-          <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-            Report technical errors, booking troubles, billing questions, or provide valuable feedback.
-          </p>
-        </button>
-
-        {/* Card 3: Track Support Tickets */}
-        <button
-          onClick={() => setActiveTab('tickets')}
-          className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden group ${
-            activeTab === 'tickets'
-              ? 'bg-[hsl(var(--card))] border-[hsl(var(--primary))] shadow-lg ring-1 ring-[hsl(var(--primary))]'
-              : 'bg-[hsl(var(--card))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)] hover:shadow-md'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-11 w-11 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-              <Clock className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              {tickets.length} Logged
-            </span>
-          </div>
-          <h2 className="font-bold text-base mb-1 text-[hsl(var(--foreground))]">My Support Tickets</h2>
-          <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-            Track open inquiries, coordinator replies, and resolution status for your requests.
-          </p>
-        </button>
       </div>
 
       {/* ─── Tabs Navigation Bar ─── */}
@@ -420,139 +382,143 @@ function StudentSupportContent() {
 
       {/* ─── TAB 2: GENERAL CONTACT FORM ─── */}
       {activeTab === 'contact' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="h-12 w-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="h-6 w-6" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="h-12 w-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">Contact Support Desk</h2>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 leading-relaxed">
+                      Have an issue with your account, classes, or billing? Submit a ticket and our support specialists will help you resolve it.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold">Contact Support Desk</h2>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 leading-relaxed">
-                    Have an issue with your account, classes, or billing? Submit a ticket and our support specialists will help you resolve it.
-                  </p>
+
+                {issueSubmitted ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-6 rounded-2xl bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.3)] text-center space-y-3"
+                  >
+                    <div className="h-12 w-12 rounded-full bg-[hsl(var(--success)/0.2)] text-[hsl(var(--success))] mx-auto flex items-center justify-center">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <h3 className="font-bold text-lg text-[hsl(var(--foreground))]">Support Ticket Logged!</h3>
+                    <p className="text-xs text-[hsl(var(--muted-foreground))] max-w-md mx-auto leading-relaxed">
+                      Your inquiry has been submitted directly to our support team. You can check the status of your ticket anytime under the &ldquo;My Tickets&rdquo; tab.
+                    </p>
+                    <div className="flex justify-center gap-3 mt-4">
+                      <button
+                        onClick={() => setIssueSubmitted(false)}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold bg-[hsl(var(--muted))] hover:bg-[hsl(var(--border))] transition-all"
+                      >
+                        Submit Another Issue
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('tickets')}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold bg-[hsl(var(--primary))] text-white hover:opacity-90 transition-all"
+                      >
+                        View My Tickets →
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <form onSubmit={handleGeneralIssueSubmit} className="space-y-5">
+                    {/* Category Selection */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                        Issue Category <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={issueCategory}
+                        onChange={(e) => setIssueCategory(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                      >
+                        {ISSUE_CATEGORIES.map((cat) => (
+                          <option key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Subject Line */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                        Subject / Summary <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={issueSubject}
+                        onChange={(e) => setIssueSubject(e.target.value)}
+                        placeholder="e.g. Video call disconnected during Tajweed lesson"
+                        className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                        Detailed Description <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        rows={5}
+                        required
+                        value={issueDescription}
+                        onChange={(e) => setIssueDescription(e.target.value)}
+                        placeholder="Please provide specifics: when it happened, error messages, or what you need assistance with..."
+                        className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={createTicketMutation.isPending || !issueSubject.trim() || !issueDescription.trim()}
+                      className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {createTicketMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Submitting Ticket...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" /> Submit Support Ticket
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+
+            {/* Common Solutions Card */}
+            <div>
+              <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-3">
+                <h3 className="font-bold text-sm text-[hsl(var(--foreground))] flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-[hsl(var(--primary))]" /> Common Solutions
+                </h3>
+                <div className="space-y-3 text-xs text-[hsl(var(--muted-foreground))]">
+                  <div>
+                    <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Camera or Microphone Issues?</p>
+                    <p className="leading-relaxed">Check your browser site permissions to allow audio/video for IlmConnect before entering the room.</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Need to Reschedule a Class?</p>
+                    <p className="leading-relaxed">You can cancel or reschedule any scheduled session directly from your Sessions calendar up to 12 hours before class starts.</p>
+                  </div>
                 </div>
               </div>
-
-              {issueSubmitted ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="p-6 rounded-2xl bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.3)] text-center space-y-3"
-                >
-                  <div className="h-12 w-12 rounded-full bg-[hsl(var(--success)/0.2)] text-[hsl(var(--success))] mx-auto flex items-center justify-center">
-                    <CheckCircle2 className="h-6 w-6" />
-                  </div>
-                  <h3 className="font-bold text-lg text-[hsl(var(--foreground))]">Support Ticket Logged!</h3>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] max-w-md mx-auto leading-relaxed">
-                    Your inquiry has been submitted directly to our support team. You can check the status of your ticket anytime under the &ldquo;My Tickets&rdquo; tab.
-                  </p>
-                  <div className="flex justify-center gap-3 mt-4">
-                    <button
-                      onClick={() => setIssueSubmitted(false)}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[hsl(var(--muted))] hover:bg-[hsl(var(--border))] transition-all"
-                    >
-                      Submit Another Issue
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('tickets')}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[hsl(var(--primary))] text-white hover:opacity-90 transition-all"
-                    >
-                      View My Tickets →
-                    </button>
-                  </div>
-                </motion.div>
-              ) : (
-                <form onSubmit={handleGeneralIssueSubmit} className="space-y-5">
-                  {/* Category Selection */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-[hsl(var(--foreground))]">
-                      Issue Category <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={issueCategory}
-                      onChange={(e) => setIssueCategory(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                    >
-                      {ISSUE_CATEGORIES.map((cat) => (
-                        <option key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Subject Line */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-[hsl(var(--foreground))]">
-                      Subject / Summary <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={issueSubject}
-                      onChange={(e) => setIssueSubject(e.target.value)}
-                      placeholder="e.g. Video call disconnected during Tajweed lesson"
-                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-[hsl(var(--foreground))]">
-                      Detailed Description <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      rows={5}
-                      required
-                      value={issueDescription}
-                      onChange={(e) => setIssueDescription(e.target.value)}
-                      placeholder="Please provide specifics: when it happened, error messages, or what you need assistance with..."
-                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                    />
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={createTicketMutation.isPending || !issueSubject.trim() || !issueDescription.trim()}
-                    className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {createTicketMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Submitting Ticket...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" /> Submit Support Ticket
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
             </div>
           </div>
 
-          {/* Quick FAQ / Info & Direct Channels */}
-          <div className="space-y-6">
-            {/* Common Solutions Card */}
-            <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-3">
-              <h3 className="font-bold text-sm text-[hsl(var(--foreground))] flex items-center gap-2">
-                <HelpCircle className="h-4 w-4 text-[hsl(var(--primary))]" /> Common Solutions
-              </h3>
-              <div className="space-y-3 text-xs text-[hsl(var(--muted-foreground))]">
-                <div>
-                  <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Camera or Microphone Issues?</p>
-                  <p className="leading-relaxed">Check your browser site permissions to allow audio/video for IlmConnect before entering the room.</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Need to Reschedule a Class?</p>
-                  <p className="leading-relaxed">You can cancel or reschedule any scheduled session directly from your Sessions calendar up to 12 hours before class starts.</p>
-                </div>
-              </div>
-            </div>
-
+          {/* Direct WhatsApp Support & Direct Phone Hotline Below Contact Support Desk */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Direct WhatsApp Support Card */}
             <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-4 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-[#25D366]/5 rounded-bl-full pointer-events-none" />
@@ -634,12 +600,19 @@ function StudentSupportContent() {
 
       {/* ─── TAB 4: MY TICKETS ─── */}
       {activeTab === 'tickets' && (
-        <div className="space-y-4">
-          <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-            <h2 className="font-bold text-lg mb-1">Your Support History</h2>
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              Track the progress of your submitted inquiries and lecturer change requests.
-            </p>
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="font-bold text-lg text-[hsl(var(--foreground))]">Your Support History & Inquiries</h2>
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Track the status of your requests and communicate directly with the academic support desk.
+                </p>
+              </div>
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] self-start sm:self-auto">
+                {tickets.length} {tickets.length === 1 ? 'Ticket' : 'Tickets'} Total
+              </span>
+            </div>
 
             {ticketsLoading ? (
               <div className="py-12 flex justify-center">
@@ -652,49 +625,253 @@ function StudentSupportContent() {
                 </div>
                 <p className="font-semibold text-sm">No support tickets found</p>
                 <p className="text-xs text-[hsl(var(--muted-foreground))] max-w-sm mx-auto">
-                  You haven&apos;t submitted any requests yet. If you need any assistance, use the tabs above.
+                  You haven&apos;t submitted any requests yet. If you need assistance with your classes or schedule, use the tabs above.
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-[hsl(var(--border))] mt-4">
-                {tickets.map((t) => {
-                  const isResolved = t.status === 'RESOLVED';
-                  const isPending = t.status === 'PENDING';
-                  return (
-                    <div key={t.id} className="py-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]">
-                          {t.type.replace(/_/g, ' ')}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                              isResolved
-                                ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
-                                : isPending
-                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                                : 'bg-red-500/15 text-red-600'
-                            }`}
-                          >
-                            {t.status}
-                          </span>
-                          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">
+              <div className="overflow-x-auto rounded-xl border border-[hsl(var(--border))]">
+                <table className="w-full min-w-[700px] text-left">
+                  <thead>
+                    <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] text-[11px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                      <th className="py-3 px-4">Request Type</th>
+                      <th className="py-3 px-4">Subject & Details</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Support Replies</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[hsl(var(--border))]">
+                    {tickets.map((t) => {
+                      const isResolved = t.status === 'RESOLVED';
+                      const isInReview = t.status === 'IN_REVIEW';
+                      const msgCount = t.messages?.length || 0;
+                      const hasAdminReply = t.messages?.some(
+                        (m) => m.senderRole === 'ADMIN' || m.senderRole === 'SUPER_ADMIN'
+                      );
+
+                      return (
+                        <tr
+                          key={t.id}
+                          onClick={() => setSelectedTicket(t)}
+                          className="hover:bg-[hsl(var(--muted)/0.4)] cursor-pointer transition-colors group"
+                        >
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]">
+                              {t.type.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <p className="text-xs font-medium text-[hsl(var(--foreground))] line-clamp-1 max-w-[280px]">
+                              {t.reason || 'No description provided'}
+                            </p>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-[hsl(var(--muted-foreground))] whitespace-nowrap">
                             {new Date(t.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-[hsl(var(--foreground))] whitespace-pre-line leading-relaxed">
-                        {t.reason || 'No description provided'}
-                      </p>
-                    </div>
-                  );
-                })}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {hasAdminReply ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold text-[11px]">
+                                <MessageSquare className="h-3 w-3" /> {msgCount} {msgCount === 1 ? 'Message' : 'Messages'} (Reply from Admin)
+                              </span>
+                            ) : msgCount > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] font-bold text-[11px]">
+                                <MessageSquare className="h-3 w-3" /> {msgCount} {msgCount === 1 ? 'Message' : 'Messages'}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-[hsl(var(--muted-foreground))]">Awaiting initial reply</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                                isResolved
+                                  ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                                  : isInReview
+                                  ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                              }`}
+                            >
+                              {isResolved ? (
+                                <CheckCircle2 className="h-3 w-3" />
+                              ) : (
+                                <Clock className="h-3 w-3" />
+                              )}
+                              {t.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTicket(t);
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.08)] group-hover:bg-[hsl(var(--primary))] group-hover:text-white transition-all"
+                            >
+                              <MessageSquare className="h-3.5 w-3.5" /> View & Chat
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
         </div>
       )}
-    </div>
+
+      {/* ─── STUDENT TICKET DETAIL & REPLY MODAL ─── */}
+      <Portal>
+        <AnimatePresence>
+          {currentSelectedTicket && (
+            <div
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm"
+              onClick={() => setSelectedTicket(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-2xl max-h-[85vh] bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-3xl shadow-2xl flex flex-col overflow-hidden my-auto"
+              >
+                {/* Modal Header */}
+                <div className="px-6 py-4 border-b border-[hsl(var(--border))] flex items-center justify-between bg-[hsl(var(--muted)/0.3)] shrink-0">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]">
+                      {currentSelectedTicket.type.replace(/_/g, ' ')}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        currentSelectedTicket.status === 'RESOLVED'
+                          ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
+                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                      }`}
+                    >
+                      {currentSelectedTicket.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+                    Logged on {new Date(currentSelectedTicket.createdAt).toLocaleString()}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedTicket(null)}
+                  className="h-8 w-8 rounded-full hover:bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))] transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Scrollable Conversation Content */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                {/* Original Reason Box */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+                    Original Inquired Details
+                  </h4>
+                  <div className="p-4 rounded-2xl bg-[hsl(var(--muted)/0.4)] border border-[hsl(var(--border))] text-xs text-[hsl(var(--foreground))] whitespace-pre-line leading-relaxed">
+                    {currentSelectedTicket.reason || 'No description provided.'}
+                  </div>
+                </div>
+
+                {/* Message Timeline */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] flex items-center justify-between">
+                    <span>Conversation with Support Desk</span>
+                    <span className="text-[11px] font-normal lowercase">
+                      {currentSelectedTicket.messages?.length || 0} messages
+                    </span>
+                  </h4>
+
+                  <div className="space-y-3">
+                    {(!currentSelectedTicket.messages || currentSelectedTicket.messages.length === 0) && (
+                      <div className="p-5 rounded-2xl bg-[hsl(var(--muted)/0.2)] border border-dashed border-[hsl(var(--border))] text-center text-xs text-[hsl(var(--muted-foreground))]">
+                        Your inquiry is currently in the queue. Our academic support coordinator will respond directly in this conversation.
+                      </div>
+                    )}
+
+                    {currentSelectedTicket.messages?.map((msg) => {
+                      const isAdminSender =
+                        msg.senderRole === 'ADMIN' || msg.senderRole === 'SUPER_ADMIN';
+
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col ${isAdminSender ? 'items-start' : 'items-end'}`}
+                        >
+                          <div className="flex items-center gap-1.5 text-[10px] text-[hsl(var(--muted-foreground))] mb-1 px-1">
+                            <span className="font-bold text-[hsl(var(--foreground))]">
+                              {isAdminSender ? 'Official Support Desk' : 'You'}
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {new Date(msg.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+
+                          <div
+                            className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
+                              isAdminSender
+                                ? 'bg-gradient-to-br from-emerald-700 to-[hsl(168,80%,26%)] text-white shadow-sm rounded-tl-none'
+                                : 'bg-[hsl(var(--muted)/0.8)] text-[hsl(var(--foreground))] border border-[hsl(var(--border))] rounded-tr-none'
+                            }`}
+                          >
+                            {msg.message}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Reply Composer */}
+              <div className="p-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.2)] space-y-3 shrink-0">
+                <textarea
+                  rows={2}
+                  value={studentReply}
+                  onChange={(e) => setStudentReply(e.target.value)}
+                  placeholder="Type a reply message to Academic Support..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] placeholder:text-[hsl(var(--muted-foreground))]"
+                />
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                    Updates in real-time every 10 seconds.
+                  </span>
+                  <button
+                    type="button"
+                    disabled={sendingStudentReply || !studentReply.trim()}
+                    onClick={handleSendStudentReply}
+                    className="px-4 py-2 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {sendingStudentReply ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-3.5 w-3.5" /> Send Reply to Admin
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </Portal>
+  </div>
   );
 }
 

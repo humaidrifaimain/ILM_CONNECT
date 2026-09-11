@@ -319,6 +319,28 @@ export class BookingService {
     }
 
     const now = new Date();
+
+    // Cancellation policy:
+    // Student: only allowed >= 12 hours before start time
+    if (isStudent && !isAdmin) {
+      const twelveHoursBefore = new Date(session.startsAt.getTime() - 12 * 60 * 60 * 1000);
+      if (now > twelveHoursBefore) {
+        throw new BadRequestException(
+          'Sessions cannot be canceled less than 12 hours before start time. Please contact Support for emergency assistance.',
+        );
+      }
+    }
+
+    // Lecturer: only allowed >= 6 hours before start time
+    if (isLecturer && !isAdmin) {
+      const sixHoursBefore = new Date(session.startsAt.getTime() - 6 * 60 * 60 * 1000);
+      if (now > sixHoursBefore) {
+        throw new BadRequestException(
+          'Lecturers cannot cancel sessions less than 6 hours before start time. Please contact Support for emergency assistance.',
+        );
+      }
+    }
+
     const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     // If lecturer cancels, student should never be penalized (always CANCELED).
@@ -639,8 +661,38 @@ export class BookingService {
       );
     }
 
-    if (session.status !== SessionStatus.SCHEDULED) {
-      throw new BadRequestException('Only scheduled sessions can be rescheduled');
+    const now = new Date();
+    const startsAtTime = session.startsAt.getTime();
+    const endsAtTime = session.endsAt
+      ? session.endsAt.getTime()
+      : startsAtTime + 40 * 60 * 1000;
+
+    // Student: Allowed only before, and must be >= 12 hours before start
+    if (isStudent && !isAdmin) {
+      if (session.status !== SessionStatus.SCHEDULED) {
+        throw new BadRequestException('Only scheduled sessions can be rescheduled');
+      }
+      const twelveHoursBefore = new Date(startsAtTime - 12 * 60 * 60 * 1000);
+      if (now > twelveHoursBefore) {
+        throw new BadRequestException(
+          'Students can only reschedule at least 12 hours before class starts. Please contact Support.',
+        );
+      }
+    }
+
+    // Lecturer: Allowed >= 6 hours before start, OR within 6 hours after session end
+    if (isLecturer && !isAdmin) {
+      if (session.status === SessionStatus.CANCELED) {
+        throw new BadRequestException('Canceled sessions cannot be rescheduled');
+      }
+      const isBeforeAllowed = startsAtTime - now.getTime() >= 6 * 60 * 60 * 1000;
+      const isAfterAllowed = now.getTime() >= endsAtTime && (now.getTime() - endsAtTime) <= 6 * 60 * 60 * 1000;
+
+      if (!isBeforeAllowed && !isAfterAllowed) {
+        throw new BadRequestException(
+          'Lecturers can only reschedule sessions at least 6 hours before start time, or within 6 hours after class concludes. Outside these windows, please contact Support.',
+        );
+      }
     }
 
     const newStartsAt = new Date(newStartsAtISO);
@@ -692,6 +744,7 @@ export class BookingService {
       data: {
         startsAt: newStartsAt,
         endsAt: newEndsAt,
+        status: SessionStatus.SCHEDULED,
       },
       include: { lecturer: true, student: true },
     });

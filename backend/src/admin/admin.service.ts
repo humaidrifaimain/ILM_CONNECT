@@ -261,11 +261,29 @@ export class AdminService {
   async getSessions() {
     return this.prisma.session.findMany({
       include: {
-        student: true,
-        lecturer: true,
+        student: {
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+        lecturer: {
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+        lesson: {
+          include: {
+            module: {
+              include: {
+                learningPath: true,
+              },
+            },
+          },
+        },
+        notes: true,
       },
       orderBy: { startsAt: 'desc' },
-      take: 50,
+      take: 200,
     });
   }
 

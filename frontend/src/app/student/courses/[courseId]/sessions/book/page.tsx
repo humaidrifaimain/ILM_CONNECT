@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Clock,
   ChevronLeft,
@@ -50,22 +50,6 @@ function formatSlotRange(time: string) {
   return `${start}:00 – ${start}:40 ${ampm}`;
 }
 
-function formatTimeshiftDescription(hours: number[]) {
-  if (!hours || hours.length === 0) return '';
-  const set = new Set(hours);
-  const is10to2 = [10, 11, 12, 13].every(h => set.has(h)) && hours.length === 4;
-  const is2to6 = [14, 15, 16, 17].every(h => set.has(h)) && hours.length === 4;
-  const is6to10 = [18, 19, 20, 21].every(h => set.has(h)) && hours.length === 4;
-  if (is10to2) return '10 to 2 (10:00 – 10:40, 11:00 – 11:40, 12:00 – 12:40, 1:00 – 1:40)';
-  if (is2to6) return '2 to 6 (2:00 – 2:40, 3:00 – 3:40, 4:00 – 4:40, 5:00 – 5:40)';
-  if (is6to10) return '6 to 10 (6:00 – 6:40, 7:00 – 7:40, 8:00 – 8:40, 9:00 – 9:40)';
-  return hours.map(h => {
-    const s = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    return `${s}:00 – ${s}:40 ${ampm}`;
-  }).join(', ');
-}
-
 export default function BookSessionPage() {
   const params = useParams();
   const courseId = (params?.courseId as string) || 'beginner-qaida';
@@ -96,13 +80,32 @@ export default function BookSessionPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedBookedSession]);
 
+  const assignedLecturerIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    async function loadData() {
+    let isMounted = true;
+
+    async function loadData(isInitial: boolean = false) {
       try {
-        setIsLoading(true);
-        const profile = await apiFetch('/profile/student');
-        const bookings = await apiFetch('/bookings/student');
-        setStudentBookings(bookings || []);
+        if (isInitial) {
+          setIsLoading(true);
+        } else {
+          // If background polling and tab is hidden, skip to save network/resources
+          if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+            return;
+          }
+        }
+
+        const [profile, bookings] = await Promise.all([
+          apiFetch('/profile/student').catch(() => null),
+          apiFetch('/bookings/student').catch(() => null),
+        ]);
+
+        if (!isMounted) return;
+
+        if (bookings) {
+          setStudentBookings(bookings);
+        }
 
         let lecturer = profile?.assignedLecturer || bookings?.find((b: any) => new Date(b.startsAt) > new Date())?.lecturer;
         
@@ -111,7 +114,7 @@ export default function BookSessionPage() {
         }
 
         if (!lecturer) {
-          const lecturers = await apiFetch('/profile/lecturers');
+          const lecturers = await apiFetch('/profile/lecturers').catch(() => null);
           if (lecturers && lecturers.length > 0) {
             lecturer = lecturers[0];
           } else {
@@ -130,30 +133,55 @@ export default function BookSessionPage() {
            hourlyAvailabilityJson: lecturer.hourlyAvailabilityJson || []
         };
 
-        // Extract timeshift hours from the lecturer's profile
         const timeshiftHours = Array.isArray(lecturerData.hourlyAvailabilityJson)
           ? lecturerData.hourlyAvailabilityJson.map(Number)
           : [];
         setLecturerTimeshift(timeshiftHours);
-
         setAssignedLecturer(lecturerData);
+        assignedLecturerIdRef.current = lecturerData.userId;
 
         if (lecturerData.userId !== 'placeholder') {
-           const slots = await apiFetch(`/availability/${lecturerData.userId}`);
-           setAvailabilitySlots(slots || []);
+           const slots = await apiFetch(`/availability/${lecturerData.userId}`).catch(() => null);
+           if (isMounted && slots) {
+             setAvailabilitySlots(slots);
+           }
         }
       } catch (error: any) {
-        if (error.message === 'Forbidden resource') {
-          toast.error('Access Denied', 'You must be logged in as a Student to book sessions.');
-        } else {
-          console.warn('Failed to load booking data:', error);
+        if (isInitial) {
+          if (error.message === 'Forbidden resource') {
+            toast.error('Access Denied', 'You must be logged in as a Student to book sessions.');
+          } else {
+            console.warn('Failed to load booking data:', error);
+          }
+          setAssignedLecturer({ name: 'Sheikh Ahmed Al-Farsi', title: 'Senior Quran Instructor' });
         }
-        setAssignedLecturer({ name: 'Sheikh Ahmed Al-Farsi', title: 'Senior Quran Instructor' });
       } finally {
-        setIsLoading(false);
+        if (isInitial && isMounted) {
+          setIsLoading(false);
+        }
       }
     }
-    loadData();
+
+    // Initial load
+    loadData(true);
+
+    // Auto-update calendar every 10 seconds silently in the background
+    const interval = setInterval(() => {
+      loadData(false);
+    }, 10000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData(false);
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Filter active booked sessions that fall within the currently viewed week
@@ -272,7 +300,7 @@ export default function BookSessionPage() {
 
   return (
     <>
-    <div className="space-y-6 animate-fade-in max-w-4xl">
+    <div className="space-y-6 animate-fade-in w-full">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Book Session</h1>
@@ -289,22 +317,6 @@ export default function BookSessionPage() {
           <p className="text-[hsl(var(--muted-foreground))] mt-1">You can book multiple sessions across the week to fit your personal schedule.</p>
         </div>
       </div>
-
-      {/* Timeshift info banner */}
-      {lecturerTimeshift.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 flex items-start gap-3">
-          <span className="text-lg flex-shrink-0">⏰</span>
-          <div className="text-sm">
-            <p className="font-semibold text-amber-800 dark:text-amber-300">
-              Lecturer&apos;s Working Timeshift: {formatTimeshiftDescription(lecturerTimeshift)}
-            </p>
-            <p className="text-amber-700 dark:text-amber-400 text-xs mt-0.5">
-              This lecturer is available during: <strong>{lecturerTimeshift.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ')}</strong>.
-              Slots outside these hours are locked 🔒.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Assigned lecturer info */}
       <div className="flex items-center gap-3 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">

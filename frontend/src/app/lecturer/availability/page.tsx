@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, List } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronLeft, ChevronRight, Calendar, List, Clock, Lock } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
@@ -22,13 +23,16 @@ function formatHourSlot(h: number) {
 
 function formatShiftName(shiftHours: number[]) {
   if (!Array.isArray(shiftHours) || shiftHours.length === 0) return '';
-  const set = new Set(shiftHours);
-  const is10to2 = [10, 11, 12, 13].every(h => set.has(h)) && shiftHours.length === 4;
-  const is2to6 = [14, 15, 16, 17].every(h => set.has(h)) && shiftHours.length === 4;
-  const is6to10 = [18, 19, 20, 21].every(h => set.has(h)) && shiftHours.length === 4;
-  if (is10to2) return '10 to 2 (10:00 – 10:40, 11:00 – 11:40, 12:00 – 12:40, 1:00 – 1:40)';
-  if (is2to6) return '2 to 6 (2:00 – 2:40, 3:00 – 3:40, 4:00 – 4:40, 5:00 – 5:40)';
-  if (is6to10) return '6 to 10 (6:00 – 6:40, 7:00 – 7:40, 8:00 – 8:40, 9:00 – 9:40)';
+  const set = new Set(shiftHours.map(Number));
+  const is10to2 = [10, 11, 12, 13].every((h) => set.has(h));
+  const is2to6 = [14, 15, 16, 17].every((h) => set.has(h));
+  const is6to10 = [18, 19, 20, 21].every((h) => set.has(h));
+  const shifts: string[] = [];
+  if (is10to2) shifts.push('10 to 2 (10:00 AM – 02:00 PM)');
+  if (is2to6) shifts.push('2 to 6 (02:00 PM – 06:00 PM)');
+  if (is6to10) shifts.push('6 to 10 (06:00 PM – 10:00 PM)');
+  if (shifts.length === 3) return 'All Shifts (10:00 AM – 10:00 PM)';
+  if (shifts.length > 0) return shifts.join(' + ');
   return shiftHours.map(formatHourSlot).join(', ');
 }
 
@@ -127,7 +131,7 @@ export default function AvailabilityPage() {
           const [year, month, dateNum] = dayStr.split('-').map(Number);
           const hour = parseInt(hourStr, 10);
           const startsAt = new Date(year, month - 1, dateNum, hour, 0, 0, 0);
-          const endsAt = new Date(year, month - 1, dateNum, hour + 1, 0, 0, 0);
+          const endsAt = new Date(year, month - 1, dateNum, hour, 40, 0, 0); // 40-minute capped session slot
 
           creates.push(apiFetch('/availability', {
             method: 'POST',
@@ -220,20 +224,46 @@ export default function AvailabilityPage() {
         💡 Click cells to toggle availability. Green = available, empty = unavailable. Students will see these slots in their timezone. Make sure to click Save!
       </div>
 
-      {/* Timeshift info */}
-      {timeshift.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 flex items-start gap-3">
-          <span className="text-lg flex-shrink-0">⏰</span>
-          <div className="text-sm">
-            <p className="font-semibold text-amber-800 dark:text-amber-300">
-              Your Working Timeshift: {formatShiftName(timeshift)}
-            </p>
-            <p className="text-amber-700 dark:text-amber-400 text-xs mt-0.5">
-              You can only set availability during your assigned timeshift hours:{' '}
-              <strong>{timeshift.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ')}</strong>.
-              Hours outside this range are locked 🔒.
-            </p>
+      {/* Timeshift Info & Shift Change Notice */}
+      {timeshift.length > 0 ? (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-sm text-amber-900 dark:text-amber-200">
+                Assigned Working Timeshift: {formatShiftName(timeshift)}
+              </p>
+              <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                You can set availability during your assigned shift hours ({timeshift.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ')}). Lecturers cannot self-modify their assigned shift. Need to switch shifts (e.g. 10 to 2, 2 to 6, 6 to 10)?
+              </p>
+            </div>
           </div>
+          <Link
+            href="/lecturer/support?tab=contact"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition-colors whitespace-nowrap flex-shrink-0 shadow-sm"
+          >
+            Request Shift Change
+          </Link>
+        </div>
+      ) : (
+        <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-sm text-blue-900 dark:text-blue-200">
+                No Working Shift Assigned
+              </p>
+              <p className="text-xs text-blue-800/80 dark:text-blue-300/80 mt-0.5">
+                Working shifts (10 AM–2 PM, 2 PM–6 PM, 6 PM–10 PM) are designated by administration. Please contact administration to assign your schedule.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/lecturer/support?tab=contact"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors whitespace-nowrap flex-shrink-0 shadow-sm"
+          >
+            Contact Admin
+          </Link>
         </div>
       )}
 

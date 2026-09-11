@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock, Play } from 'lucide-react';
+import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock, Play, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
@@ -311,30 +311,38 @@ export default function StudentSessionsPage() {
             {/* Active upcoming scheduled session controls */}
             {selectedSession.status === 'scheduled' && !selectedSession.isPast && (
               <>
-                {isWithinLockWindow(selectedSession.startsAt) && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-[hsl(var(--warning)/0.1)] text-xs text-[hsl(var(--warning))] mb-4">
-                    <Lock className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    Edits and cancellations are locked within 12 hours of the session start time.
+                {isWithinLockWindow(selectedSession.startsAt) ? (
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-bold">
+                      <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                      Session Locked (&lt; 12 Hours Before Start)
+                    </div>
+                    <p className="text-amber-800/80 dark:text-amber-300/80 leading-relaxed text-[11px]">
+                      Student rescheduling and cancellations are locked within 12 hours of class start time. For emergency adjustments, please contact our support team.
+                    </p>
+                    <Link
+                      href="/student/support?tab=contact"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors shadow-sm"
+                    >
+                      <HelpCircle className="h-3.5 w-3.5" /> Contact Admin & Support
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => setShowReschedule(true)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--primary)/0.3)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.05)] transition-colors"
+                    >
+                      <Edit className="h-4 w-4" /> Reschedule
+                    </button>
+                    <button
+                      onClick={() => setShowCancelConfirm(true)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-colors bg-[hsl(var(--destructive)/0.1)] text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.15)]"
+                    >
+                      <Trash2 className="h-4 w-4" /> Cancel
+                    </button>
                   </div>
                 )}
-                <div className="flex gap-2 mb-4">
-                  <button
-                    onClick={() => setShowReschedule(true)}
-                    disabled={isWithinLockWindow(selectedSession.startsAt)}
-                    title={isWithinLockWindow(selectedSession.startsAt) ? 'Edits and cancellations are locked within 12 hours of the session start time.' : 'Reschedule this session'}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium border transition-colors ${isWithinLockWindow(selectedSession.startsAt) ? 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] opacity-50 cursor-not-allowed' : 'border-[hsl(var(--primary)/0.3)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.05)]'}`}
-                  >
-                    <Edit className="h-4 w-4" /> Reschedule
-                  </button>
-                  <button
-                    onClick={() => setShowCancelConfirm(true)}
-                    disabled={isWithinLockWindow(selectedSession.startsAt)}
-                    title={isWithinLockWindow(selectedSession.startsAt) ? 'Edits and cancellations are locked within 12 hours of the session start time.' : 'Cancel this session'}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${isWithinLockWindow(selectedSession.startsAt) ? 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] opacity-50 cursor-not-allowed' : 'bg-[hsl(var(--destructive)/0.1)] text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.15)]'}`}
-                  >
-                    <Trash2 className="h-4 w-4" /> Cancel
-                  </button>
-                </div>
               </>
             )}
 
@@ -359,9 +367,12 @@ export default function StudentSessionsPage() {
               <AlertTriangle className="h-6 w-6 text-[hsl(var(--destructive))]" />
             </div>
             <h3 className="font-bold text-lg text-center mb-2">Cancel Session?</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] text-center mb-4">
+            <p className="text-sm text-[hsl(var(--muted-foreground))] text-center mb-3">
               Are you sure you want to cancel your session &ldquo;{selectedSession.subject}&rdquo;?
             </p>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 text-center mb-4">
+              <strong>Policy:</strong> Cancellations must be made at least 12 hours before class.
+            </div>
             {actionSuccessMessage ? (
               <div className="p-3 rounded-xl bg-green-500/10 text-green-700 dark:text-green-300 text-sm font-semibold text-center mb-2">
                 ✓ {actionSuccessMessage}
@@ -402,7 +413,11 @@ export default function StudentSessionsPage() {
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={closeDetail}>
           <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg mb-1">Reschedule Session</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Choose a new date and time for &ldquo;{selectedSession.subject}&rdquo;</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">Choose a new date and time for &ldquo;{selectedSession.subject}&rdquo;</p>
+
+            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-800 dark:text-blue-300 mb-4">
+              <strong>Policy:</strong> Students can reschedule sessions up to 12 hours before start time.
+            </div>
             
             {actionSuccessMessage ? (
               <div className="p-3 rounded-xl bg-green-500/10 text-green-700 dark:text-green-300 text-sm font-semibold text-center my-4">

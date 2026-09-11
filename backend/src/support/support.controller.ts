@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Req, UseGuards, Patch, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, UseGuards, Patch, Param, Query } from '@nestjs/common';
 import { SupportService } from './support.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -22,8 +22,22 @@ export class SupportController {
 
   @Get('tickets')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  async getAllTickets() {
-    return this.supportService.getAllTickets();
+  async getAllTickets(@Query('status') status?: string, @Query('role') role?: string) {
+    return this.supportService.getAllTickets(status, role);
+  }
+
+  @Get('tickets/:id')
+  async getTicketById(@Param('id') id: string, @Req() req: any) {
+    return this.supportService.getTicketById(id, req.user);
+  }
+
+  @Post('tickets/:id/messages')
+  async addTicketMessage(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { message: string; newStatus?: string },
+  ) {
+    return this.supportService.addTicketMessage(id, req.user, body.message, body.newStatus);
   }
 
   @Patch('tickets/:id/status')
