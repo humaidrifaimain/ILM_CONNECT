@@ -487,6 +487,130 @@ export class BookingService {
     });
   }
 
+  async markStudentAbsent(
+    user: { id: string; role?: Role },
+    sessionId: string,
+    reason?: string,
+  ) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        student: { include: { user: true } },
+        lecturer: { include: { user: true } },
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    const isAdmin = user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+    const isLecturer = session.lecturerId === user.id;
+
+    if (!isAdmin && !isLecturer) {
+      throw new ForbiddenException(
+        'Only the assigned lecturer or an administrator can mark attendance.'
+      );
+    }
+
+    if (session.status === SessionStatus.COMPLETED) {
+      throw new BadRequestException('Cannot mark an already completed session as absent.');
+    }
+
+    if (session.status === SessionStatus.CANCELED) {
+      throw new BadRequestException('Cannot mark a canceled session as absent.');
+    }
+
+    if (session.status === SessionStatus.NO_SHOW_STUDENT) {
+      throw new BadRequestException('This session has already been marked as student absent.');
+    }
+
+    const noteReason = reason?.trim() || 'Student did not attend scheduled session.';
+
+    const updatedSession = await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        status: SessionStatus.NO_SHOW_STUDENT,
+        notes: {
+          upsert: {
+            create: {
+              lecturerId: session.lecturerId,
+              topicsCovered: 'Session conducted · Student was absent',
+              homework: '',
+              studentProgressRating: 0,
+              internalNotes: noteReason,
+              sharedNotes: `Marked absent by instructor: ${noteReason}`,
+            },
+            update: {
+              sharedNotes: `Marked absent by instructor: ${noteReason}`,
+              internalNotes: noteReason,
+            },
+          },
+        },
+      },
+      include: {
+        student: true,
+        lecturer: true,
+        notes: true,
+      },
+    });
+
+    // Write audit log
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: user.id,
+        action: 'SESSION_STUDENT_NO_SHOW',
+        entity: 'SESSION',
+        entityId: sessionId,
+        details: {
+          markedBy: user.id,
+          reason: reason || 'Lecturer marked student absent',
+          studentId: session.studentId,
+        },
+      },
+    });
+
+    // Dispatch notification to student
+    try {
+      const studentName = session.student?.fullName || session.student?.user?.email?.split('@')[0] || 'Student';
+      const lecturerName = session.lecturer?.fullName || 'Your Lecturer';
+      const studentEmail = session.student?.user?.email || '';
+      const studentPhone = session.student?.phone || null;
+
+      const sessionTimeFormatted = `${session.startsAt.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })} – ${session.endsAt.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`;
+
+      await this.notificationService.dispatchBookingNotification({
+        eventType: 'SESSION_STUDENT_NO_SHOW' as any,
+        sessionId,
+        actor: {
+          id: user.id,
+          name: lecturerName,
+          role: 'LECTURER',
+        },
+        recipient: {
+          id: session.studentId,
+          name: studentName,
+          role: 'STUDENT',
+          email: studentEmail,
+          phone: studentPhone,
+        },
+        sessionDate: session.startsAt,
+        sessionTimeFormatted,
+        reason: reason || 'Student did not attend the scheduled classroom session.',
+      });
+    } catch (notifErr: any) {
+      this.logger.error(`Failed to dispatch student absent notification: ${notifErr.message}`);
+    }
+
+    return updatedSession;
+  }
+
   async rescheduleBooking(
     user: { id: string; role?: Role },
     sessionId: string,

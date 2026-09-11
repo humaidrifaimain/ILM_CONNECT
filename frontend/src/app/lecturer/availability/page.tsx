@@ -131,7 +131,11 @@ export default function AvailabilityPage() {
 
           creates.push(apiFetch('/availability', {
             method: 'POST',
-            body: JSON.stringify({ startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() }),
+            body: JSON.stringify({
+              startsAt: startsAt.toISOString(),
+              endsAt: endsAt.toISOString(),
+              lecturerId: lecturerProfile?.userId,
+            }),
           }));
         } else if (!active && hasInDb) {
           const slot = dbSlotsMap.get(key);
@@ -147,6 +151,7 @@ export default function AvailabilityPage() {
         return;
       }
 
+      const totalAttempts = creates.length + deletes.length;
       const results = await Promise.allSettled([...creates, ...deletes]);
       const rejected = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
 
@@ -155,14 +160,25 @@ export default function AvailabilityPage() {
 
       if (rejected.length > 0) {
         console.error('Failed to save some availability changes:', rejected);
-        const firstReason = rejected[0]?.reason?.message || 'Some changes could not be applied';
-        toast.error('Partial Save Warning', `${rejected.length} slot(s) could not be updated: ${firstReason}`);
+        let firstReason = rejected[0]?.reason?.message || 'Some changes could not be applied';
+        if (firstReason.toLowerCase().includes('forbidden')) {
+          firstReason = 'Permission check failed. Please refresh or verify lecturer account session.';
+        }
+        if (rejected.length === totalAttempts) {
+          toast.error('Save Failed', `${firstReason}`);
+        } else {
+          toast.error('Partial Save Notice', `${rejected.length} slot(s) could not be updated: ${firstReason}`);
+        }
       } else {
-        toast.success('Availability Saved!', 'Your working schedule has been updated.');
+        toast.success('Availability Confirmed!', 'Your teaching schedule has been successfully updated.');
       }
     } catch (err: any) {
       console.error('Failed to save availability:', err);
-      toast.error('Save Failed', err?.message || 'Failed to save availability changes.');
+      let errMsg = err?.message || 'Failed to save availability changes.';
+      if (errMsg.toLowerCase().includes('forbidden')) {
+        errMsg = 'Permission check failed. Please refresh or verify lecturer account session.';
+      }
+      toast.error('Save Failed', errMsg);
     } finally {
       setIsSaving(false);
     }

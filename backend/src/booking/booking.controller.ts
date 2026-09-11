@@ -37,6 +37,16 @@ export class BookingController {
     return this.bookingService.rescheduleBooking(req.user, id, body.startsAt, body.reason);
   }
 
+  @Post(':id/absent')
+  @Roles(Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
+  async markAbsent(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body?: { reason?: string },
+  ) {
+    return this.bookingService.markStudentAbsent(req.user, id, body?.reason);
+  }
+
   @Get('student')
   @Roles(Role.STUDENT)
   async getStudentBookings(@Req() req: any) {

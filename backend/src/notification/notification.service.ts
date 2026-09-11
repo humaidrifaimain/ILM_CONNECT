@@ -18,7 +18,7 @@ export interface LiveNotificationEvent {
 }
 
 export interface DispatchBookingNotificationParams {
-  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED';
+  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW';
   sessionId: string;
   actor: {
     id: string;
@@ -168,6 +168,9 @@ export class NotificationService {
     } else if (eventType === 'BOOKING_RESCHEDULED') {
       title = 'Session Rescheduled';
       message = `${actor.name} has rescheduled the session to ${sessionDateFormatted} at ${sessionTimeFormatted}.${previousTimeFormatted ? ` (Previously: ${previousTimeFormatted})` : ''}`;
+    } else if (eventType === 'SESSION_STUDENT_NO_SHOW') {
+      title = 'Class Attendance: Marked Absent';
+      message = `You were marked absent by ${actor.name} for the scheduled session on ${sessionDateFormatted} at ${sessionTimeFormatted}.${reason ? ` Note: ${reason}` : ''}`;
     }
 
     this.logger.log(

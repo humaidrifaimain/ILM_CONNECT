@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Info,
   Video,
+  UserX,
 } from 'lucide-react';
 
 export interface LiveToastItem {
@@ -101,12 +102,13 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
       if (type === 'BOOKING_CONFIRMED') defaultTitle = 'Session Booked & Confirmed';
       else if (type === 'BOOKING_CANCELLED') defaultTitle = 'Session Cancelled';
       else if (type === 'BOOKING_RESCHEDULED') defaultTitle = 'Session Rescheduled';
+      else if (type === 'SESSION_STUDENT_NO_SHOW') defaultTitle = 'Class Attendance: Marked Absent';
       else if (type === 'NEW_MESSAGE') defaultTitle = `Message from ${payload.senderName || 'Contact'}`;
       else if (type === 'LECTURER_JOINED') defaultTitle = 'Lecturer Joined Classroom';
 
       const isLecturer = user?.role === 'LECTURER';
       let actionUrl = undefined;
-      if (type.startsWith('BOOKING_')) {
+      if (type.startsWith('BOOKING_') || type === 'SESSION_STUDENT_NO_SHOW') {
         actionUrl = isLecturer ? '/lecturer/sessions' : '/student/dashboard';
       } else if (type === 'NEW_MESSAGE') {
         actionUrl = isLecturer ? '/lecturer/messages' : '/student/messages';
@@ -252,6 +254,7 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
           const isConfirmed = toast.type === 'BOOKING_CONFIRMED';
           const isMessage = toast.type === 'NEW_MESSAGE';
           const isLecturerJoined = toast.type === 'LECTURER_JOINED';
+          const isAbsent = toast.type === 'SESSION_STUDENT_NO_SHOW';
 
           let borderAccent = 'border-emerald-500/40';
           let iconBg = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400';
@@ -271,6 +274,12 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
             IconComponent = CalendarClock;
             badgeColor = 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20';
             badgeText = 'Session Rescheduled';
+          } else if (isAbsent) {
+            borderAccent = 'border-orange-500/40';
+            iconBg = 'bg-orange-500/15 text-orange-600 dark:text-orange-400';
+            IconComponent = UserX;
+            badgeColor = 'bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20';
+            badgeText = 'Student Absent';
           } else if (isMessage) {
             borderAccent = 'border-[hsl(var(--primary)/0.4)]';
             iconBg = 'bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]';
@@ -288,7 +297,7 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto w-full rounded-xl border ${borderAccent} bg-[hsl(var(--card))/0.97] backdrop-blur-md shadow-xl p-3 transition-all duration-200 animate-in fade-in slide-in-from-top-2 flex flex-col gap-2 overflow-hidden relative`}
+              className={`pointer-events-auto w-full rounded-2xl border ${borderAccent} bg-white dark:bg-slate-900 shadow-2xl shadow-slate-900/15 p-3.5 transition-all duration-300 animate-fade-in flex flex-col gap-2 overflow-hidden relative`}
             >
               {/* Top Row: Icon, Badge, and Close Button */}
               <div className="flex items-start justify-between gap-2">

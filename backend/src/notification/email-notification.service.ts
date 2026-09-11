@@ -8,7 +8,7 @@ export interface EmailDispatchPayload {
   subject: string;
   htmlContent: string;
   textContent: string;
-  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'GENERAL';
+  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW' | 'GENERAL';
   metadata?: Record<string, any>;
 }
 
@@ -57,7 +57,7 @@ export class EmailNotificationService {
    * Generates email template for session events
    */
   buildBookingEmail(params: {
-    eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED';
+    eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW';
     recipientName: string;
     actorName: string;
     actorRole: string;
@@ -103,6 +103,11 @@ export class EmailNotificationService {
       headline = 'Session Rescheduled';
       statusColor = '#d97706'; // Amber
       mainDescription = `The session with ${actorName} (${roleLabel}) has been rescheduled to a new time.`;
+    } else if (eventType === 'SESSION_STUDENT_NO_SHOW') {
+      subject = `[IlmConnect] Attendance Notice: Session Marked Absent on ${sessionDateFormatted}`;
+      headline = 'Session Attendance: Marked Absent';
+      statusColor = '#ea580c'; // Orange
+      mainDescription = `You were marked absent by ${actorName} (${roleLabel}) for the scheduled session.`;
     }
 
     const textContent = `

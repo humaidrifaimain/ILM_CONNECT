@@ -20,6 +20,7 @@ import {
   Play,
   X,
   ChevronRight,
+  UserX,
 } from 'lucide-react';
 
 type StatusFilter = 'all' | 'scheduled' | 'completed' | 'no_show_student' | 'no_show_lecturer' | 'canceled';
@@ -81,6 +82,12 @@ export default function LecturerSessionsPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [isCanceling, setIsCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+
+  // Absent Modal State
+  const [absentModal, setAbsentModal] = useState<any>(null);
+  const [absentReason, setAbsentReason] = useState('');
+  const [isSubmittingAbsent, setIsSubmittingAbsent] = useState(false);
+  const [absentError, setAbsentError] = useState<string | null>(null);
 
   const filtered = bookings.filter((s: any) => {
     const studentName = s.student?.fullName || 'Unknown Student';
@@ -181,6 +188,32 @@ export default function LecturerSessionsPage() {
       toast.error('Cancellation Failed', msg);
     } finally {
       setIsCanceling(false);
+    }
+  };
+
+  const handleMarkAbsentSubmit = async () => {
+    if (!absentModal) return;
+    setIsSubmittingAbsent(true);
+    setAbsentError(null);
+
+    try {
+      await apiFetch(`/bookings/${absentModal.id}/absent`, {
+        method: 'POST',
+        body: JSON.stringify({
+          reason: absentReason || 'Student did not attend the scheduled session.',
+        }),
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['lecturerBookings'] });
+      toast.success('Student Marked Absent', 'Attendance recorded. Student has been notified.');
+      setAbsentModal(null);
+      setAbsentReason('');
+    } catch (err: any) {
+      const msg = err.message || 'Failed to mark student as absent';
+      setAbsentError(msg);
+      toast.error('Action Failed', msg);
+    } finally {
+      setIsSubmittingAbsent(false);
     }
   };
 
@@ -305,6 +338,18 @@ export default function LecturerSessionsPage() {
                         title="Reschedule Session"
                       >
                         <CalendarClock className="h-3.5 w-3.5 text-amber-500" /> Reschedule
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setAbsentModal(s);
+                          setAbsentReason('');
+                          setAbsentError(null);
+                        }}
+                        className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all flex items-center gap-1.5"
+                        title="Mark Student Absent"
+                      >
+                        <UserX className="h-3.5 w-3.5" /> Absent
                       </button>
 
                       <button
@@ -509,6 +554,75 @@ export default function LecturerSessionsPage() {
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 hover:shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 {isCanceling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark Student Absent Modal */}
+      {absentModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setAbsentModal(null)}
+        >
+          <div
+            className="bg-[hsl(var(--card))] rounded-2xl border border-amber-500/20 shadow-2xl max-w-md w-full p-6 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[hsl(var(--border))]">
+              <div className="flex items-center gap-2">
+                <UserX className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <h3 className="font-bold text-lg text-amber-700 dark:text-amber-400">Mark Student Absent</h3>
+              </div>
+              <button
+                onClick={() => setAbsentModal(null)}
+                className="p-1 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[hsl(var(--muted-foreground))] mb-4">
+              Mark student{' '}
+              <strong className="text-[hsl(var(--foreground))]">{absentModal.student?.fullName || 'Student'}</strong> as absent for this scheduled class?
+              This will record a <span className="font-semibold text-amber-600 dark:text-amber-400">Student No-Show</span>, update attendance history, and notify the student immediately.
+            </p>
+
+            {absentError && (
+              <div className="p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                {absentError}
+              </div>
+            )}
+
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-[hsl(var(--foreground))] mb-1.5">
+                Absence Reason / Remarks (Optional)
+              </label>
+              <textarea
+                rows={3}
+                placeholder="e.g. Student did not join within 15 minutes of scheduled time..."
+                value={absentReason}
+                onChange={(e) => setAbsentReason(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setAbsentModal(null)}
+                disabled={isSubmittingAbsent}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] disabled:opacity-50"
+              >
+                Keep Session
+              </button>
+              <button
+                onClick={handleMarkAbsentSubmit}
+                disabled={isSubmittingAbsent}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 hover:shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {isSubmittingAbsent ? 'Marking Absent...' : 'Confirm Absent'}
               </button>
             </div>
           </div>
