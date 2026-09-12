@@ -2,22 +2,18 @@
 
 import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  LiveKitRoom,
-  VideoConference,
-  RoomAudioRenderer,
-} from '@livekit/components-react';
+import { LiveKitRoom } from '@livekit/components-react';
 import '@livekit/components-styles';
-import { Track, ConnectionState, RoomEvent } from 'livekit-client';
 import {
-  Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare,
-  Monitor, X, ChevronRight, ChevronLeft, Loader2, Camera, AlertTriangle,
-  Clock, Wifi, WifiOff, Send, RotateCcw, RefreshCw,
+  Mic, MicOff, Video, VideoOff,
+  ChevronRight, ChevronLeft, Loader2, Camera, AlertTriangle,
+  Wifi, RotateCcw,
 } from 'lucide-react';
 
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { InteractiveClassroom } from '@/components/classroom/interactive-classroom';
+import { LiveClassroom } from '@/components/classroom/live-classroom';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface SessionInfo {
@@ -463,7 +459,7 @@ export default function SessionRoom({
         initialMic={initialMic}
         initialCam={initialCam}
         warning={tokenData.warning}
-        onLeave={() => router.push(`/student/courses/${courseId}/feedback`)}
+        onLeave={() => router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}`)}
       />
     );
   }
@@ -482,14 +478,16 @@ export default function SessionRoom({
         setState('error');
       }}
       onDisconnected={() => {
-        router.push(`/student/courses/${courseId}/feedback`);
+        router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}`);
       }}
       style={{ height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 50 }}
     >
-      <div className="w-full h-full bg-[#0f172a]" data-lk-theme="default">
-        <VideoConference />
-        <RoomAudioRenderer />
-      </div>
+      <LiveClassroom
+        sessionInfo={tokenData.session}
+        userRole="student"
+        courseId={courseId}
+        onLeave={() => router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}`)}
+      />
     </LiveKitRoom>
   );
 }

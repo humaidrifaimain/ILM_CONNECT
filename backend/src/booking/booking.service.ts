@@ -481,7 +481,12 @@ export class BookingService {
 
     return this.prisma.session.findMany({
       where: { studentId },
-      include: { lecturer: true },
+      include: {
+        lecturer: true,
+        lesson: { include: { module: { include: { learningPath: true } } } },
+        notes: true,
+        rating: true,
+      },
       orderBy: { startsAt: 'asc' },
     });
   }

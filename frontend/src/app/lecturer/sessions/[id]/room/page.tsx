@@ -1,22 +1,16 @@
 'use client';
 
-import { use, useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  LiveKitRoom,
-  VideoConference,
-  RoomAudioRenderer,
-} from '@livekit/components-react';
+import { LiveKitRoom } from '@livekit/components-react';
 import '@livekit/components-styles';
-import { Track, ConnectionState } from 'livekit-client';
 import {
-  Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare,
-  Monitor, X, ChevronRight, Loader2, Camera, AlertTriangle,
-  Clock, Wifi, WifiOff, FileText, RotateCcw,
+  Loader2, AlertTriangle, RotateCcw,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { InteractiveClassroom } from '@/components/classroom/interactive-classroom';
+import { LiveClassroom } from '@/components/classroom/live-classroom';
 
 interface SessionInfo {
   id: string;
@@ -34,83 +28,6 @@ interface TokenResponse {
   isSimulation?: boolean;
   warning?: string;
   session: SessionInfo;
-}
-
-// ─── Session Timer ───────────────────────────────────────────────────────────
-function SessionTimer({ startsAt }: { startsAt: string }) {
-  const [elapsed, setElapsed] = useState('00:00:00');
-  useEffect(() => {
-    const start = new Date(startsAt).getTime();
-    const interval = setInterval(() => {
-      const diff = Math.max(0, Date.now() - start);
-      const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
-      const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
-      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-      setElapsed(`${h}:${m}:${s}`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [startsAt]);
-  return (
-    <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-white/10 text-white/70 flex items-center gap-1.5">
-      <Clock className="h-3 w-3" /> {elapsed}
-    </span>
-  );
-}
-
-function LecturerRoomLayout({ sessionInfo }: { sessionInfo: SessionInfo }) {
-  const [showNotes, setShowNotes] = useState(false);
-  const [notes, setNotes] = useState('');
-  
-  return (
-    <div className="flex h-screen w-full bg-[#0f172a] text-white overflow-hidden" data-lk-theme="default">
-      <div className={`flex-1 relative transition-all duration-300 ${showNotes ? 'mr-[360px]' : ''}`}>
-         <VideoConference />
-         <RoomAudioRenderer />
-         {!showNotes && (
-           <button 
-             onClick={() => setShowNotes(true)}
-             className="absolute top-4 right-4 z-[100] p-2.5 bg-[#1e293b]/90 hover:bg-[#1e293b] border border-white/10 rounded-xl text-white transition-all shadow-lg flex items-center gap-2 text-sm font-medium backdrop-blur-md"
-           >
-             <FileText className="h-4 w-4" /> Session Notes
-           </button>
-         )}
-      </div>
-      
-      {/* Session Notes Panel */}
-      <div className={`absolute top-0 right-0 bottom-0 w-[360px] bg-[#1e293b] border-l border-white/10 flex flex-col transition-transform duration-300 z-50 ${showNotes ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-[hsl(168,80%,26%)]" /> 
-            <h2 className="font-semibold text-sm">Session Notes</h2>
-          </div>
-          <button onClick={() => setShowNotes(false)} className="p-1 hover:bg-white/10 rounded-md transition-colors"><X className="h-4 w-4" /></button>
-        </div>
-        
-        {/* Session info block */}
-        <div className="p-4 border-b border-white/10 bg-black/20">
-           <div className="text-xs text-white/50 mb-1">Student</div>
-           <div className="font-medium text-sm">{sessionInfo.studentName}</div>
-           <div className="mt-3 flex items-center gap-2">
-             <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-             <SessionTimer startsAt={sessionInfo.startsAt} />
-           </div>
-        </div>
-
-        <div className="flex-1 p-4 flex flex-col gap-4">
-          <div className="flex-1 flex flex-col">
-            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">Live Notes</label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Topics covered, student progress, homework..."
-              className="flex-1 w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white/90 placeholder-white/30 resize-none focus:outline-none focus:ring-1 focus:ring-[hsl(168,80%,26%)]"
-            />
-          </div>
-          <div className="text-xs text-white/30">Notes are saved automatically at the end of the session.</div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── Main Lecturer Room Page ─────────────────────────────────────────────────
@@ -289,7 +206,11 @@ export default function LecturerSessionRoom({
       onDisconnected={() => router.push('/lecturer/sessions')}
       style={{ height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 50 }}
     >
-      <LecturerRoomLayout sessionInfo={tokenData.session} />
+      <LiveClassroom
+        sessionInfo={tokenData.session}
+        userRole="lecturer"
+        onLeave={() => router.push('/lecturer/sessions')}
+      />
     </LiveKitRoom>
   );
 }
