@@ -25,7 +25,7 @@ export default function SignInPage() {
     try {
       const data = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
       login(data.user);
       const rawRole = data.user.role.toLowerCase();
