@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch, API_BASE_URL } from './api';
+import { apiFetch, API_BASE_URL, getAuthToken } from './api';
 
 export interface UserPresenceData {
   userId: string;
@@ -37,8 +37,12 @@ export function usePresenceHeartbeat(enabled: boolean = true) {
         if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
           navigator.sendBeacon(url);
         } else {
+          const token = getAuthToken();
+          const headers: Record<string, string> = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
           fetch(url, {
             method: 'POST',
+            headers,
             credentials: 'include',
             keepalive: true,
           }).catch(() => {});

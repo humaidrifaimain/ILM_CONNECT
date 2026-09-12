@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiFetch } from './api';
+import { apiFetch, setAuthToken } from './api';
 
 export type UserRole = 'STUDENT' | 'LECTURER' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -15,7 +15,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (userData: User) => void;
+  login: (userData: User, token?: string) => void;
   logout: () => Promise<void>;
 }
 
@@ -26,14 +26,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Attempt to fetch current user on mount (relies on HTTP-only cookie)
+    // 1. Immediately restore user from localStorage to prevent auth flicker
+    if (typeof window !== 'undefined') {
+      try {
+        const storedUser = localStorage.getItem('ilm_user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (e) {
+        // ignore JSON parse error
+      }
+    }
+
+    // 2. Validate session with backend
     const checkAuth = async () => {
       try {
         const userData = await apiFetch('/auth/me');
         setUser(userData);
-      } catch (error) {
-        // Not logged in or token expired
-        setUser(null);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('ilm_user', JSON.stringify(userData));
+        }
+      } catch (error: any) {
+        if (error?.status === 401) {
+          setUser(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('ilm_user');
+            setAuthToken(null);
+          }
+        }
       } finally {
         setIsLoading(false);
       }
@@ -42,8 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = (userData: User) => {
+  const login = (userData: User, token?: string) => {
     setUser(userData);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ilm_user', JSON.stringify(userData));
+      if (token) {
+        setAuthToken(token);
+      }
+    }
   };
 
   const logout = async () => {
@@ -53,6 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Logout failed:', err);
     } finally {
       setUser(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ilm_user');
+        setAuthToken(null);
+      }
       window.location.href = '/auth/signin';
     }
   };

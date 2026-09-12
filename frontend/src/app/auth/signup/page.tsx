@@ -46,7 +46,7 @@ export default function SignUpPage() {
         body: JSON.stringify({ email: cleanEmail, password }),
       });
 
-      login(loginRes.user);
+      login(loginRes.user, loginRes.token);
       router.push(`/student/dashboard`);
     } catch (err: any) {
       setError(err.message || 'Failed to create account');

@@ -27,12 +27,12 @@ export default function SignInPage() {
         method: 'POST',
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-      login(data.user);
-      const rawRole = data.user.role.toLowerCase();
+      login(data.user, data.token);
+      const rawRole = (data.user?.role || '').toLowerCase();
       const routeRole = rawRole === 'super_admin' ? 'admin' : rawRole;
       router.push(`/${routeRole}/dashboard`);
     } catch (err: any) {
-      setError(err.message || 'Invalid credentials');
+      setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
