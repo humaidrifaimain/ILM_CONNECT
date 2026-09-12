@@ -65,6 +65,11 @@ export default function BookSessionPage() {
   const [studentBookings, setStudentBookings] = useState<any[]>([]);
   const [selectedBookedSession, setSelectedBookedSession] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [studentTier, setStudentTier] = useState<string>('STANDARD');
+
+  const isPremium = studentTier.toUpperCase().includes('PREMIUM');
+  const weeklyLimit = isPremium ? 3 : 2;
+  const dailyLimit = 1;
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
   const weekLabel = `${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
@@ -102,6 +107,10 @@ export default function BookSessionPage() {
         ]);
 
         if (!isMounted) return;
+
+        if (profile) {
+          setStudentTier(profile.currentTier || 'STANDARD');
+        }
 
         if (bookings) {
           setStudentBookings(bookings);
@@ -245,10 +254,25 @@ export default function BookSessionPage() {
     if (selectedSlots.includes(key)) {
       setSelectedSlots(selectedSlots.filter(s => s !== key));
     } else {
-      if (bookedSessionsInWeek.length + selectedSlots.length >= 6) {
-        toast.info('Weekly Limit', 'You can select up to 6 sessions in a single week.');
+      if (bookedSessionsInWeek.length + selectedSlots.length >= weeklyLimit) {
+        toast.info('Weekly Limit', `You can select up to ${weeklyLimit} sessions in a single week.`);
         return;
       }
+      
+      const targetDate = new Date(dateStr);
+      const bookedOnThisDay = studentBookings.filter((b: any) => {
+         if (b.status === 'CANCELED' || b.status === 'canceled') return false;
+         const bStart = new Date(b.startsAt);
+         return bStart.getFullYear() === targetDate.getFullYear() && bStart.getMonth() === targetDate.getMonth() && bStart.getDate() === targetDate.getDate();
+      }).length;
+      
+      const selectedOnThisDay = selectedSlots.filter(s => s.startsWith(dateStr)).length;
+      
+      if (bookedOnThisDay + selectedOnThisDay >= dailyLimit) {
+        toast.info('Daily Limit', `You can select up to ${dailyLimit} session per day.`);
+        return;
+      }
+      
       setSelectedSlots([...selectedSlots, key]);
     }
   };
@@ -287,8 +311,20 @@ export default function BookSessionPage() {
   };
 
   const getSlotStatus = (key: string) => {
+    const [dateStr] = key.split('|');
     if (selectedSlots.includes(key)) return 'selected';
-    if (bookedSessionsInWeek.length + selectedSlots.length >= 6) return 'disabled';
+    if (bookedSessionsInWeek.length + selectedSlots.length >= weeklyLimit) return 'disabled';
+    
+    const targetDate = new Date(dateStr);
+    const bookedOnThisDay = studentBookings.filter((b: any) => {
+       if (b.status === 'CANCELED' || b.status === 'canceled') return false;
+       const bStart = new Date(b.startsAt);
+       return bStart.getFullYear() === targetDate.getFullYear() && bStart.getMonth() === targetDate.getMonth() && bStart.getDate() === targetDate.getDate();
+    }).length;
+    
+    const selectedOnThisDay = selectedSlots.filter(s => s.startsWith(dateStr)).length;
+    if (bookedOnThisDay + selectedOnThisDay >= dailyLimit) return 'disabled';
+    
     return 'available';
   };
 
@@ -338,7 +374,7 @@ export default function BookSessionPage() {
             </span>
           </div>
           <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
-            {Math.max(0, 6 - bookedSessionsInWeek.length)} more available this week
+            {Math.max(0, weeklyLimit - bookedSessionsInWeek.length)} more available this week
           </span>
         </div>
       )}
@@ -504,7 +540,7 @@ export default function BookSessionPage() {
             </div>
           )}
           <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-            {bookedSessionsInWeek.length >= 6
+            {bookedSessionsInWeek.length >= weeklyLimit
               ? 'Weekly booking allowance reached for this week'
               : 'Select your preferred available slot(s) to confirm booking'}
           </div>
