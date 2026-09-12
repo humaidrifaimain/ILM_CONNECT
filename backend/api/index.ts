@@ -12,6 +12,16 @@ const cookieParser = require('cookie-parser');
 
 const expressApp = express();
 
+// Add a root handler to prevent 404 on the base URL
+expressApp.get('/', (req: any, res: any) => {
+  res.status(200).json({
+    message: 'Welcome to IlmConnect API Services!',
+    version: 'v1',
+    docs: '/api/docs',
+    status: 'online',
+  });
+});
+
 const defaultCorsOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',

@@ -20,11 +20,11 @@ export default function SignInPage() {
   const handleDemoLogin = async (role: 'student' | 'lecturer' | 'admin' | 'staff') => {
     // Note: Demo access requires these users to actually exist in the DB seeded data!
     let demoEmail = '';
-    let demoPass = 'password123';
+    let demoPass = 'ilmconnect123';
 
-    if (role === 'student') demoEmail = 'student@example.com';
-    else if (role === 'lecturer') demoEmail = 'lecturer@example.com';
-    else if (role === 'admin') demoEmail = 'admin@example.com';
+    if (role === 'student') demoEmail = 'student1@ilmconnect.com';
+    else if (role === 'lecturer') demoEmail = 'ahmed.raza@ilmconnect.com';
+    else if (role === 'admin') demoEmail = 'admin@ilmconnect.com';
     else demoEmail = 'staff@example.com';
 
     setEmail(demoEmail);
