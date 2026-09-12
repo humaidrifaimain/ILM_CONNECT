@@ -10,16 +10,19 @@ export class FeedbackService {
       throw new BadRequestException('Rating must be a whole number between 1 and 5');
     }
 
-    const cleanComment = comment.trim();
+    const cleanComment = typeof comment === 'string' ? comment.trim() : '';
     if (cleanComment.length > 2000) {
       throw new BadRequestException('Feedback must be 2000 characters or fewer');
     }
 
     const session = await this.prisma.session.findFirst({
       where: { id: sessionId, studentId },
-      select: { id: true, lecturerId: true },
+      select: { id: true, lecturerId: true, startsAt: true, status: true },
     });
     if (!session) throw new NotFoundException('Session not found for this student');
+    if (session.startsAt > new Date() || session.status === 'CANCELED') {
+      throw new BadRequestException('Feedback is only available after a session begins');
+    }
 
     const rating = await this.prisma.rating.upsert({
       where: { sessionId },

@@ -46,7 +46,9 @@ export default function SessionFeedbackPage({ searchParams }: {
   });
 
   const sessions = useMemo(
-    () => [...bookings].sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime()),
+    () => bookings
+      .filter((session) => session.status !== 'CANCELED' && new Date(session.startsAt).getTime() <= Date.now())
+      .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime()),
     [bookings],
   );
 
