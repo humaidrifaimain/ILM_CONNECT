@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 export default function LecturerDashboard() {
   const { user } = useAuth();
@@ -29,6 +31,9 @@ export default function LecturerDashboard() {
   });
 
   const todaySessions = bookings?.filter((b: any) => {
+    const status = (b.status || '').toUpperCase();
+    const isCanceled = status === 'CANCELED' || status === 'NO_SHOW_STUDENT';
+    if (isCanceled) return false;
     const d = new Date(b.startsAt);
     const today = new Date();
     return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
@@ -49,16 +54,18 @@ export default function LecturerDashboard() {
         body: JSON.stringify({ amountLkr: pendingEarnings, method: 'bank_transfer' }),
       });
       setShowWithdrawModal(false);
-      refetchPayouts();
-    } catch (err) {
+      await refetchPayouts();
+      toast.success('Payout Requested', 'Your payout request has been submitted for review.');
+    } catch (err: any) {
       console.error('Withdrawal failed', err);
+      toast.error('Withdrawal Failed', err?.message || 'Failed to submit withdrawal request.');
     } finally {
       setIsWithdrawing(false);
     }
   };
 
   if (!user || !profile) {
-    return <div className="min-h-screen bg-[hsl(var(--background))] animate-pulse p-8">Loading dashboard...</div>;
+    return <LoadingScreen message="Loading Lecturer Portal..." subtitle="Preparing your classes, earnings, and student activity" fullScreen />;
   }
 
   return (
@@ -132,13 +139,10 @@ export default function LecturerDashboard() {
                 <div className="text-xs text-[hsl(var(--muted-foreground))]">Quran Session</div>
                 <div className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
-              {s.livekitRoomName ? (
-                <Link href={`/lecturer/sessions/${s.id}/room`} className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center gap-1.5">
-                  <Play className="h-3 w-3" /> Start
-                </Link>
-              ) : (
-                <span className="text-xs text-[hsl(var(--muted-foreground))]">Link pending</span>
-              )}
+              <Link href={`/lecturer/sessions/${s.id}/room`} className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5 flex-shrink-0">
+                <Play className="h-3 w-3 fill-current" /> Start
+              </Link>
+
             </div>
           ))}
           {todaySessions.length === 0 && (

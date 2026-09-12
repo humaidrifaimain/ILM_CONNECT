@@ -12,4 +12,8 @@ export class CreateSlotDto {
   @IsString()
   @IsOptional()
   recurringRule?: string;
+
+  @IsString()
+  @IsOptional()
+  lecturerId?: string;
 }

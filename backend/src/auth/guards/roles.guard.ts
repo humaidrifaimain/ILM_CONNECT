@@ -19,6 +19,13 @@ export class RolesGuard implements CanActivate {
     if (!user) {
       return false;
     }
-    return requiredRoles.includes(user.role);
+
+    // Admins and Super Admins have universal management access
+    const userRole = String(user.role || '').toUpperCase();
+    if (userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN) {
+      return true;
+    }
+
+    return requiredRoles.some((r) => String(r).toUpperCase() === userRole);
   }
 }

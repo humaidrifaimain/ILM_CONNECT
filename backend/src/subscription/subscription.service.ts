@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -39,6 +39,31 @@ export class SubscriptionService {
       clientSecret: 'pi_placeholder_secret', // Would come from Stripe
       subscriptionId: subscription.id,
     };
+  }
+
+  async createTrialSubscription(studentId: string) {
+    // Check if they already have one
+    const existing = await this.prisma.subscription.findFirst({
+      where: { studentId, tier: 'Trial' },
+    });
+
+    if (existing) {
+      throw new BadRequestException('You have already claimed a free trial.');
+    }
+
+    const subscription = await this.prisma.subscription.create({
+      data: {
+        studentId,
+        tier: 'Trial',
+        status: 'ACTIVE', 
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(new Date().setDate(new Date().getDate() + 7)), // 7 days from now
+        lkrAmount: 0,
+        fxRateApplied: 1.0,
+      },
+    });
+
+    return subscription;
   }
 
   async handleWebhook(payload: any, signature: string) {

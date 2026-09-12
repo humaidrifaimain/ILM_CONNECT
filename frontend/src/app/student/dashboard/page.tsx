@@ -1,14 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { Calendar, Clock, BookOpen, Star, Video, CreditCard, TrendingUp, ChevronRight, Play, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, BookOpen, Star, Video, CreditCard, TrendingUp, ChevronRight, Play, RefreshCw, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { toast } from '@/components/ui/toast';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [showBookModal, setShowBookModal] = useState(false);
   const [changeRequested, setChangeRequested] = useState(false);
@@ -40,6 +43,17 @@ export default function StudentDashboard() {
     setShowBookModal(false);
   }, []);
 
+  const activateTrialMutation = useMutation({
+    mutationFn: () => apiFetch('/subscriptions/trial', { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['studentSubscription'] });
+      toast.success('Trial Activated', 'You can now book your first session for free!');
+    },
+    onError: (err: any) => {
+      toast.error('Activation Failed', err.message || 'Could not activate trial.');
+    },
+  });
+
   useEffect(() => {
     if (!showChangeModal && !showBookModal) return;
     document.body.style.overflow = 'hidden';
@@ -56,16 +70,21 @@ export default function StudentDashboard() {
         body: JSON.stringify({ type: 'LECTURER_CHANGE', reason: changeReason }),
       });
       setChangeRequested(true);
+      toast.success('Request Submitted', 'Our academic coordinator team has received your lecturer change request.');
       closeModal();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to submit request:', err);
-      alert('Failed to submit request. Please try again later.');
+      toast.error('Submission Failed', err?.message || 'Failed to submit request. Please try again later.');
     } finally {
       setIsSubmittingChange(false);
     }
   };
 
-  const upcomingSessions = bookings?.filter((b: any) => new Date(b.startsAt) > new Date()) || [];
+  const upcomingSessions = bookings?.filter((b: any) => {
+    const status = (b.status || '').toUpperCase();
+    const isCanceled = status === 'CANCELED' || status === 'NO_SHOW_STUDENT';
+    return !isCanceled && new Date(b.startsAt) > new Date();
+  }) || [];
   const assignedLecturer = profile?.assignedLecturer || upcomingSessions[0]?.lecturer || null;
 
   const now = new Date();
@@ -74,11 +93,11 @@ export default function StudentDashboard() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   })?.length || 0;
 
-  const completedSessions = bookings?.filter((b: any) => b.status === 'COMPLETED') || [];
-  const hoursLearned = completedSessions.length * 0.75;
+  const completedSessions = bookings?.filter((b: any) => b.status === 'COMPLETED' || b.status === 'NO_SHOW_STUDENT') || [];
+  const hoursLearned = Math.round((completedSessions.length * 40 / 60) * 10) / 10;
 
   if (!user || !profile) {
-    return <div className="min-h-screen bg-[hsl(var(--background))] animate-pulse p-8">Loading dashboard...</div>;
+    return <LoadingScreen message="Loading Student Dashboard..." subtitle="Personalizing your Quranic learning overview" fullScreen />;
   }
 
   return (
@@ -91,10 +110,15 @@ export default function StudentDashboard() {
               {upcomingSessions.length > 0 ? `Your next session is on ${new Date(upcomingSessions[0].startsAt).toLocaleDateString()}` : "You don't have any upcoming sessions"}
             </p>
           </div>
-          <button onClick={() => setShowBookModal(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all">
-            <Calendar className="h-4 w-4" /> Book Session
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+
+            <button onClick={() => setShowBookModal(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all">
+              <Calendar className="h-4 w-4" /> Book Session
+            </button>
+          </div>
         </div>
+
+
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
@@ -122,9 +146,9 @@ export default function StudentDashboard() {
               <div className="p-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="font-semibold text-lg">Your Assigned Lecturer</h2>
-                  <button onClick={() => setShowChangeModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[hsl(var(--primary))] border border-[hsl(var(--primary)/0.3)] hover:bg-[hsl(var(--primary)/0.05)] transition-colors">
+                  <Link href="/student/support?tab=change-lecturer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[hsl(var(--primary))] border border-[hsl(var(--primary)/0.3)] hover:bg-[hsl(var(--primary)/0.05)] transition-colors">
                     <RefreshCw className="h-3.5 w-3.5" /> Request Lecturer Change
-                  </button>
+                  </Link>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 uppercase">
@@ -164,13 +188,13 @@ export default function StudentDashboard() {
                       <div className="text-xs text-[hsl(var(--muted-foreground))]">with {s.lecturer?.fullName}</div>
                       <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{new Date(s.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {new Date(s.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                     </div>
-                    {s.livekitRoomName ? (
-                      <Link href={`/student/courses/beginner-qaida/sessions/${s.id}/room`} className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5">
-                        <Play className="h-3 w-3" /> Join
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-[hsl(var(--muted-foreground))]">Link pending</span>
-                    )}
+                    <Link
+                      href={`/student/courses/beginner-qaida/sessions/${s.id}/room`}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      <Play className="h-3 w-3 fill-current" /> Join
+                    </Link>
+
                   </div>
                 ))}
                 {upcomingSessions.length === 0 && (
@@ -233,8 +257,12 @@ export default function StudentDashboard() {
                    <p className="text-sm text-[hsl(var(--muted-foreground))]">
                      You have <strong>1 free session</strong> remaining. Enjoy your first session without any payment!
                    </p>
-                   <button className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all">
-                     Upgrade to Premium
+                   <button 
+                     onClick={() => activateTrialMutation.mutate()} 
+                     disabled={activateTrialMutation.isPending}
+                     className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all disabled:opacity-50"
+                   >
+                     {activateTrialMutation.isPending ? 'Activating...' : 'Activate Free Trial'}
                    </button>
                  </div>
               ) : (

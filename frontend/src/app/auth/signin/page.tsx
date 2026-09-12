@@ -17,36 +17,6 @@ export default function SignInPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const handleDemoLogin = async (role: 'student' | 'lecturer' | 'admin' | 'staff') => {
-    // Note: Demo access requires these users to actually exist in the DB seeded data!
-    let demoEmail = '';
-    let demoPass = 'password123';
-
-    if (role === 'student') demoEmail = 'student@example.com';
-    else if (role === 'lecturer') demoEmail = 'lecturer@example.com';
-    else if (role === 'admin') demoEmail = 'admin@example.com';
-    else demoEmail = 'staff@example.com';
-
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    // Submit normally with these credentials
-    try {
-      setIsLoading(true);
-      setError('');
-      const data = await apiFetch('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: demoEmail, password: demoPass }),
-      });
-      login(data.user);
-      const rawRole = data.user.role.toLowerCase();
-      const routeRole = rawRole === 'super_admin' ? 'admin' : rawRole;
-      router.push(`/${routeRole}/dashboard`);
-    } catch (err: any) {
-      setError(err.message || 'Demo login failed. Make sure DB is seeded.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +25,7 @@ export default function SignInPage() {
     try {
       const data = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
       login(data.user);
       const rawRole = data.user.role.toLowerCase();
@@ -112,23 +82,6 @@ export default function SignInPage() {
               {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
-
-          {/* Demo Access */}
-          <div className="mt-6 pt-6 border-t border-[hsl(var(--border))]">
-            <p className="text-xs text-[hsl(var(--muted-foreground))] text-center mb-3">Quick Demo Access (Requires Seeded DB)</p>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { role: 'student' as const, label: 'Student', color: 'text-[hsl(var(--primary))]' },
-                { role: 'lecturer' as const, label: 'Lecturer', color: 'text-purple-600 dark:text-purple-400' },
-                { role: 'staff' as const, label: 'Staff', color: 'text-blue-600 dark:text-blue-400' },
-                { role: 'admin' as const, label: 'Admin', color: 'text-amber-600 dark:text-amber-400' },
-              ].map((d) => (
-                <button disabled={isLoading} type="button" key={d.role} onClick={() => handleDemoLogin(d.role)} className={`py-2 rounded-xl text-xs font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors disabled:opacity-50 ${d.color}`}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <p className="mt-8 text-center text-sm text-[hsl(var(--muted-foreground))]">
             Don&apos;t have an account?{' '}

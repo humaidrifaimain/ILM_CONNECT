@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Put, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -39,4 +39,52 @@ export class ProfileController {
   async getLecturers() {
     return this.profileService.getAllLecturers();
   }
+
+  @Get('lecturer/students')
+  @Roles(Role.LECTURER)
+  async getMyStudents(@Req() req: any) {
+    return this.profileService.getMyStudents(req.user.id);
+  }
+
+  @Get('lecturer/students/progress')
+  @Roles(Role.LECTURER)
+  async getStudentsProgress(@Req() req: any) {
+    return this.profileService.getStudentsProgress(req.user.id);
+  }
+
+  @Get('lecturer/students/:studentId')
+  @Roles(Role.LECTURER)
+  async getStudentDetail(@Req() req: any, @Param('studentId') studentId: string) {
+    return this.profileService.getStudentDetailForLecturer(req.user.id, studentId);
+  }
+
+  @Put('lecturer/students/:studentId/lesson-access')
+  @Roles(Role.LECTURER)
+  async updateLessonAccess(
+    @Req() req: any,
+    @Param('studentId') studentId: string,
+    @Body() body: { lessonId: string },
+  ) {
+    return this.profileService.updateStudentLessonAccess(req.user.id, studentId, body.lessonId);
+  }
+
+  @Put('lecturer/students/:studentId/course-access')
+  @Roles(Role.LECTURER)
+  async grantFullCourseAccess(
+    @Req() req: any,
+    @Param('studentId') studentId: string,
+    @Body() body: { learningPathId: string },
+  ) {
+    return this.profileService.grantFullCourseAccess(req.user.id, studentId, body.learningPathId);
+  }
+
+  @Put('lecturer/students/:studentId/revoke-access')
+  @Roles(Role.LECTURER)
+  async revokeAccess(
+    @Req() req: any,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.profileService.revokeStudentAccess(req.user.id, studentId);
+  }
 }
+

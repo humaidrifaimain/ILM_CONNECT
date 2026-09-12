@@ -91,6 +91,7 @@ model User {
   auditLogs         AuditLog[]        @relation("ActorAuditLogs")
   notifications     Notification[]
   supportTickets    SupportTicket[]
+  supportTicketMessages SupportTicketMessage[]
 
   @@index([email])
   @@index([role])
@@ -511,8 +512,27 @@ model SupportTicket {
 
   // Relations
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    SupportTicketMessage[]
 
   @@index([userId])
   @@index([status])
   @@map("support_tickets")
 }
+
+model SupportTicketMessage {
+  id          String        @id @default(uuid())
+  ticketId    String        @map("ticket_id")
+  senderId    String        @map("sender_id")
+  senderRole  Role          @map("sender_role")
+  senderName  String        @map("sender_name")
+  message     String
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender      User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([senderId])
+  @@map("support_ticket_messages")
+}
+

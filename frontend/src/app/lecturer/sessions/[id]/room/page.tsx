@@ -16,9 +16,11 @@ import { Track, ConnectionState } from 'livekit-client';
 import {
   Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare,
   Monitor, X, ChevronRight, Loader2, Camera, AlertTriangle,
-  Clock, Wifi, WifiOff, FileText,
+  Clock, Wifi, WifiOff, FileText, RotateCcw,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { toast } from '@/components/ui/toast';
+import { InteractiveClassroom } from '@/components/classroom/interactive-classroom';
 
 interface SessionInfo {
   id: string;
@@ -33,6 +35,8 @@ interface TokenResponse {
   token: string;
   wsUrl: string;
   roomName: string;
+  isSimulation?: boolean;
+  warning?: string;
   session: SessionInfo;
 }
 
@@ -92,20 +96,27 @@ function LecturerVideoStage({ sessionInfo, showNotes, setShowNotes }: {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [notes, setNotes] = useState('');
 
+  useEffect(() => {
+    setIsScreenSharing(!!localParticipant.isScreenShareEnabled);
+  }, [localParticipant.isScreenShareEnabled]);
+
   const remoteCameraTrack = tracks.find(
     t => t.participant.identity !== localParticipant.identity && t.source === Track.Source.Camera && t.publication?.track
   );
   const localCameraTrack = tracks.find(
-    t => t.participant.identity === localParticipant.identity && t.source === Track.Source.Camera && t.publication?.track
+    t => t.participant.identity === localParticipant.identity && t.source === Track.Source.Camera
   );
-  const screenShareTrack = tracks.find(t => t.source === Track.Source.ScreenShare && t.publication?.track);
+  const screenShareTrack = tracks.find(
+    t => t.source === Track.Source.ScreenShare && (t.publication?.track || t.publication?.isSubscribed)
+  ) || tracks.find(t => t.source === Track.Source.ScreenShare);
   const remoteParticipant = participants.find(p => p.identity !== localParticipant.identity);
   const remoteName = remoteParticipant?.name || sessionInfo.studentName;
 
   const toggleScreenShare = async () => {
     try {
-      await localParticipant.setScreenShareEnabled(!isScreenSharing);
-      setIsScreenSharing(!isScreenSharing);
+      const next = !localParticipant.isScreenShareEnabled;
+      await localParticipant.setScreenShareEnabled(next);
+      setIsScreenSharing(next);
     } catch (err) { console.error('Screen share error:', err); }
   };
 
@@ -147,7 +158,7 @@ function LecturerVideoStage({ sessionInfo, showNotes, setShowNotes }: {
             )}
             <div className="absolute bottom-3 left-3 bg-black/60 px-3 py-1.5 rounded-lg text-sm font-medium backdrop-blur-sm z-10">{remoteName}</div>
             <div className="absolute bottom-3 right-3 w-40 lg:w-48 aspect-video bg-[#1e293b] rounded-xl border-2 border-white/20 overflow-hidden shadow-2xl z-10">
-              {localCameraTrack?.publication?.track ? (
+              {localParticipant.isCameraEnabled && localCameraTrack?.publication?.track ? (
                 <VideoTrack trackRef={localCameraTrack} className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center"><VideoOff className="h-5 w-5 text-white/30" /></div>
@@ -184,7 +195,9 @@ function LecturerVideoStage({ sessionInfo, showNotes, setShowNotes }: {
           className={`h-12 w-12 rounded-full flex items-center justify-center transition-all ${localParticipant.isMicrophoneEnabled ? 'bg-white/10 hover:bg-white/20' : 'bg-red-500 hover:bg-red-600'}`}>
           {localParticipant.isMicrophoneEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
         </button>
-        <button onClick={() => localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled)}
+        <button onClick={async () => {
+          await localParticipant.setCameraEnabled(!localParticipant.isCameraEnabled);
+        }}
           className={`h-12 w-12 rounded-full flex items-center justify-center transition-all ${localParticipant.isCameraEnabled ? 'bg-white/10 hover:bg-white/20' : 'bg-red-500 hover:bg-red-600'}`}>
           {localParticipant.isCameraEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
         </button>
@@ -213,32 +226,159 @@ export default function LecturerSessionRoom() {
 
   const [state, setState] = useState<'loading' | 'connected' | 'error'>('loading');
   const [tokenData, setTokenData] = useState<TokenResponse | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isReopening, setIsReopening] = useState(false);
   const [showNotes, setShowNotes] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
         const data = await apiFetch(`/livekit/token/${sessionId}`);
+        setSessionInfo(data.session);
         setTokenData(data);
         setState('connected');
       } catch (err: any) {
+        if (err.data?.session) {
+          setSessionInfo(err.data.session);
+        }
         setError(err.message || 'Failed to connect');
         setState('error');
       }
     })();
   }, [sessionId]);
 
+  const handleReopenAndStart = async () => {
+    setIsReopening(true);
+    try {
+      const data = await apiFetch(`/livekit/token/${sessionId}?reopen=true`);
+      setSessionInfo(data.session);
+      setTokenData(data);
+      setError(null);
+      setState('connected');
+      toast.success('Session Reopened', 'The session has been reactivated. Starting classroom...');
+    } catch (err: any) {
+      toast.error('Reopen Failed', err.message || 'Could not reactivate session.');
+      setError(err.message);
+    } finally {
+      setIsReopening(false);
+    }
+  };
+
+  const effectiveSession: SessionInfo = sessionInfo || tokenData?.session || {
+    id: sessionId,
+    startsAt: new Date().toISOString(),
+    endsAt: new Date(Date.now() + 40 * 60 * 1000).toISOString(),
+    status: 'CANCELED',
+    studentName: 'Student',
+    lecturerName: 'Lecturer',
+  };
+
+  const isCanceledError = error?.toLowerCase().includes('cancel');
+
   if (state === 'error') {
     return (
       <div className="fixed inset-0 z-50 bg-[hsl(var(--background))] flex items-center justify-center p-4">
-        <div className="max-w-sm w-full text-center">
-          <div className="h-16 w-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="h-8 w-8 text-red-400" />
+        <div className="max-w-lg w-full text-center bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-3xl p-6 sm:p-8 shadow-2xl animate-fade-in relative overflow-hidden">
+          {/* Subtle background glow */}
+          <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-[hsl(168,80%,26%)] opacity-5 blur-3xl pointer-events-none" />
+
+          <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${isCanceledError ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' : 'bg-red-500/15 text-red-500'}`}>
+            {isCanceledError ? (
+              <RotateCcw className="h-8 w-8" />
+            ) : (
+              <AlertTriangle className="h-8 w-8" />
+            )}
           </div>
-          <h2 className="text-xl font-bold text-[hsl(var(--foreground))] mb-2">Unable to Join</h2>
-          <p className="text-[hsl(var(--muted-foreground))] text-sm mb-6">{error}</p>
-          <button onClick={() => router.back()} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-colors">Go Back</button>
+
+          <h2 className="text-xl font-bold text-[hsl(var(--foreground))] mb-2">
+            {isCanceledError ? 'Session Marked Canceled' : 'LiveKit Connection Notice'}
+          </h2>
+
+          <p className="text-[hsl(var(--muted-foreground))] text-sm mb-4 leading-relaxed">
+            {isCanceledError
+              ? 'This session is currently marked as canceled or past in the database. You can reactivate this session to start teaching immediately, or launch the interactive classroom in simulation mode.'
+              : error}
+          </p>
+
+          {(sessionInfo || tokenData?.session) && (
+            <div className="mb-6 p-3.5 rounded-2xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))] text-xs text-[hsl(var(--muted-foreground))] flex items-center justify-center gap-4 flex-wrap">
+              <span><strong>Student:</strong> {(sessionInfo || tokenData?.session)?.studentName}</span>
+              <span>•</span>
+              <span><strong>Time:</strong> {new Date((sessionInfo || tokenData?.session)?.startsAt || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2.5">
+            {isCanceledError && (
+              <button
+                onClick={handleReopenAndStart}
+                disabled={isReopening}
+                className="w-full py-3 px-5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isReopening ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Reactivating Session...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="h-4 w-4" /> Reopen & Start Class
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setTokenData({
+                  token: 'sim_token',
+                  wsUrl: '',
+                  isSimulation: true,
+                  roomName: `ilm-session-${sessionId}`,
+                  session: effectiveSession,
+                  warning: error || undefined,
+                });
+                setState('connected');
+              }}
+              className={`w-full py-3 px-5 rounded-xl text-sm font-semibold transition-all ${
+                isCanceledError
+                  ? 'border border-[hsl(var(--primary)/0.4)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.08)]'
+                  : 'text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg'
+              }`}
+            >
+              Start in Interactive Classroom
+            </button>
+
+            <div className="flex gap-2.5 pt-1">
+              <button
+                onClick={() => router.push('/lecturer/sessions')}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
+              >
+                Back to Sessions
+              </button>
+              <button
+                onClick={async () => {
+                  setError(null);
+                  setState('loading');
+                  try {
+                    const data = await apiFetch(`/livekit/token/${sessionId}`);
+                    setSessionInfo(data.session);
+                    setTokenData(data);
+                    setState('connected');
+                  } catch (err: any) {
+                    if (err.data?.session) {
+                      setSessionInfo(err.data.session);
+                    }
+                    setError(err.message || 'Failed to connect');
+                    setState('error');
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -255,6 +395,18 @@ export default function LecturerSessionRoom() {
     );
   }
 
+  // Interactive Classroom (WebRTC camera, microphone, student notes & chat)
+  if (tokenData.isSimulation || !tokenData.wsUrl) {
+    return (
+      <InteractiveClassroom
+        sessionInfo={tokenData.session}
+        userRole="lecturer"
+        warning={tokenData.warning}
+        onLeave={() => router.push('/lecturer/sessions')}
+      />
+    );
+  }
+
   return (
     <LiveKitRoom
       token={tokenData.token}
@@ -262,6 +414,11 @@ export default function LecturerSessionRoom() {
       connect={true}
       video={true}
       audio={true}
+      onError={(err) => {
+        console.error('LiveKit connection error:', err);
+        setError(err.message || 'Failed to connect to LiveKit video server');
+        setState('error');
+      }}
       onDisconnected={() => router.push('/lecturer/sessions')}
       style={{ height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 50 }}
     >
