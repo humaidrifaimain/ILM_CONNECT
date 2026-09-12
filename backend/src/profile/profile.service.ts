@@ -11,6 +11,13 @@ export class ProfileService {
       include: { 
         user: true,
         assignedLecturer: true,
+        progress: {
+          include: {
+            currentLearningPath: true,
+            currentModule: true,
+            currentLesson: true,
+          },
+        },
       },
     });
     if (!profile) throw new NotFoundException('Student profile not found');
