@@ -262,6 +262,11 @@ function LecturerMessagesContent() {
   };
 
   const handleStartWithStudent = (student: Student) => {
+    const existingThread = threads.find(t => t.otherUser.id === student.userId);
+    if (existingThread) {
+      handleSelectThread(existingThread);
+      return;
+    }
     const syntheticThread: Thread = {
       threadId: [user!.id, student.userId].sort().join('_'),
       lastMessage: { id: '', content: 'No messages yet', senderId: '', createdAt: new Date().toISOString() },
@@ -372,55 +377,59 @@ function LecturerMessagesContent() {
                   </motion.span>
                 )}
               </AnimatePresence>
-              {myStudents.length > 0 && (
-                <button
-                  onClick={() => setShowStudentPicker(!showStudentPicker)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all"
-                >
-                  <Users className="h-3.5 w-3.5" />
-                  New Chat
-                </button>
-              )}
+              <button
+                onClick={() => setShowStudentPicker(!showStudentPicker)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all"
+              >
+                <Users className="h-3.5 w-3.5" />
+                New Chat
+              </button>
             </div>
           </div>
           {/* Student picker dropdown */}
-          {showStudentPicker && studentsWithoutThreads.length > 0 && (
+          {showStudentPicker && (
             <div className="mt-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] overflow-hidden shadow-md">
               <p className="text-[10px] text-[hsl(var(--muted-foreground))] px-3 pt-2 pb-1 font-medium uppercase tracking-wide">
                 Start conversation with:
               </p>
-              {studentsWithoutThreads.map((s) => {
-                const sPresence = studentsPresence[s.userId];
-                const sIsOnline = sPresence?.isOnline ?? false;
-                return (
-                  <button
-                    key={s.userId}
-                    onClick={() => handleStartWithStudent(s)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-[hsl(var(--muted))] transition-colors text-sm"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="relative flex-shrink-0">
-                        <div className="h-7 w-7 rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-[10px]">
-                          {s.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <span
-                          className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-1 ring-[hsl(var(--card))] ${
-                            sIsOnline ? 'bg-emerald-500 shadow-sm' : 'bg-zinc-400 dark:bg-zinc-600'
-                          }`}
-                        />
-                      </div>
-                      <span className="truncate">{s.fullName}</span>
-                    </div>
-                    <span
-                      className={`text-[10px] flex-shrink-0 font-medium ${
-                        sIsOnline ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-[hsl(var(--muted-foreground))]'
-                      }`}
+              {myStudents.length === 0 ? (
+                <div className="px-3 py-4 text-xs text-center text-[hsl(var(--muted-foreground))]">
+                  No students assigned to you yet.
+                </div>
+              ) : (
+                myStudents.map((s) => {
+                  const sPresence = studentsPresence[s.userId];
+                  const sIsOnline = sPresence?.isOnline ?? false;
+                  return (
+                    <button
+                      key={s.userId}
+                      onClick={() => handleStartWithStudent(s)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-[hsl(var(--muted))] transition-colors text-sm"
                     >
-                      {sIsOnline ? 'Online' : 'Offline'}
-                    </span>
-                  </button>
-                );
-              })}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="relative flex-shrink-0">
+                          <div className="h-7 w-7 rounded-full bg-[hsl(var(--primary)/0.15)] flex items-center justify-center text-[hsl(var(--primary))] font-bold text-[10px]">
+                            {s.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-1 ring-[hsl(var(--card))] ${
+                              sIsOnline ? 'bg-emerald-500 shadow-sm' : 'bg-zinc-400 dark:bg-zinc-600'
+                            }`}
+                          />
+                        </div>
+                        <span className="truncate">{s.fullName}</span>
+                      </div>
+                      <span
+                        className={`text-[10px] flex-shrink-0 font-medium ${
+                          sIsOnline ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-[hsl(var(--muted-foreground))]'
+                        }`}
+                      >
+                        {sIsOnline ? 'Online' : 'Offline'}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           )}
         </div>

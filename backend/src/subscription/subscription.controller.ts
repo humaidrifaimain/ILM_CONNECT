@@ -27,6 +27,13 @@ export class SubscriptionController {
     return this.subscriptionService.createSubscriptionIntent(req.user.id, tier, lkrAmount);
   }
 
+  @Post('trial')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  createTrialSubscription(@Request() req: any) {
+    return this.subscriptionService.createTrialSubscription(req.user.id);
+  }
+
   // Webhook usually shouldn't be guarded by JWT, it uses its own signature validation
   @Post('../payments/webhook')
   handleWebhook(@Body() payload: any, @Headers('stripe-signature') signature: string) {

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Calendar, Clock, BookOpen, Star, Video, CreditCard, TrendingUp, ChevronRight, Play, RefreshCw, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from '@/components/ui/toast';
@@ -11,6 +11,7 @@ import { LoadingScreen } from '@/components/ui/loading-screen';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [showBookModal, setShowBookModal] = useState(false);
   const [changeRequested, setChangeRequested] = useState(false);
@@ -41,6 +42,17 @@ export default function StudentDashboard() {
     setShowChangeModal(false);
     setShowBookModal(false);
   }, []);
+
+  const activateTrialMutation = useMutation({
+    mutationFn: () => apiFetch('/subscriptions/trial', { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['studentSubscription'] });
+      toast.success('Trial Activated', 'You can now book your first session for free!');
+    },
+    onError: (err: any) => {
+      toast.error('Activation Failed', err.message || 'Could not activate trial.');
+    },
+  });
 
   useEffect(() => {
     if (!showChangeModal && !showBookModal) return;
@@ -245,8 +257,12 @@ export default function StudentDashboard() {
                    <p className="text-sm text-[hsl(var(--muted-foreground))]">
                      You have <strong>1 free session</strong> remaining. Enjoy your first session without any payment!
                    </p>
-                   <button className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all">
-                     Upgrade to Premium
+                   <button 
+                     onClick={() => activateTrialMutation.mutate()} 
+                     disabled={activateTrialMutation.isPending}
+                     className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all disabled:opacity-50"
+                   >
+                     {activateTrialMutation.isPending ? 'Activating...' : 'Activate Free Trial'}
                    </button>
                  </div>
               ) : (

@@ -360,25 +360,25 @@ export default function AdminSessionsPage() {
               <>
                 <h3 className="font-bold text-lg mb-3">Session Details</h3>
                 <div className="space-y-2.5 text-sm mb-5 divide-y divide-[hsl(var(--border))]">
-                  <div className="flex justify-between pt-1">
-                    <span className="text-[hsl(var(--muted-foreground))]">Session ID</span>
-                    <span className="font-mono text-xs">{actionModal.session.id}</span>
+                  <div className="flex justify-between pt-1 gap-4">
+                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">Session ID</span>
+                    <span className="font-mono text-xs text-right break-all">{actionModal.session.id}</span>
                   </div>
-                  <div className="flex justify-between pt-2">
-                    <span className="text-[hsl(var(--muted-foreground))]">Student</span>
-                    <span className="font-medium text-[hsl(var(--foreground))]">{actionModal.session.studentName}</span>
+                  <div className="flex justify-between pt-2 gap-4">
+                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">Student</span>
+                    <span className="font-medium text-[hsl(var(--foreground))] text-right">{actionModal.session.studentName}</span>
                   </div>
-                  <div className="flex justify-between pt-2">
-                    <span className="text-[hsl(var(--muted-foreground))]">Lecturer</span>
-                    <span className="font-medium text-[hsl(var(--foreground))]">{actionModal.session.lecturerName}</span>
+                  <div className="flex justify-between pt-2 gap-4">
+                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">Lecturer</span>
+                    <span className="font-medium text-[hsl(var(--foreground))] text-right">{actionModal.session.lecturerName}</span>
                   </div>
-                  <div className="flex justify-between pt-2">
-                    <span className="text-[hsl(var(--muted-foreground))]">Subject / Course</span>
-                    <span className="font-medium text-[hsl(var(--foreground))]">{actionModal.session.subject}</span>
+                  <div className="flex justify-between pt-2 gap-4">
+                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">Subject / Course</span>
+                    <span className="font-medium text-[hsl(var(--foreground))] text-right">{actionModal.session.subject}</span>
                   </div>
-                  <div className="flex justify-between pt-2">
-                    <span className="text-[hsl(var(--muted-foreground))]">Scheduled Time</span>
-                    <span>
+                  <div className="flex justify-between pt-2 gap-4">
+                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">Scheduled Time</span>
+                    <span className="text-right">
                       {new Date(actionModal.session.startsAt).toLocaleString('en-US', {
                         weekday: 'short',
                         month: 'short',
@@ -388,10 +388,10 @@ export default function AdminSessionsPage() {
                       })}
                     </span>
                   </div>
-                  <div className="flex justify-between pt-2">
-                    <span className="text-[hsl(var(--muted-foreground))]">Status</span>
+                  <div className="flex justify-between pt-2 gap-4 items-center">
+                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">Status</span>
                     <span
-                      className={`px-2 py-0.5 text-xs rounded-full font-semibold ${
+                      className={`px-2 py-0.5 text-xs rounded-full font-semibold text-right ${
                         (statusConfig[actionModal.session.status] || statusConfig.scheduled).color
                       }`}
                     >
@@ -399,9 +399,9 @@ export default function AdminSessionsPage() {
                     </span>
                   </div>
                   {actionModal.session.livekitRoomName && (
-                    <div className="flex justify-between pt-2">
-                      <span className="text-[hsl(var(--muted-foreground))]">Classroom Room</span>
-                      <span className="font-mono text-xs text-[hsl(var(--primary))]">{actionModal.session.livekitRoomName}</span>
+                    <div className="flex justify-between pt-2 gap-4">
+                      <span className="text-[hsl(var(--muted-foreground))] shrink-0">Classroom Room</span>
+                      <span className="font-mono text-xs text-[hsl(var(--primary))] text-right break-all">{actionModal.session.livekitRoomName}</span>
                     </div>
                   )}
                 </div>

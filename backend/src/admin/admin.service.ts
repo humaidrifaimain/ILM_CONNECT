@@ -248,6 +248,25 @@ export class AdminService {
     return updated;
   }
 
+  async updateLecturer(id: string, dto: any) {
+    const lecturerProfile = await this.prisma.lecturerProfile.findUnique({
+      where: { userId: id }
+    });
+    if (!lecturerProfile) {
+      throw new NotFoundException('Lecturer profile not found');
+    }
+    
+    const updateData: any = {};
+    if (dto.hourlyAvailabilityJson !== undefined) {
+      updateData.hourlyAvailabilityJson = dto.hourlyAvailabilityJson;
+    }
+    
+    return this.prisma.lecturerProfile.update({
+      where: { userId: id },
+      data: updateData,
+    });
+  }
+
   async updateUserStatus(id: string, status: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');

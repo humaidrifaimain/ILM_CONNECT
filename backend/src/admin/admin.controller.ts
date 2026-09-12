@@ -37,6 +37,11 @@ export class AdminController {
     return this.adminService.assignLecturer(id, dto.lecturerId, req.user?.id);
   }
 
+  @Patch('lecturers/:id')
+  updateLecturer(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updateLecturer(id, dto);
+  }
+
   @Patch('users/:id/status')
   updateUserStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.adminService.updateUserStatus(id, status);
