@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { use, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   LiveKitRoom,
   VideoConference,
@@ -114,10 +114,13 @@ function LecturerRoomLayout({ sessionInfo }: { sessionInfo: SessionInfo }) {
 }
 
 // ─── Main Lecturer Room Page ─────────────────────────────────────────────────
-export default function LecturerSessionRoom() {
-  const params = useParams();
+export default function LecturerSessionRoom({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: sessionId } = use(params);
   const router = useRouter();
-  const sessionId = params.id as string;
 
   const [state, setState] = useState<'loading' | 'connected' | 'error'>('loading');
   const [tokenData, setTokenData] = useState<TokenResponse | null>(null);
@@ -159,15 +162,6 @@ export default function LecturerSessionRoom() {
     }
   };
 
-  const effectiveSession: SessionInfo = sessionInfo || tokenData?.session || {
-    id: sessionId,
-    startsAt: new Date().toISOString(),
-    endsAt: new Date(Date.now() + 40 * 60 * 1000).toISOString(),
-    status: 'CANCELED',
-    studentName: 'Student',
-    lecturerName: 'Lecturer',
-  };
-
   const isCanceledError = error?.toLowerCase().includes('cancel');
 
   if (state === 'error') {
@@ -191,7 +185,7 @@ export default function LecturerSessionRoom() {
 
           <p className="text-[hsl(var(--muted-foreground))] text-sm mb-4 leading-relaxed">
             {isCanceledError
-              ? 'This session is currently marked as canceled or past in the database. You can reactivate this session to start teaching immediately, or launch the interactive classroom in simulation mode.'
+              ? 'This session is currently marked as canceled or past in the database. You can reactivate it to start teaching.'
               : error}
           </p>
 
@@ -221,27 +215,6 @@ export default function LecturerSessionRoom() {
                 )}
               </button>
             )}
-
-            <button
-              onClick={() => {
-                setTokenData({
-                  token: 'sim_token',
-                  wsUrl: '',
-                  isSimulation: true,
-                  roomName: `ilm-session-${sessionId}`,
-                  session: effectiveSession,
-                  warning: error || undefined,
-                });
-                setState('connected');
-              }}
-              className={`w-full py-3 px-5 rounded-xl text-sm font-semibold transition-all ${
-                isCanceledError
-                  ? 'border border-[hsl(var(--primary)/0.4)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.08)]'
-                  : 'text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg'
-              }`}
-            >
-              Start in Interactive Classroom
-            </button>
 
             <div className="flex gap-2.5 pt-1">
               <button

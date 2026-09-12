@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { use, useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   LiveKitRoom,
   VideoConference,
@@ -282,11 +282,13 @@ function PreJoinScreen({ onJoin, onBack, sessionInfo }: { onJoin: (mic: boolean,
 
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
-export default function SessionRoom() {
-  const params = useParams();
+export default function SessionRoom({
+  params,
+}: {
+  params: Promise<{ courseId: string; id: string }>;
+}) {
+  const { courseId, id: sessionId } = use(params);
   const router = useRouter();
-  const sessionId = params.id as string;
-  const courseId = (params?.courseId as string) || 'beginner-qaida';
 
   const [state, setState] = useState<'prejoin' | 'connecting' | 'connected' | 'error'>('prejoin');
   const [tokenData, setTokenData] = useState<TokenResponse | null>(null);
@@ -356,15 +358,6 @@ export default function SessionRoom() {
     }
   };
 
-  const effectiveSession: SessionInfo = sessionInfo || {
-    id: sessionId,
-    startsAt: new Date().toISOString(),
-    endsAt: new Date(Date.now() + 40 * 60 * 1000).toISOString(),
-    status: 'CANCELED',
-    studentName: 'Student',
-    lecturerName: 'Instructor',
-  };
-
   const isCanceledError = error?.toLowerCase().includes('cancel');
 
   // ── Error State ─────────────────────────────────────────────────────────
@@ -389,7 +382,7 @@ export default function SessionRoom() {
 
           <p className="text-[hsl(var(--muted-foreground))] text-sm mb-4 leading-relaxed">
             {isCanceledError
-              ? 'This session was previously canceled or marked as past in the database. You can reactivate this session now and enter the live classroom, or launch the interactive classroom in simulation mode.'
+              ? 'This session was previously canceled or marked as past in the database. You can reactivate it and enter the live classroom.'
               : error}
           </p>
 
@@ -419,27 +412,6 @@ export default function SessionRoom() {
                 )}
               </button>
             )}
-
-            <button
-              onClick={() => {
-                setTokenData({
-                  token: 'sim_token',
-                  wsUrl: '',
-                  isSimulation: true,
-                  roomName: `ilm-session-${sessionId}`,
-                  session: effectiveSession,
-                  warning: error || undefined,
-                });
-                setState('connected');
-              }}
-              className={`w-full py-3 px-5 rounded-xl text-sm font-semibold transition-all ${
-                isCanceledError
-                  ? 'border border-[hsl(var(--primary)/0.4)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.08)]'
-                  : 'text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg'
-              }`}
-            >
-              Enter in Interactive Classroom
-            </button>
 
             <div className="flex gap-2.5 pt-1">
               <button
@@ -487,11 +459,11 @@ export default function SessionRoom() {
       <InteractiveClassroom
         sessionInfo={tokenData.session}
         userRole="student"
-        courseId={params.courseId as string}
+        courseId={courseId}
         initialMic={initialMic}
         initialCam={initialCam}
         warning={tokenData.warning}
-        onLeave={() => router.push(`/student/courses/${params.courseId}/feedback`)}
+        onLeave={() => router.push(`/student/courses/${courseId}/feedback`)}
       />
     );
   }
@@ -510,7 +482,7 @@ export default function SessionRoom() {
         setState('error');
       }}
       onDisconnected={() => {
-        router.push(`/student/courses/${params.courseId}/feedback`);
+        router.push(`/student/courses/${courseId}/feedback`);
       }}
       style={{ height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 50 }}
     >
@@ -521,4 +493,3 @@ export default function SessionRoom() {
     </LiveKitRoom>
   );
 }
-
