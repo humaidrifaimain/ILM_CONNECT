@@ -28,8 +28,6 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
       ...authHeaders,
       ...options.headers,
     },
@@ -42,11 +40,18 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     let errorMessage = 'An error occurred';
-    let errorData: any = null;
+    let errorData: unknown = null;
     try {
       errorData = await response.json();
-      errorMessage = errorData.message || errorMessage;
-    } catch (e) {
+      if (
+        typeof errorData === 'object' &&
+        errorData !== null &&
+        'message' in errorData &&
+        typeof errorData.message === 'string'
+      ) {
+        errorMessage = errorData.message;
+      }
+    } catch {
       errorMessage = response.statusText;
     }
 
@@ -61,9 +66,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       }
     }
 
-    const error: any = new Error(errorMessage);
-    error.data = errorData;
-    error.status = response.status;
+    const error = Object.assign(new Error(errorMessage), {
+      data: errorData,
+      status: response.status,
+    });
     throw error;
   }
 
