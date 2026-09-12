@@ -1,0 +1,31 @@
+## Description
+
+This Pull Request introduces several critical fixes related to Authentication and Lecturer Availability Syncing to resolve recent issues encountered on the platform.
+
+### A to Z Fixes Included:
+
+1. **Auth Redirect Loop Fix**
+   - **Issue:** Cross-domain authentication was failing and causing redirect loops because third-party browser cookies were being blocked when navigating between different subdomains (e.g., separating front-end on Vercel and back-end on another host).
+   - **Resolution:** 
+     - Added robust handling to store the `ilm_token` securely in `localStorage` in addition to cookies.
+     - Updated the `apiFetch` wrapper (`frontend/src/lib/api.ts`) to automatically intercept and inject the `Bearer` token into the `Authorization` header for all requests.
+     - Modified `auth-context.tsx` and the Sign-in/Sign-up pages to pre-hydrate user states from `localStorage` immediately upon load, successfully eliminating redirect loops.
+
+2. **Presence & Heartbeat Authorization Fix**
+   - **Issue:** The online presence feature was sending heartbeat pings without proper authorization headers, causing backend 401s.
+   - **Resolution:** In `use-presence.ts`, added the proper `Authorization: Bearer <token>` header to the `/presence/heartbeat` and `/presence/offline` pings.
+
+3. **Backend CORS Configuration**
+   - **Issue:** The frontend deployed on Vercel was being blocked by CORS due to domain mismatches.
+   - **Resolution:** Explicitly added the new frontend Vercel deployment origin to the CORS allow-list in `backend/api/index.ts` and `backend/src/main.ts`.
+
+4. **Real-time Availability Syncing (Student Book Session Page)**
+   - **Issue:** When a lecturer updated their available slots in the Lecturer Dashboard, the changes were not immediately reflecting on the assigned student's "Book Session" page because Next.js/fetch was caching the `/availability/:id` API responses.
+   - **Resolution:** Disabled aggressive client-side caching by adding `cache: 'no-store'` and relevant cache-busting headers (`Cache-Control: no-cache, no-store, must-revalidate`, `Pragma: no-cache`) to the base configuration in `apiFetch`. The UI now reflects the latest real-time availability changes automatically every 10 seconds during the silent background polling.
+
+### Deployment Updates
+- **Note:** Vercel frontend has been synced and updated using the `humaid` branch.
+
+Please review and merge this into the main branch.
+
+_Note: This PR should be merged by the Tech Lead (TL) only._
