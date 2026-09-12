@@ -28,9 +28,12 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
       ...authHeaders,
       ...options.headers,
     },
+    cache: 'no-store', // Prevent Next.js from caching dynamic API requests
     // We include credentials for cookies as well as Bearer token header
     credentials: 'include', 
   };
