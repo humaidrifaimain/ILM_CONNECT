@@ -19,6 +19,7 @@ interface StudentSession {
   startsAt: string;
   endsAt: string;
   status: string;
+  livekitRoomName?: string | null;
   lecturer?: { fullName?: string };
   lesson?: { title?: string; module?: { learningPath?: { title?: string } } };
   notes?: { sharedNotes?: string };
@@ -47,9 +48,9 @@ export default function SessionFeedbackPage({ searchParams }: {
 
   const sessions = useMemo(
     () => bookings
-      .filter((session) => session.status !== 'CANCELED' && new Date(session.startsAt).getTime() <= Date.now())
+      .filter((session) => session.status !== 'CANCELED' && (session.livekitRoomName || session.id === requestedSessionId))
       .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime()),
-    [bookings],
+    [bookings, requestedSessionId],
   );
 
   useEffect(() => {
@@ -151,10 +152,10 @@ export default function SessionFeedbackPage({ searchParams }: {
 
           <div className="mt-7">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <label htmlFor="feedback-comment" className="text-base font-semibold">Tell us more <span className="font-normal text-[hsl(var(--muted-foreground))]">(optional)</span></label>
+              <label htmlFor="feedback-comment" className="text-base font-semibold">Write your review</label>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">{comment.length}/2000</span>
             </div>
-            <textarea id="feedback-comment" value={comment} maxLength={2000} rows={5} onChange={(event) => setComment(event.target.value)} placeholder="What worked well? Is there anything we could improve?" className="w-full resize-y rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4 text-sm leading-6 outline-none placeholder:text-[hsl(var(--muted-foreground))] focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]" />
+            <textarea id="feedback-comment" data-testid="session-review" autoFocus={Boolean(requestedSessionId)} value={comment} maxLength={2000} rows={6} onChange={(event) => setComment(event.target.value)} placeholder="Write what you liked about the lesson and anything the lecturer could improve..." className="w-full resize-y rounded-2xl border border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--background))] p-4 text-sm leading-6 outline-none placeholder:text-[hsl(var(--muted-foreground))] focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]" />
           </div>
 
           <button type="submit" disabled={!selectedSessionId || score === 0 || feedbackMutation.isPending} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 text-sm font-semibold text-[hsl(var(--primary-foreground))] shadow-lg shadow-[hsl(var(--primary)/0.18)] transition-colors hover:bg-[hsl(var(--primary)/0.9)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))] focus-visible:ring-offset-2">

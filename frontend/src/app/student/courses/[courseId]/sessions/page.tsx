@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock, Play, HelpCircle } from 'lucide-react';
+import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock, Play, HelpCircle, MessageSquareText } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
@@ -79,6 +79,8 @@ export default function StudentSessionsPage() {
         startsAt: b.startsAt,
         endsAt: b.endsAt || endsAtDate.toISOString(),
         lecturerName: b.lecturer?.fullName || b.lecturer?.name || 'Assigned Lecturer',
+        canReview: Boolean(b.livekitRoomName) && effectiveStatus !== 'canceled',
+        rating: b.rating,
       };
     });
   }, [rawBookings]);
@@ -232,6 +234,14 @@ export default function StudentSessionsPage() {
                       <Play className="h-3 w-3 fill-current" /> Join Class
                     </Link>
                   )}
+                  {s.canReview && (
+                    <Link
+                      href={`/student/courses/${courseId}/feedback?sessionId=${s.id}`}
+                      className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.06)] px-3 text-xs font-semibold text-[hsl(var(--primary))] transition-colors hover:bg-[hsl(var(--primary)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]"
+                    >
+                      <MessageSquareText className="h-3.5 w-3.5" /> {s.rating ? 'Edit Review' : 'Write Review'}
+                    </Link>
+                  )}
                 </div>
               </div>
             );
@@ -348,6 +358,11 @@ export default function StudentSessionsPage() {
 
             <div className="flex gap-2">
               <button onClick={closeDetail} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">Close</button>
+              {selectedSession.canReview && (
+                <Link href={`/student/courses/${courseId}/feedback?sessionId=${selectedSession.id}`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--primary)/0.07)] text-[hsl(var(--primary))] flex items-center justify-center gap-1.5">
+                  <MessageSquareText className="h-4 w-4" /> {selectedSession.rating ? 'Edit Review' : 'Write Review'}
+                </Link>
+              )}
               {(selectedSession.status === 'scheduled' || selectedSession.status === 'in_progress') && !selectedSession.isPast && (
                 <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center justify-center gap-1.5">
                   <Play className="h-4 w-4 fill-current" /> Join Session

@@ -17,11 +17,11 @@ export class FeedbackService {
 
     const session = await this.prisma.session.findFirst({
       where: { id: sessionId, studentId },
-      select: { id: true, lecturerId: true, startsAt: true, status: true },
+      select: { id: true, lecturerId: true, livekitRoomName: true, status: true },
     });
     if (!session) throw new NotFoundException('Session not found for this student');
-    if (session.startsAt > new Date() || session.status === 'CANCELED') {
-      throw new BadRequestException('Feedback is only available after a session begins');
+    if (!session.livekitRoomName || session.status === 'CANCELED') {
+      throw new BadRequestException('Feedback is available after joining a session');
     }
 
     const rating = await this.prisma.rating.upsert({
