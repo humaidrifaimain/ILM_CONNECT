@@ -56,6 +56,9 @@ export class EmailNotificationService {
     const resend = new Resend(apiKey);
     const fromAddress =
       process.env.RESEND_FROM_EMAIL || 'IlmConnect <onboarding@resend.dev>';
+    
+    this.logger.log(`[EmailNotification] Dispatching via Resend API from ${fromAddress} to ${toEmail}`);
+
     const { data, error } = await resend.emails.send({
       from: fromAddress,
       to: [toEmail],
@@ -66,9 +69,11 @@ export class EmailNotificationService {
 
     if (error) {
       this.logger.error(
-        `[EmailNotification] Resend rejected email to ${toEmail}: ${error.message}`,
+        `[EmailNotification] Resend rejected email to ${toEmail}. Error: ${error.name} - ${error.message}`,
       );
-      throw new Error(`Email delivery failed: ${error.message}`);
+      // We don't throw an error here, so we don't break the booking cancellation flow
+      // But we log it as an error
+      return false;
     }
 
     this.logger.log(

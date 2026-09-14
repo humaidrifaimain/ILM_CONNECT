@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import { Video, CheckCircle, XCircle, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock, Play, HelpCircle, MessageSquareText } from 'lucide-react';
+import { Video, CheckCircle, XCircle, X, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock, Play, HelpCircle, MessageSquareText, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { BookingCalendar } from '@/components/classroom/booking-calendar';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -42,11 +43,15 @@ export default function StudentSessionsPage() {
   const [showReschedule, setShowReschedule] = useState(false);
 
   const [isCanceling, setIsCanceling] = useState(false);
-  const [rescheduleDate, setRescheduleDate] = useState('');
-  const [rescheduleTime, setRescheduleTime] = useState('10:00 AM');
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
+
+  const [assignedLecturer, setAssignedLecturer] = useState<any>(null);
+  const [lecturerTimeshift, setLecturerTimeshift] = useState<number[]>([]);
+  const [availabilitySlots, setAvailabilitySlots] = useState<any[]>([]);
+  const [studentTier, setStudentTier] = useState<string>('STANDARD');
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('ilm-sessions-view');
@@ -79,11 +84,42 @@ export default function StudentSessionsPage() {
         startsAt: b.startsAt,
         endsAt: b.endsAt || endsAtDate.toISOString(),
         lecturerName: b.lecturer?.fullName || b.lecturer?.name || 'Assigned Lecturer',
+        lecturerId: b.lecturerId || b.lecturer?.userId,
+        lecturerDetails: b.lecturer,
         canReview: Boolean(b.livekitRoomName) && effectiveStatus !== 'canceled',
         rating: b.rating,
       };
     });
   }, [rawBookings]);
+
+  useEffect(() => {
+    if (showReschedule && selectedSession) {
+      setIsLoadingCalendar(true);
+      Promise.all([
+        apiFetch('/profile/student').catch(() => null),
+        apiFetch(`/availability/${selectedSession.lecturerId || 'placeholder'}`).catch(() => null),
+      ]).then(([profile, slots]) => {
+        if (profile) {
+          setStudentTier(profile.currentTier || 'STANDARD');
+          let lecturer = profile.assignedLecturer || selectedSession.lecturerDetails;
+          if (lecturer) {
+             setAssignedLecturer({
+               userId: lecturer.userId || lecturer.id,
+               name: lecturer.fullName || lecturer.name,
+               title: lecturer.qualifications || lecturer.title || 'Quran Instructor',
+               hourlyAvailabilityJson: lecturer.hourlyAvailabilityJson || []
+             });
+             const timeshiftHours = Array.isArray(lecturer.hourlyAvailabilityJson)
+               ? lecturer.hourlyAvailabilityJson.map(Number)
+               : [];
+             setLecturerTimeshift(timeshiftHours);
+          }
+        }
+        if (slots) setAvailabilitySlots(slots);
+        setIsLoadingCalendar(false);
+      });
+    }
+  }, [showReschedule, selectedSession]);
 
   const now = new Date();
   const [calYear, setCalYear] = useState(now.getFullYear());
@@ -124,30 +160,18 @@ export default function StudentSessionsPage() {
     }
   };
 
-  const handleRescheduleSession = async () => {
-    if (!selectedSession || !rescheduleDate) {
-      setActionErrorMessage('Please select a new date for rescheduling');
-      toast.error('Date Required', 'Please select a new date for rescheduling');
-      return;
-    }
+  const handleRescheduleConfirm = async (selectedSlots: string[]) => {
+    if (!selectedSession || selectedSlots.length === 0) return;
+    
     setIsRescheduling(true);
     setActionErrorMessage(null);
+    
     try {
-      let [hourStr, minStr] = rescheduleTime.split(' ')[0].split(':');
-      let hour = parseInt(hourStr, 10);
-      const isPM = rescheduleTime.includes('PM');
-      if (isPM && hour !== 12) hour += 12;
-      if (!isPM && hour === 12) hour = 0;
-
-      const [year, month, day] = rescheduleDate.split('-');
-      const startsAtDate = new Date(Number(year), Number(month) - 1, Number(day), hour, parseInt(minStr, 10));
-
-      if (startsAtDate <= new Date()) {
-        setActionErrorMessage('Please select a future date and time');
-        toast.error('Invalid Time', 'Please select a future date and time');
-        setIsRescheduling(false);
-        return;
-      }
+      const [dateStr, time] = selectedSlots[0].split('|');
+      const [year, month, day] = dateStr.split('-');
+      const [hourStr, minStr] = time.split(':');
+      
+      const startsAtDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hourStr), Number(minStr));
 
       await apiFetch(`/bookings/${selectedSession.id}/reschedule`, {
         method: 'POST',
@@ -202,7 +226,7 @@ export default function StudentSessionsPage() {
               <Calendar className="h-8 w-8 mx-auto text-[hsl(var(--muted-foreground))] opacity-50 mb-3" />
               <p className="text-sm font-medium">No sessions booked</p>
               <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 mb-4">You haven't scheduled any sessions yet.</p>
-              <Link href="/student/courses/beginner-qaida/sessions/book" className="text-sm font-semibold text-[hsl(var(--primary))] hover:underline">Book a session now</Link>
+              <Link href={`/student/courses/${courseId}/sessions/book`} className="text-sm font-semibold text-[hsl(var(--primary))] hover:underline">Book a session now</Link>
             </div>
           ) : sessions.map((s: any) => {
             const cfg = statusConfig[s.status] || statusConfig.scheduled;
@@ -431,12 +455,25 @@ export default function StudentSessionsPage() {
 
       {/* Reschedule Flow */}
       {showReschedule && selectedSession && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={closeDetail}>
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-1">Reschedule Session</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">Choose a new date and time for &ldquo;{selectedSession.subject}&rdquo;</p>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 overflow-y-auto" onClick={closeDetail}>
+          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl w-full max-w-4xl p-6 animate-fade-in my-8" onClick={e => e.stopPropagation()}>
+            
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <h3 className="font-bold text-lg mb-1">Reschedule Session</h3>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">Choose a new date and time for &ldquo;{selectedSession.subject}&rdquo;</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReschedule(false)}
+                className="p-1.5 rounded-xl text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-800 dark:text-blue-300 mb-4">
+            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-800 dark:text-blue-300 mb-6 w-fit">
               <strong>Policy:</strong> Students can reschedule sessions up to 12 hours before start time.
             </div>
             
@@ -451,73 +488,24 @@ export default function StudentSessionsPage() {
                     ⚠️ {actionErrorMessage}
                   </div>
                 )}
-                <div className="space-y-3 mb-4">
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 text-[hsl(var(--foreground))]">New Date</label>
-                    <input
-                      type="date"
-                      value={rescheduleDate}
-                      min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                      onChange={(e) => setRescheduleDate(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 text-[hsl(var(--foreground))]">New Time Slot</label>
-                    <select
-                      value={rescheduleTime}
-                      onChange={(e) => setRescheduleTime(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-                    >
-                      <optgroup label="10 to 2 Shift (Morning)">
-                        <option value="10:00 AM">10:00 – 10:40 AM</option>
-                        <option value="11:00 AM">11:00 – 11:40 AM</option>
-                        <option value="12:00 PM">12:00 – 12:40 PM</option>
-                        <option value="01:00 PM">01:00 – 01:40 PM</option>
-                      </optgroup>
-                      <optgroup label="2 to 6 Shift (Afternoon)">
-                        <option value="02:00 PM">02:00 – 02:40 PM</option>
-                        <option value="03:00 PM">03:00 – 03:40 PM</option>
-                        <option value="04:00 PM">04:00 – 04:40 PM</option>
-                        <option value="05:00 PM">05:00 – 05:40 PM</option>
-                      </optgroup>
-                      <optgroup label="6 to 10 Shift (Evening)">
-                        <option value="06:00 PM">06:00 – 06:40 PM</option>
-                        <option value="07:00 PM">07:00 – 07:40 PM</option>
-                        <option value="08:00 PM">08:00 – 08:40 PM</option>
-                        <option value="09:00 PM">09:00 – 09:40 PM</option>
-                      </optgroup>
-                    </select>
-                  </div>
-                </div>
 
-                <div className="mb-4">
-                  <Link
-                    href={`/student/courses/${courseId}/sessions/book`}
-                    className="text-xs text-[hsl(var(--primary))] hover:underline flex items-center gap-1 font-medium"
-                  >
-                    Or pick an open slot from visual calendar →
-                  </Link>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowReschedule(false)}
-                    disabled={isRescheduling}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRescheduleSession}
-                    disabled={isRescheduling || !rescheduleDate}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md disabled:opacity-50"
-                  >
-                    {isRescheduling ? 'Rescheduling...' : 'Confirm New Time'}
-                  </button>
-                </div>
+                {isLoadingCalendar ? (
+                  <div className="py-20 flex flex-col items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))] mb-4" />
+                    <p className="text-sm font-medium">Loading instructor availability...</p>
+                  </div>
+                ) : (
+                  <BookingCalendar 
+                    mode="reschedule"
+                    assignedLecturer={assignedLecturer || {}}
+                    lecturerTimeshift={lecturerTimeshift}
+                    availabilitySlots={availabilitySlots}
+                    studentBookings={rawBookings || []}
+                    studentTier={studentTier}
+                    onConfirm={handleRescheduleConfirm}
+                    isSubmitting={isRescheduling}
+                  />
+                )}
               </>
             )}
           </div>

@@ -190,22 +190,6 @@ export class BookingService {
           sessionDate: startsAt,
           sessionTimeFormatted,
         });
-
-        // In-app confirmation for Lecturer
-        await this.notificationService.createNotification(
-          lecturerId,
-          'BOOKING_CONFIRMED',
-          {
-            sessionId: session.id,
-            title: 'Session Scheduled',
-            message: `You scheduled a session with ${studentName} for ${startsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${sessionTimeFormatted}.`,
-            actorId: lecturerId,
-            actorName: lecturerName,
-            actorRole: 'LECTURER',
-            sessionDate: startsAt.toISOString(),
-          },
-          'IN_APP',
-        );
       } else {
         // Student booked session -> Lecturer is the recipient!
         if (lecturerUser) {
@@ -227,24 +211,6 @@ export class BookingService {
             sessionDate: startsAt,
             sessionTimeFormatted,
           });
-        }
-
-        // Also notify Student across In-App, Email, and WhatsApp
-        if (studentUser) {
-          await this.notificationService.createNotification(
-            studentId,
-            'BOOKING_CONFIRMED',
-            {
-              sessionId: session.id,
-              title: 'Session Confirmed',
-              message: `Your session with ${lecturerName} has been booked for ${startsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${sessionTimeFormatted}.`,
-              actorId: studentId,
-              actorName: studentName,
-              actorRole: 'STUDENT',
-              sessionDate: startsAt.toISOString(),
-            },
-            'IN_APP',
-          );
         }
       }
     } catch (notifErr: any) {
