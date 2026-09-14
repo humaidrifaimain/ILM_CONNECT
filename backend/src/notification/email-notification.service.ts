@@ -1,5 +1,6 @@
+import 'dotenv/config';
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Resend } from 'resend';
 
 export interface EmailDispatchPayload {
   toEmail: string;
@@ -8,7 +9,12 @@ export interface EmailDispatchPayload {
   subject: string;
   htmlContent: string;
   textContent: string;
-  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW' | 'GENERAL';
+  eventType:
+    | 'BOOKING_CONFIRMED'
+    | 'BOOKING_CANCELLED'
+    | 'BOOKING_RESCHEDULED'
+    | 'SESSION_STUDENT_NO_SHOW'
+    | 'GENERAL';
   metadata?: Record<string, any>;
 }
 
@@ -16,39 +22,58 @@ export interface EmailDispatchPayload {
 export class EmailNotificationService {
   private readonly logger = new Logger(EmailNotificationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
-
   /**
    * Dispatches an email notification.
-   * If SMTP or external provider credentials are configured in environment variables,
-   * it connects and sends. Otherwise, logs the full payload in structured format.
+   * Sends through Resend when RESEND_API_KEY is configured.
+   * In local environments without credentials, delivery is simulated.
    */
   async sendEmail(payload: EmailDispatchPayload): Promise<boolean> {
-    const { toEmail, recipientName, subject, textContent, htmlContent, eventType, metadata } = payload;
+    const {
+      toEmail,
+      recipientName,
+      subject,
+      textContent,
+      htmlContent,
+      eventType,
+      metadata,
+    } = payload;
 
     this.logger.log(
-      `[EmailNotification] Preparing email for ${recipientName} <${toEmail}> | Subject: "${subject}" | Event: ${eventType}`
+      `[EmailNotification] Preparing email for ${recipientName} <${toEmail}> | Subject: "${subject}" | Event: ${eventType}`,
     );
 
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    const fromAddress = process.env.SMTP_FROM || 'IlmConnect Notifications <notifications@ilmconnect.com>';
+    const apiKey = process.env.RESEND_API_KEY;
 
-    if (smtpHost && smtpUser && smtpPass) {
-      try {
-        // Dynamic nodemailer check if installed or custom HTTP transport
-        this.logger.log(`[EmailNotification] Dispatching via SMTP host: ${smtpHost} to ${toEmail}`);
-        // When real SMTP credentials are supplied by user, standard transport sends here.
-      } catch (err: any) {
-        this.logger.error(`[EmailNotification] Failed to send live email to ${toEmail}: ${err.message}`);
-      }
-    } else {
+    if (!apiKey) {
       this.logger.log(
         `[EmailNotification] (Simulated Mode - credentials pending) Email to ${toEmail}:\n` +
-        `Subject: ${subject}\nBody: ${textContent}`
+          `Subject: ${subject}\nBody: ${textContent}`,
       );
+
+      return true;
     }
+
+    const resend = new Resend(apiKey);
+    const fromAddress =
+      process.env.RESEND_FROM_EMAIL || 'IlmConnect <onboarding@resend.dev>';
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [toEmail],
+      subject,
+      html: htmlContent,
+      text: textContent,
+    });
+
+    if (error) {
+      this.logger.error(
+        `[EmailNotification] Resend rejected email to ${toEmail}: ${error.message}`,
+      );
+      throw new Error(`Email delivery failed: ${error.message}`);
+    }
+
+    this.logger.log(
+      `[EmailNotification] Resend accepted email to ${toEmail} with id ${data?.id}`,
+    );
 
     return true;
   }
@@ -57,7 +82,11 @@ export class EmailNotificationService {
    * Generates email template for session events
    */
   buildBookingEmail(params: {
-    eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW';
+    eventType:
+      | 'BOOKING_CONFIRMED'
+      | 'BOOKING_CANCELLED'
+      | 'BOOKING_RESCHEDULED'
+      | 'SESSION_STUDENT_NO_SHOW';
     recipientName: string;
     actorName: string;
     actorRole: string;
@@ -81,7 +110,8 @@ export class EmailNotificationService {
       actionUrl = 'http://localhost:3000',
     } = params;
 
-    const roleLabel = actorRole.toLowerCase() === 'lecturer' ? 'Ustad / Lecturer' : 'Student';
+    const roleLabel =
+      actorRole.toLowerCase() === 'lecturer' ? 'Ustad / Lecturer' : 'Student';
 
     let subject = '';
     let headline = '';
@@ -168,16 +198,24 @@ The IlmConnect Team
             <td style="padding: 6px 0; color: #64748b;">Time:</td>
             <td style="padding: 6px 0; color: ${statusColor}; font-weight: 700;">${sessionTimeFormatted}</td>
           </tr>
-          ${previousTimeFormatted ? `
+          ${
+            previousTimeFormatted
+              ? `
           <tr>
             <td style="padding: 6px 0; color: #64748b;">Previous Time:</td>
             <td style="padding: 6px 0; color: #94a3b8; text-decoration: line-through;">${previousTimeFormatted}</td>
-          </tr>` : ''}
-          ${reason ? `
+          </tr>`
+              : ''
+          }
+          ${
+            reason
+              ? `
           <tr>
             <td style="padding: 6px 0; color: #64748b;">Note:</td>
             <td style="padding: 6px 0; color: #0f172a;">${reason}</td>
-          </tr>` : ''}
+          </tr>`
+              : ''
+          }
         </table>
       </div>
 

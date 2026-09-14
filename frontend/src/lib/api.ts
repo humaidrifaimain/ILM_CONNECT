@@ -15,7 +15,11 @@ export function setAuthToken(token: string | null) {
   }
 }
 
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+export interface ApiFetchOptions extends RequestInit {
+  skipRedirect?: boolean;
+}
+
+export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) {
   const token = getAuthToken();
   const authHeaders: Record<string, string> = {};
 
@@ -60,7 +64,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ilm_token');
         localStorage.removeItem('ilm_user');
-        if (!window.location.pathname.startsWith('/auth')) {
+        if (!options.skipRedirect && !window.location.pathname.startsWith('/auth')) {
           window.location.href = '/auth/signin';
         }
       }

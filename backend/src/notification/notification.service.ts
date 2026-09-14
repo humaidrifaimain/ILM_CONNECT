@@ -18,7 +18,11 @@ export interface LiveNotificationEvent {
 }
 
 export interface DispatchBookingNotificationParams {
-  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW';
+  eventType:
+    | 'BOOKING_CONFIRMED'
+    | 'BOOKING_CANCELLED'
+    | 'BOOKING_RESCHEDULED'
+    | 'SESSION_STUDENT_NO_SHOW';
   sessionId: string;
   actor: {
     id: string;
@@ -56,7 +60,9 @@ export class NotificationService {
    */
   getNotificationStream(userId: string): Observable<{ data: any }> {
     const pings$ = interval(25000).pipe(
-      map(() => ({ data: { type: 'HEARTBEAT', timestamp: new Date().toISOString() } })),
+      map(() => ({
+        data: { type: 'HEARTBEAT', timestamp: new Date().toISOString() },
+      })),
     );
 
     const userEvents$ = this.notificationEvents$.pipe(
@@ -88,7 +94,12 @@ export class NotificationService {
     });
   }
 
-  async createNotification(userId: string, type: string, payload: any, channel: string = 'IN_APP') {
+  async createNotification(
+    userId: string,
+    type: string,
+    payload: any,
+    channel: string = 'IN_APP',
+  ) {
     const notification = await this.prisma.notification.create({
       data: {
         userId,
@@ -137,7 +148,9 @@ export class NotificationService {
    * 2. Email Notification (Formatted HTML & Plain Text)
    * 3. WhatsApp Notification (Formatted E.164 message)
    */
-  async dispatchBookingNotification(params: DispatchBookingNotificationParams): Promise<void> {
+  async dispatchBookingNotification(
+    params: DispatchBookingNotificationParams,
+  ): Promise<void> {
     const {
       eventType,
       sessionId,
@@ -174,7 +187,7 @@ export class NotificationService {
     }
 
     this.logger.log(
-      `[DispatchNotification] ${eventType} from ${actor.name} (${actor.role}) to ${recipient.name} (${recipient.role})`
+      `[DispatchNotification] ${eventType} from ${actor.name} (${actor.role}) to ${recipient.name} (${recipient.role})`,
     );
 
     // 1. In-System Live Notification (stored in DB and pushed immediately via SSE)
@@ -203,25 +216,30 @@ export class NotificationService {
       this.logger.error(`Failed to create in-app notification: ${e.message}`);
     }
 
-    const actionUrl = recipient.role.toUpperCase() === 'LECTURER'
-      ? 'http://localhost:3000/lecturer/sessions'
-      : 'http://localhost:3000/student/dashboard';
+    const frontendUrl = (
+      process.env.FRONTEND_URL || 'http://localhost:3000'
+    ).replace(/\/$/, '');
+    const actionUrl =
+      recipient.role.toUpperCase() === 'LECTURER'
+        ? `${frontendUrl}/lecturer/sessions`
+        : `${frontendUrl}/student/dashboard`;
 
     // 2. Email Notification Dispatch
     if (recipient.email) {
       try {
-        const { subject, htmlContent, textContent } = this.emailService.buildBookingEmail({
-          eventType,
-          recipientName: recipient.name,
-          actorName: actor.name,
-          actorRole: actor.role,
-          subjectTopic,
-          sessionDateFormatted,
-          sessionTimeFormatted,
-          previousTimeFormatted,
-          reason,
-          actionUrl,
-        });
+        const { subject, htmlContent, textContent } =
+          this.emailService.buildBookingEmail({
+            eventType,
+            recipientName: recipient.name,
+            actorName: actor.name,
+            actorRole: actor.role,
+            subjectTopic,
+            sessionDateFormatted,
+            sessionTimeFormatted,
+            previousTimeFormatted,
+            reason,
+            actionUrl,
+          });
 
         await this.emailService.sendEmail({
           toEmail: recipient.email,

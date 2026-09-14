@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 2. Validate session with backend
     const checkAuth = async () => {
       try {
-        const userData = await apiFetch('/auth/me');
+        const userData = await apiFetch('/auth/me', { skipRedirect: true });
         setUser(userData);
         if (typeof window !== 'undefined') {
           localStorage.setItem('ilm_user', JSON.stringify(userData));
