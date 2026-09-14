@@ -223,7 +223,7 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
   // 2. Secondary: Fast Polling fallback (every 7 seconds)
   const { data: latestNotifications } = useQuery<any[]>({
     queryKey: ['liveNotificationPoll'],
-    queryFn: () => apiFetch('/notifications'),
+    queryFn: () => apiFetch('/notifications', { skipRedirect: true }),
     refetchInterval: 7000,
     enabled: !!user,
   });
