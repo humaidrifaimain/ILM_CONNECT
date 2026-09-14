@@ -226,6 +226,14 @@ export default function StudentSessionsPage() {
 
                 <div className="flex items-center gap-2.5 self-end sm:self-center flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                   <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${cfg.color}`}>{cfg.label}</span>
+                  {s.status === 'scheduled' && !s.isPast && !isWithinLockWindow(s.startsAt) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedSession(s); setShowReschedule(true); }}
+                      className="px-3.5 py-1.5 rounded-lg border border-[hsl(var(--primary)/0.3)] text-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.05)] hover:bg-[hsl(var(--primary)/0.1)] transition-colors text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      <Edit className="h-3 w-3" /> Reschedule
+                    </button>
+                  )}
                   {canJoin && (
                     <Link
                       href={`/student/courses/${courseId}/sessions/${s.id}/room`}
@@ -356,19 +364,17 @@ export default function StudentSessionsPage() {
               </>
             )}
 
-            <div className="flex gap-2">
-              <button onClick={closeDetail} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">Close</button>
+            <div className="flex gap-2 mt-2">
               {selectedSession.canReview && (
-                <Link href={`/student/courses/${courseId}/feedback?sessionId=${selectedSession.id}`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--primary)/0.07)] text-[hsl(var(--primary))] flex items-center justify-center gap-1.5">
+                <Link href={`/student/courses/${courseId}/feedback?sessionId=${selectedSession.id}`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--primary)/0.07)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.12)] transition-colors flex items-center justify-center gap-1.5">
                   <MessageSquareText className="h-4 w-4" /> {selectedSession.rating ? 'Edit Review' : 'Write Review'}
                 </Link>
               )}
               {(selectedSession.status === 'scheduled' || selectedSession.status === 'in_progress') && !selectedSession.isPast && (
-                <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center justify-center gap-1.5">
+                <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all flex items-center justify-center gap-1.5">
                   <Play className="h-4 w-4 fill-current" /> Join Session
                 </Link>
               )}
-
             </div>
           </div>
         </div>
