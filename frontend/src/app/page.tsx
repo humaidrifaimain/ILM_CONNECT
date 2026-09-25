@@ -1044,25 +1044,26 @@ export default function HomePage() {
               className="relative min-h-[520px] overflow-hidden rounded-[34px] border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.12)] sm:min-h-[560px] sm:p-11 lg:p-12"
             >
               <Image
-                src="/images/about-waitlist-quran.jpg"
+                src="/images/home-sacred-journey-quran.jpg"
                 alt=""
                 fill
                 aria-hidden="true"
-                className="object-cover"
+                className="object-cover object-[58%_52%]"
                 sizes="(max-width: 1024px) 100vw, 960px"
               />
-              <div className="absolute inset-0 bg-[#083f33]/70" />
-              <div className="absolute inset-0 bg-gradient-to-b from-[#071f19]/84 via-[#083f33]/66 to-[#083f33]/92" />
+              <div className="absolute inset-0 bg-[#062f27]/36" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#071f19]/92 via-[#073d32]/58 to-[#073d32]/20" />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#071f19]/48 via-transparent to-[#071f19]/66" />
               <Image
                 src="/images/ilmbit-mark-white.png"
                 alt=""
                 width={420}
                 height={420}
                 aria-hidden="true"
-                className="pointer-events-none absolute -bottom-16 -right-14 h-72 w-72 select-none object-contain opacity-[0.13] sm:h-80 sm:w-80 lg:h-[360px] lg:w-[360px]"
+                className="pointer-events-none absolute -bottom-14 -right-12 h-72 w-72 select-none object-contain opacity-[0.18] mix-blend-screen sm:h-80 sm:w-80 lg:h-[390px] lg:w-[390px]"
               />
 
-              <div className="relative z-10 flex min-h-[456px] flex-col justify-between sm:min-h-[478px]">
+              <div className="relative z-10 flex min-h-[456px] flex-col justify-start sm:min-h-[478px]">
                 <div className="max-w-[620px]">
                   <h2 className="mb-6 text-4xl font-black leading-[0.94] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
                     Begin Your Sacred Journey of Knowledge
@@ -1070,15 +1071,13 @@ export default function HomePage() {
                   <p className="max-w-xl text-base leading-relaxed text-emerald-50/78 sm:text-lg">
                     Tell us what you want to learn. We will use it to prepare the right scholar match and schedule.
                   </p>
-                </div>
-
-                <div className="max-w-[540px] border-t border-white/22 pt-6">
-                  <h3 className="text-base font-bold tracking-tight text-white">
-                    Priority matching
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-emerald-50/68">
-                    No credit card required. We will contact you when a suitable scholar schedule opens.
-                  </p>
+                  <Link
+                    href="/about#waitlist"
+                    className="mt-8 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-7 text-sm font-bold text-[#006B50] shadow-[0_14px_32px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f8fffc] hover:shadow-[0_18px_40px_rgba(0,0,0,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                  >
+                    Join the Waitlist
+                    <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                  </Link>
                 </div>
               </div>
             </motion.div>
