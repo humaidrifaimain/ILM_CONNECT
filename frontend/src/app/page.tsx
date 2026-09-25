@@ -1041,44 +1041,45 @@ export default function HomePage() {
               whileInView="visible"
               viewport={{ once: false, amount: 0.2 }}
               variants={sectionReveal}
-              className="relative grid gap-8 overflow-hidden rounded-3xl border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.10)] sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-12 lg:text-left"
+              className="relative min-h-[520px] overflow-hidden rounded-[34px] border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.12)] sm:min-h-[560px] sm:p-11 lg:p-12"
             >
+              <Image
+                src="/images/about-waitlist-quran.jpg"
+                alt=""
+                fill
+                aria-hidden="true"
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 960px"
+              />
+              <div className="absolute inset-0 bg-[#083f33]/70" />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#071f19]/84 via-[#083f33]/66 to-[#083f33]/92" />
               <Image
                 src="/images/ilmbit-mark-white.png"
                 alt=""
-                width={360}
-                height={360}
+                width={420}
+                height={420}
                 aria-hidden="true"
-                className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 select-none object-contain opacity-[0.075] sm:h-80 sm:w-80 lg:-bottom-20 lg:-right-24"
+                className="pointer-events-none absolute -bottom-16 -right-14 h-72 w-72 select-none object-contain opacity-[0.13] sm:h-80 sm:w-80 lg:h-[360px] lg:w-[360px]"
               />
 
-              <div className="relative z-10 max-w-2xl mx-auto lg:mx-0">
-                <h2 className="mb-4 text-3xl font-bold tracking-[-0.035em] text-white sm:text-4xl lg:text-5xl">
-                  Begin Your Sacred Journey of Knowledge
-                </h2>
-                <p className="text-sm sm:text-base lg:text-lg text-emerald-50/75 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                  Join our priority waitlist for personalized 1:1 sessions with certified Sri Lankan scholars. Reserve early matching with a complimentary 30-minute trial session.
-                </p>
-                <div className="flex justify-center lg:justify-start">
-                  <Link
-                    href="/about#waitlist"
-                    className="brand-button brand-button-inverse px-8"
-                  >
-                    <span>Join the Waitlist</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
+              <div className="relative z-10 flex min-h-[456px] flex-col justify-between sm:min-h-[478px]">
+                <div className="max-w-[620px]">
+                  <h2 className="mb-6 text-4xl font-black leading-[0.94] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
+                    Begin Your Sacred Journey of Knowledge
+                  </h2>
+                  <p className="max-w-xl text-base leading-relaxed text-emerald-50/78 sm:text-lg">
+                    Tell us what you want to learn. We will use it to prepare the right scholar match and schedule.
+                  </p>
                 </div>
-              </div>
 
-              <div className="relative z-10 min-h-[260px] overflow-hidden rounded-[28px] border border-white/12 bg-white/5 shadow-[0_22px_54px_rgba(0,0,0,0.22)] sm:min-h-[320px] lg:min-h-[360px]">
-                <Image
-                  src="/images/about-waitlist-quran.jpg"
-                  alt="Student following Quran recitation in a quiet study setting"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 420px"
-                />
-                <div className="absolute inset-0 bg-gradient-to-tr from-[#083f33]/55 via-transparent to-[#10bf8d]/10" />
+                <div className="max-w-[540px] border-t border-white/22 pt-6">
+                  <h3 className="text-base font-bold tracking-tight text-white">
+                    Priority matching
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-emerald-50/68">
+                    No credit card required. We will contact you when a suitable scholar schedule opens.
+                  </p>
+                </div>
               </div>
             </motion.div>
           </div>
