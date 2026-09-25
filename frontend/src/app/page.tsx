@@ -1041,7 +1041,7 @@ export default function HomePage() {
               whileInView="visible"
               viewport={{ once: false, amount: 0.2 }}
               variants={sectionReveal}
-              className="relative min-h-[520px] overflow-hidden rounded-[34px] border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.12)] sm:min-h-[560px] sm:p-11 lg:p-12"
+              className="relative min-h-[420px] overflow-hidden rounded-[34px] border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.12)] sm:min-h-[440px] sm:p-10 lg:p-11"
             >
               <Image
                 src="/images/home-sacred-journey-quran.jpg"
@@ -1060,10 +1060,10 @@ export default function HomePage() {
                 width={420}
                 height={420}
                 aria-hidden="true"
-                className="pointer-events-none absolute -bottom-14 -right-12 h-72 w-72 select-none object-contain opacity-[0.18] mix-blend-screen sm:h-80 sm:w-80 lg:h-[390px] lg:w-[390px]"
+                className="pointer-events-none absolute -bottom-16 -right-12 h-64 w-64 select-none object-contain opacity-[0.18] mix-blend-screen sm:h-72 sm:w-72 lg:h-[320px] lg:w-[320px]"
               />
 
-              <div className="relative z-10 flex min-h-[456px] flex-col justify-start sm:min-h-[478px]">
+              <div className="relative z-10 flex min-h-[344px] flex-col justify-start sm:min-h-[360px]">
                 <div className="max-w-[620px]">
                   <h2 className="mb-6 text-4xl font-black leading-[0.94] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
                     Begin Your Sacred Journey of Knowledge
