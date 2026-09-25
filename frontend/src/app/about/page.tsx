@@ -5,6 +5,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Check, ChevronRight } from 'lucide-react';
 import { motion, useInView, type Variants } from 'framer-motion';
+import CountryPhoneInput from '@/components/country-phone-input';
+import {
+  formatInternationalPhone,
+  getCountryCallingCode,
+  type CountryCallingCode,
+} from '@/lib/country-calling-codes';
 
 const fadeUp: Variants = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0 } };
 const sectionReveal: Variants = {
@@ -235,6 +241,7 @@ export default function AboutPage() {
   const [waitlistName, setWaitlistName] = useState('');
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistPhone, setWaitlistPhone] = useState('');
+  const [waitlistPhoneCountry, setWaitlistPhoneCountry] = useState<CountryCallingCode>(() => getCountryCallingCode('LK'));
   const [waitlistCourse, setWaitlistCourse] = useState('Tajweed Quran Recitation');
   const [waitlistPace, setWaitlistPace] = useState<'standard' | 'fast-track'>('standard');
   const [waitlistNotes, setWaitlistNotes] = useState('');
@@ -246,10 +253,15 @@ export default function AboutPage() {
     if (!waitlistName || !waitlistEmail) return;
     setIsWaitlistSubmitting(true);
     try {
+      const formattedPhone = formatInternationalPhone(waitlistPhone, waitlistPhoneCountry);
       const waitlistEntry = {
         fullName: waitlistName,
         email: waitlistEmail,
-        phone: waitlistPhone,
+        phone: formattedPhone,
+        rawPhone: waitlistPhone,
+        phoneCountry: waitlistPhoneCountry.name,
+        phoneCountryCode: waitlistPhoneCountry.iso2,
+        phoneDialCode: waitlistPhoneCountry.dialCode,
         course: waitlistCourse,
         pace: waitlistPace,
         notes: waitlistNotes,
@@ -719,12 +731,14 @@ export default function AboutPage() {
                   </label>
                   <label className="block text-xs font-semibold text-stone-700">
                     Phone or WhatsApp
-                    <input
-                      type="tel"
+                    <CountryPhoneInput
                       value={waitlistPhone}
-                      onChange={(e) => setWaitlistPhone(e.target.value)}
-                      placeholder="+1 (555) 000-0000"
-                      className="mt-1 block w-full border-0 border-b border-stone-300 bg-transparent px-0 py-2 text-sm text-stone-950 placeholder:text-stone-400 focus:border-[#095F46] focus:outline-none focus:ring-0"
+                      onChange={setWaitlistPhone}
+                      selectedIso={waitlistPhoneCountry.iso2}
+                      onCountryChange={setWaitlistPhoneCountry}
+                      wrapperClassName="rounded-none border-0 border-b border-stone-300 bg-transparent focus-within:ring-0 focus-within:border-[#095F46]"
+                      selectClassName="w-[118px] px-0 pr-2 py-2 border-stone-200 bg-transparent"
+                      inputClassName="px-3 py-2 bg-transparent"
                     />
                   </label>
                 </div>

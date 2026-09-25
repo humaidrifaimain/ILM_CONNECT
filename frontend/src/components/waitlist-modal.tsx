@@ -5,6 +5,12 @@ import Image from 'next/image';
 import { X, Check, Loader2, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Portal } from '@/components/ui/portal';
+import CountryPhoneInput from '@/components/country-phone-input';
+import {
+  formatInternationalPhone,
+  getCountryCallingCode,
+  type CountryCallingCode,
+} from '@/lib/country-calling-codes';
 
 interface WaitlistModalProps {
   isOpen: boolean;
@@ -20,6 +26,7 @@ export default function WaitlistModal({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<CountryCallingCode>(() => getCountryCallingCode('LK'));
   const [course, setCourse] = useState(defaultCourse);
   const [pace, setPace] = useState<'standard' | 'fast-track'>('standard');
   const [notes, setNotes] = useState('');
@@ -31,13 +38,18 @@ export default function WaitlistModal({
     if (!fullName || !email) return;
 
     setIsSubmitting(true);
+    const formattedPhone = formatInternationalPhone(phone, phoneCountry);
 
     // Simulate connection / store locally until backend email provider is connected
     try {
       const waitlistEntry = {
         fullName,
         email,
-        phone,
+        phone: formattedPhone,
+        rawPhone: phone,
+        phoneCountry: phoneCountry.name,
+        phoneCountryCode: phoneCountry.iso2,
+        phoneDialCode: phoneCountry.dialCode,
         course,
         pace,
         notes,
@@ -63,6 +75,7 @@ export default function WaitlistModal({
       setFullName('');
       setEmail('');
       setPhone('');
+      setPhoneCountry(getCountryCallingCode('LK'));
       setNotes('');
     }, 300);
   };
@@ -141,7 +154,7 @@ export default function WaitlistModal({
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
                       Email Address <span className="text-rose-500">*</span>
                     </label>
@@ -155,16 +168,15 @@ export default function WaitlistModal({
                     />
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
                       Phone / WhatsApp
                     </label>
-                    <input
-                      type="tel"
+                    <CountryPhoneInput
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1 (555) 000-0000"
-                      className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50/50 text-sm text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#095F46]"
+                      onChange={setPhone}
+                      selectedIso={phoneCountry.iso2}
+                      onCountryChange={setPhoneCountry}
                     />
                   </div>
                 </div>

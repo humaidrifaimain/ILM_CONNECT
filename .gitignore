@@ -39,4 +39,8 @@ prisma/*.db
 next-env.d.ts
 .vercel
 .env*
+!.env.example
 output/
+
+# Playwright
+.playwright-cli/

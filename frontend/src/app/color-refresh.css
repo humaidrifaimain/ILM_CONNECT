@@ -202,10 +202,10 @@ main > section:has(.hero-brand-video) > div:first-child > div:last-child {
 }
 
 .bg-sanctuary-light > #testimonials [aria-label^="Testimonial "] button {
-  background-color: var(--site-dark-line);
+  background-color: rgb(255 255 255 / 0.35);
 }
 
-.bg-sanctuary-light > #testimonials [aria-label^="Testimonial "] button[class*="w-7"] {
+.bg-sanctuary-light > #testimonials [aria-label^="Testimonial "] button:is([class*="w-7"], [class*="w-8"]) {
   background-color: var(--site-on-dark);
 }
 

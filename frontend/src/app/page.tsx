@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence, useInView, type Variants } from 'framer-motion';
 import WaitlistModal from '@/components/waitlist-modal';
+import HowItWorks from '@/components/how-it-works';
 
 const sectionReveal: Variants = {
   hidden: { opacity: 0, y: 32 },
@@ -130,44 +131,7 @@ const platformStats = [
 ];
 
 
-const howItWorksSteps = [
-  {
-    num: '1',
-    title: 'Create Your Account',
-    desc: 'Register in under 2 minutes, personalize your student profile, and begin your Islamic learning journey.',
-    image: '/images/how-it-works-step-1-v3.jpg',
-    imageAlt: 'Ilmbit student account registration on laptop screen',
-    buttonText: 'Get Started',
-    buttonLink: '/about#waitlist',
-  },
-  {
-    num: '2',
-    title: 'Choose Course Plan',
-    desc: 'Select your learning path from beginner Qaida to Tajweed, with flexible Standard or Fast Track 1:1 plans.',
-    image: '/images/how-it-works-step-2-v3.jpg',
-    imageAlt: 'Ilmbit course plans and pricing on laptop screen',
-    buttonText: 'View Plans',
-    buttonLink: '#courses',
-  },
-  {
-    num: '3',
-    title: 'Get Matched With Scholar',
-    desc: 'Our academic team reviews your goals to pair you with an ideal verified, Sanad-certified Islamic scholar.',
-    image: '/images/how-it-works-step-3-v4.jpg',
-    imageAlt: 'Academic team matches student with verified Islamic scholar on Ilmbit laptop screen',
-    buttonText: 'How Matching Works',
-    buttonLink: '/about',
-  },
-  {
-    num: '4',
-    title: 'Start 1:1 Learning',
-    desc: 'Attend interactive 1:1 online sessions with your scholar, practicing Quran recitation with Tajweed correction.',
-    image: '/images/how-it-works-step-4-v4.jpg',
-    imageAlt: 'Student actively learning Quran 1:1 online with certified scholar on laptop screen',
-    buttonText: 'Join Classroom',
-    buttonLink: '/about#waitlist',
-  },
-];
+
 
 
 
@@ -238,14 +202,14 @@ const diasporaTestimonials: TestimonialStory[] = [
   },
 ];
 
+const TESTIMONIAL_ROTATION_MS = 6500;
+
 export default function HomePage() {
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [selectedStory, setSelectedStory] = useState<TestimonialStory | null>(null);
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
-
-  const visibleTestimonials = [0, 1, 2].map(
-    (offset) => diasporaTestimonials[(testimonialIndex + offset) % diasporaTestimonials.length],
-  );
+  const testimonialRef = useRef<HTMLDivElement>(null);
+  const testimonialsInView = useInView(testimonialRef, { once: false, amount: 0.35 });
 
   const changeTestimonial = (direction: 'previous' | 'next') => {
     setTestimonialIndex((current) => {
@@ -255,6 +219,21 @@ export default function HomePage() {
       return (current + 1) % diasporaTestimonials.length;
     });
   };
+
+  useEffect(() => {
+    if (!testimonialsInView || selectedStory) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setTestimonialIndex((current) => (current + 1) % diasporaTestimonials.length);
+    }, TESTIMONIAL_ROTATION_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [testimonialIndex, testimonialsInView, selectedStory]);
+
+  const activeTestimonial = diasporaTestimonials[testimonialIndex];
+  const activePortrait = activeTestimonial.avatar.replace('w=120&h=120', 'w=800&h=900');
 
   return (
     <>
@@ -537,7 +516,7 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* HOW IT WORKS SECTION — Alternating Horizontal Timeline (Reference Inspired) */}
+        {/* HOW IT WORKS SECTION — Interactive four-step guide */}
         {/* ========================================================================= */}
         <section
           id="how-it-works"
@@ -560,73 +539,7 @@ export default function HomePage() {
               </p>
             </motion.div>
 
-            <div className="hidden lg:block relative py-6">
-              <div className="absolute top-[48%] left-8 right-8 h-[2px] bg-stone-300 -translate-y-1/2 z-0" />
-              <div className="grid grid-cols-4 gap-6 xl:gap-8 relative z-10 items-start">
-                <div className="flex flex-col items-center">
-                  <motion.div initial="hidden" whileInView="visible" viewport={{ once: false, amount: 0.2 }} variants={sectionReveal} className="w-full bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(9,95,70,0.12)] hover:border-[#095F46]/50 transition-all duration-300 flex flex-col group">
-                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-stone-100 mb-4 bg-stone-50">
-                      <Image src={howItWorksSteps[0].image} alt={howItWorksSteps[0].imageAlt} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 1200px) 25vw, 320px" />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-bold text-stone-900 mb-2 tracking-tight group-hover:text-[#095F46] transition-colors leading-snug">{howItWorksSteps[0].title}</h3>
-                    <p className="text-sm text-stone-500 leading-relaxed mb-3.5">{howItWorksSteps[0].desc}</p>
-                    <Link href={howItWorksSteps[0].buttonLink} className="inline-flex items-center text-sm font-bold text-[#095F46] hover:text-[#074c38] gap-1.5 group-hover:translate-x-1.5 transition-all">{howItWorksSteps[0].buttonText}<ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
-                  </motion.div>
-                  <div className="w-[2px] h-8 bg-stone-300" />
-                  <div className="w-10 h-10 rounded-full bg-[#095F46] text-white font-black text-sm flex items-center justify-center shadow-md ring-4 ring-[#f6f8f6]">1</div>
-                </div>
-
-                <div className="flex flex-col items-center pt-20">
-                  <div className="w-10 h-10 rounded-full bg-[#095F46] text-white font-black text-sm flex items-center justify-center shadow-md ring-4 ring-[#f6f8f6]">2</div>
-                  <div className="w-[2px] h-8 bg-stone-300" />
-                  <motion.div initial="hidden" whileInView="visible" viewport={{ once: false, amount: 0.2 }} variants={sectionReveal} className="w-full bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(9,95,70,0.12)] hover:border-[#095F46]/50 transition-all duration-300 flex flex-col group">
-                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-stone-100 mb-4 bg-stone-50"><Image src={howItWorksSteps[1].image} alt={howItWorksSteps[1].imageAlt} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 1200px) 25vw, 320px" /></div>
-                    <h3 className="text-lg sm:text-xl font-bold text-stone-900 mb-2 tracking-tight group-hover:text-[#095F46] transition-colors leading-snug">{howItWorksSteps[1].title}</h3>
-                    <p className="text-sm text-stone-500 leading-relaxed mb-3.5">{howItWorksSteps[1].desc}</p>
-                    <Link href={howItWorksSteps[1].buttonLink} className="inline-flex items-center text-sm font-bold text-[#095F46] hover:text-[#074c38] gap-1.5 group-hover:translate-x-1.5 transition-all">{howItWorksSteps[1].buttonText}<ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
-                  </motion.div>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <motion.div initial="hidden" whileInView="visible" viewport={{ once: false, amount: 0.2 }} variants={sectionReveal} className="w-full bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(9,95,70,0.12)] hover:border-[#095F46]/50 transition-all duration-300 flex flex-col group">
-                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-stone-100 mb-4 bg-stone-50"><Image src={howItWorksSteps[2].image} alt={howItWorksSteps[2].imageAlt} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 1200px) 25vw, 320px" /></div>
-                    <h3 className="text-lg sm:text-xl font-bold text-stone-900 mb-2 tracking-tight group-hover:text-[#095F46] transition-colors leading-snug">{howItWorksSteps[2].title}</h3>
-                    <p className="text-sm text-stone-500 leading-relaxed mb-3.5">{howItWorksSteps[2].desc}</p>
-                    <Link href={howItWorksSteps[2].buttonLink} className="inline-flex items-center text-sm font-bold text-[#095F46] hover:text-[#074c38] gap-1.5 group-hover:translate-x-1.5 transition-all">{howItWorksSteps[2].buttonText}<ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
-                  </motion.div>
-                  <div className="w-[2px] h-8 bg-stone-300" />
-                  <div className="w-10 h-10 rounded-full bg-[#095F46] text-white font-black text-sm flex items-center justify-center shadow-md ring-4 ring-[#f6f8f6]">3</div>
-                </div>
-
-                <div className="flex flex-col items-center pt-20">
-                  <div className="w-10 h-10 rounded-full bg-[#095F46] text-white font-black text-sm flex items-center justify-center shadow-md ring-4 ring-[#f6f8f6]">4</div>
-                  <div className="w-[2px] h-8 bg-stone-300" />
-                  <motion.div initial="hidden" whileInView="visible" viewport={{ once: false, amount: 0.2 }} variants={sectionReveal} className="w-full bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(9,95,70,0.12)] hover:border-[#095F46]/50 transition-all duration-300 flex flex-col group">
-                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-stone-100 mb-4 bg-stone-50"><Image src={howItWorksSteps[3].image} alt={howItWorksSteps[3].imageAlt} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 1200px) 25vw, 320px" /></div>
-                    <h3 className="text-lg sm:text-xl font-bold text-stone-900 mb-2 tracking-tight group-hover:text-[#095F46] transition-colors leading-snug">{howItWorksSteps[3].title}</h3>
-                    <p className="text-sm text-stone-500 leading-relaxed mb-3.5">{howItWorksSteps[3].desc}</p>
-                    <Link href={howItWorksSteps[3].buttonLink} className="inline-flex items-center text-sm font-bold text-[#095F46] hover:text-[#074c38] gap-1.5 group-hover:translate-x-1.5 transition-all">{howItWorksSteps[3].buttonText}<ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
-                  </motion.div>
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:hidden relative pl-8 sm:pl-10 space-y-8 max-w-xl mx-auto">
-              <div className="absolute top-4 bottom-4 left-3.5 sm:left-4 w-[2px] bg-stone-300" />
-              <div className="absolute top-2 left-2.5 sm:left-3 w-2 h-2 rounded-full bg-[#095F46]" />
-              <div className="absolute bottom-2 left-2.5 sm:left-3 w-2 h-2 rounded-full bg-[#095F46]" />
-              {howItWorksSteps.map((step) => (
-                <div key={step.num} className="relative">
-                  <div className="absolute -left-8 sm:-left-10 top-4 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#095F46] text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md ring-4 ring-[#f8fafc] z-10">{step.num}</div>
-                  <motion.div initial="hidden" whileInView="visible" viewport={{ once: false, amount: 0.15 }} variants={sectionReveal} className="bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-6 shadow-[0_4px_16px_rgba(0,0,0,0.04)] flex flex-col">
-                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-stone-100 mb-4 bg-stone-50"><Image src={step.image} alt={step.imageAlt} fill className="object-cover" sizes="(max-width: 768px) 90vw, 400px" /></div>
-                    <h3 className="text-lg font-bold text-stone-950 mb-2 tracking-tight">{step.title}</h3>
-                    <p className="text-sm text-stone-500 leading-relaxed mb-3.5">{step.desc}</p>
-                    <Link href={step.buttonLink} className="inline-flex items-center text-sm font-bold text-[#095F46] hover:text-[#074c38] gap-1.5">{step.buttonText}<ChevronRight className="h-4 w-4" aria-hidden="true" /></Link>
-                  </motion.div>
-                </div>
-              ))}
-            </div>
+            <HowItWorks />
           </div>
         </section>
 
@@ -901,67 +814,64 @@ export default function HomePage() {
               whileInView="visible"
               viewport={{ once: false, amount: 0.15 }}
               variants={sectionReveal}
-              className="relative mx-auto"
+              ref={testimonialRef}
+              className="relative mx-auto max-w-4xl"
             >
               <AnimatePresence mode="wait">
                 <motion.div
                   key={testimonialIndex}
-                  initial={{ opacity: 0, x: 16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -16 }}
-                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  className="grid gap-5 md:grid-cols-3 lg:gap-6"
+                  initial={{ opacity: 0, y: 14, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -12, scale: 0.985 }}
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden rounded-[28px] border border-white/18 bg-[#f1f4f0] text-stone-950 shadow-[0_24px_70px_rgba(0,0,0,0.18)] sm:rounded-[32px]"
+                  aria-live="polite"
                 >
-                  {visibleTestimonials.map((testimonial, index) => (
-                    <button
-                      key={testimonial.name}
-                      type="button"
-                      onClick={() => setSelectedStory(testimonial)}
-                      aria-label={`Read ${testimonial.name}'s story`}
-                      className={`${index > 0 ? 'hidden md:flex' : 'flex'} group relative min-h-[405px] !rounded-[28px] flex-col overflow-hidden border border-[#095f46]/10 bg-[#eef3f1] text-left shadow-[0_8px_28px_rgba(9,95,70,0.07)] transition-all duration-300 hover:-translate-y-1 hover:border-[#095f46]/25 hover:shadow-[0_18px_38px_rgba(9,95,70,0.13)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-3`}
-                    >
-                      <Image
-                        src="/images/ilmbit-mark-green.png"
-                        alt=""
-                        width={190}
-                        height={190}
-                        aria-hidden="true"
-                        className="pointer-events-none absolute -right-8 top-8 w-40 opacity-[0.09] transition-opacity duration-300 group-hover:opacity-[0.13]"
-                      />
-
-                      <div className="relative flex flex-1 flex-col px-7 pb-9 pt-6 sm:px-8">
-                        <Quote className="h-12 w-12 fill-[#10bf8d]/20 text-[#10bf8d]/45" aria-hidden="true" />
-                        <p className="mt-1 text-lg font-semibold leading-[1.48] tracking-[-0.02em] text-stone-950 lg:text-xl">
-                          {testimonial.quote}
+                  <div className="relative grid min-h-[360px] md:grid-cols-[1.18fr_0.82fr]">
+                    <div className="order-1 flex flex-col justify-between px-6 py-7 sm:px-9 sm:py-9 md:order-1 lg:px-12 lg:py-11">
+                      <div>
+                        <Quote className="h-9 w-9 fill-[#095f46]/10 text-[#095f46]" aria-hidden="true" />
+                        <p className="mt-5 pr-24 text-xl font-semibold leading-[1.35] tracking-tight text-stone-950 sm:pr-32 sm:text-2xl md:pr-0 lg:text-[28px]">
+                          &ldquo;{activeTestimonial.quote}&rdquo;
                         </p>
                       </div>
 
-                      <div className="relative mt-auto w-[82%] rounded-tr-[34px] bg-white px-5 py-5 shadow-[8px_-8px_24px_rgba(9,95,70,0.04)] sm:w-[76%] lg:w-[72%]">
-                        <div className="flex items-center gap-3.5">
-                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-[#095f46]/10 bg-stone-100">
-                            <Image
-                              src={testimonial.avatar}
-                              alt=""
-                              fill
-                              unoptimized
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-stone-950">{testimonial.name}</p>
-                            <p className="mt-1 truncate text-xs text-stone-500">{testimonial.role}</p>
-                          </div>
-                        </div>
+                      <div className="mt-8">
+                        <p className="text-sm font-black text-stone-950 sm:text-base">{activeTestimonial.name}</p>
+                        <p className="mt-1 text-xs font-medium text-stone-500 sm:text-sm">
+                          {activeTestimonial.role} · {activeTestimonial.location}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStory(activeTestimonial)}
+                          className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#095f46] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#074c38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
+                        >
+                          Read full story
+                          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
                       </div>
-                    </button>
-                  ))}
+                    </div>
+
+                    <div className="absolute right-5 top-5 order-2 h-24 w-24 overflow-hidden rounded-2xl bg-[#dfe7e1] shadow-[0_14px_30px_rgba(9,95,70,0.16)] sm:right-8 sm:top-8 sm:h-28 sm:w-28 md:relative md:right-auto md:top-auto md:h-auto md:w-auto md:rounded-none md:shadow-none">
+                      <Image
+                        src={activePortrait}
+                        alt={activeTestimonial.name}
+                        fill
+                        unoptimized
+                        className="object-cover object-center"
+                        sizes="(max-width: 767px) 100vw, 360px"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#095f46]/12 via-transparent to-transparent md:bg-gradient-to-r md:from-[#f1f4f0] md:via-transparent md:to-transparent" />
+                    </div>
+                  </div>
                 </motion.div>
               </AnimatePresence>
 
-              <div className="mt-7 flex items-center justify-center gap-4">
+              <div className="mt-7 flex items-center justify-center gap-4 sm:gap-5">
                 <button
+                  type="button"
                   onClick={() => changeTestimonial('previous')}
-                  aria-label="Previous testimonials"
+                  aria-label="Previous testimonial"
                   className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -972,15 +882,16 @@ export default function HomePage() {
                       key={testimonial.name}
                       type="button"
                       onClick={() => setTestimonialIndex(index)}
-                      aria-label={`Show testimonials starting with ${testimonial.name}`}
+                      aria-label={`Show ${testimonial.name}'s testimonial`}
                       aria-current={index === testimonialIndex ? 'true' : undefined}
-                      className={`h-1.5 transition-all duration-200 ${index === testimonialIndex ? 'w-7 bg-[#095f46]' : 'w-2 bg-[#b3b3b3]/55 hover:bg-[#0b8663]'}`}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${index === testimonialIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/35 hover:bg-white/70'}`}
                     />
                   ))}
                 </div>
                 <button
+                  type="button"
                   onClick={() => changeTestimonial('next')}
-                  aria-label="Next testimonials"
+                  aria-label="Next testimonial"
                   className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
                 >
                   <ArrowRight className="h-4 w-4" />
@@ -1040,26 +951,34 @@ export default function HomePage() {
               whileInView="visible"
               viewport={{ once: false, amount: 0.2 }}
               variants={sectionReveal}
-              className="relative min-h-[520px] overflow-hidden rounded-[34px] border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.12)] sm:min-h-[560px] sm:p-11 lg:p-12"
+              className="relative min-h-[390px] overflow-hidden rounded-[34px] border border-[#095F46]/15 bg-[#083f33] p-7 text-white shadow-[0_22px_70px_rgba(20,32,27,0.12)] sm:min-h-[420px] sm:p-10 lg:min-h-[430px] lg:p-12"
             >
               <Image
-                src="/images/about-waitlist-quran.jpg"
+                src="/images/home-cta-quran.jpg"
                 alt=""
                 fill
                 aria-hidden="true"
-                className="object-cover object-[center_58%]"
+                className="object-cover object-[center_52%]"
                 sizes="(max-width: 1024px) 100vw, 960px"
               />
-              <div className="absolute inset-0 bg-[#083f33]/38" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#071f19]/88 via-[#083f33]/54 to-[#083f33]/18" />
-              <div className="absolute inset-0 bg-gradient-to-b from-[#071f19]/45 via-transparent to-[#071f19]/58" />
+              <div className="absolute inset-0 bg-[#063f33]/90" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#02120f]/98 via-[#063f33]/92 to-[#063f33]/78" />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#041f19]/62 via-[#063f33]/28 to-[#041f19]/78" />
+              <Image
+                src="/images/ilmbit-mark-white.png"
+                alt=""
+                width={290}
+                height={290}
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-8 bottom-0 w-44 select-none object-contain opacity-[0.10] sm:w-56 lg:-right-6 lg:w-64"
+              />
 
-              <div className="relative z-10 flex min-h-[456px] flex-col justify-between sm:min-h-[478px]">
+              <div className="relative z-10 flex min-h-[326px] flex-col justify-center sm:min-h-[340px] lg:min-h-[334px]">
                 <div className="max-w-[620px]">
-                  <h2 className="mb-6 text-4xl font-black leading-[0.94] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
+                  <h2 className="mb-5 text-4xl font-black leading-[0.94] tracking-[-0.045em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.38)] sm:text-5xl lg:text-6xl">
                     Begin Your Sacred Journey of Knowledge
                   </h2>
-                  <p className="max-w-xl text-base leading-relaxed text-emerald-50/78 sm:text-lg">
+                  <p className="max-w-xl text-base leading-relaxed text-emerald-50/88 drop-shadow-[0_1px_10px_rgba(0,0,0,0.32)] sm:text-lg">
                     Tell us what you want to learn. We will use it to prepare the right scholar match and schedule.
                   </p>
                   <button
