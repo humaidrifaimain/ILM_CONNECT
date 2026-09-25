@@ -440,7 +440,7 @@ export default function HomePage() {
                 className="lg:col-span-6 flex flex-col justify-center lg:pl-4"
               >
                 {/* High-Impact Heading with Brand Green Accent */}
-                <h2 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[46px] font-bold sm:font-extrabold tracking-tight text-stone-950 leading-[1.32] sm:leading-[1.36] mb-5">
+                <h2 className="max-w-[620px] text-3xl sm:text-4xl lg:text-[40px] xl:text-[44px] font-bold sm:font-extrabold tracking-tight text-stone-950 leading-[1.14] sm:leading-[1.12] mb-5">
                   Grow In Sacred Knowledge So You Can{' '}
                   <span className="text-[#095F46] block sm:inline mt-1 sm:mt-0">Live With Purpose &amp; Iman</span>
                 </h2>
@@ -470,9 +470,9 @@ export default function HomePage() {
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       </div>
-                      <span className="font-semibold text-stone-800 text-sm sm:text-base">
+                      <h3 className="font-bold text-stone-900 text-sm sm:text-base tracking-tight">
                         {feature}
-                      </span>
+                      </h3>
                     </div>
                   ))}
                 </div>
@@ -519,17 +519,17 @@ export default function HomePage() {
                       ${hasBottomBorderMobile ? 'border-b border-stone-300/70 pb-6 md:border-b-0 md:pb-4' : 'pt-6 md:pt-4'}
                     `}
                   >
-                    <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#095F46] tracking-tight mb-1.5">
+                    <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#095F46] tracking-tight mb-1.5">
                       <AnimatedCounter
                         target={stat.target}
                         decimals={stat.decimals}
                         suffix={stat.suffix}
                         duration={2000}
                       />
-                    </div>
-                    <div className="text-stone-700 text-xs sm:text-sm lg:text-[15px] font-semibold tracking-tight">
+                    </h3>
+                    <p className="text-stone-900 text-xs sm:text-sm lg:text-[15px] font-bold tracking-tight">
                       {stat.label}
-                    </div>
+                    </p>
                   </div>
                 );
               })}
@@ -1041,7 +1041,7 @@ export default function HomePage() {
               whileInView="visible"
               viewport={{ once: false, amount: 0.2 }}
               variants={sectionReveal}
-              className="relative rounded-3xl overflow-hidden bg-[#083f33] text-white p-10 sm:p-14 lg:p-16 shadow-[0_22px_70px_rgba(20,32,27,0.10)] border border-[#095F46]/15 text-center"
+              className="relative grid gap-8 overflow-hidden rounded-3xl border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.10)] sm:p-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-12 lg:text-left"
             >
               <Image
                 src="/images/ilmbit-mark-white.png"
@@ -1052,20 +1052,33 @@ export default function HomePage() {
                 className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 select-none object-contain opacity-[0.075] sm:h-80 sm:w-80 lg:-bottom-20 lg:-right-24"
               />
 
-              <div className="relative z-10 max-w-2xl mx-auto">
+              <div className="relative z-10 max-w-2xl mx-auto lg:mx-0">
                 <h2 className="mb-4 text-3xl font-bold tracking-[-0.035em] text-white sm:text-4xl lg:text-5xl">
                   Begin Your Sacred Journey of Knowledge
                 </h2>
-                <p className="text-sm sm:text-base lg:text-lg text-emerald-50/75 mb-8 leading-relaxed max-w-xl mx-auto">
+                <p className="text-sm sm:text-base lg:text-lg text-emerald-50/75 mb-8 leading-relaxed max-w-xl mx-auto lg:mx-0">
                   Join our priority waitlist for personalized 1:1 sessions with certified Sri Lankan scholars. Reserve early matching with a complimentary 30-minute trial session.
                 </p>
-                <Link
-                  href="/about#waitlist"
-                  className="brand-button brand-button-inverse px-8"
-                >
-                  <span>Join the Waitlist</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
+                <div className="flex justify-center lg:justify-start">
+                  <Link
+                    href="/about#waitlist"
+                    className="brand-button brand-button-inverse px-8"
+                  >
+                    <span>Join the Waitlist</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="relative z-10 min-h-[260px] overflow-hidden rounded-[28px] border border-white/12 bg-white/5 shadow-[0_22px_54px_rgba(0,0,0,0.22)] sm:min-h-[320px] lg:min-h-[360px]">
+                <Image
+                  src="/images/about-waitlist-quran.jpg"
+                  alt="Student following Quran recitation in a quiet study setting"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 420px"
+                />
+                <div className="absolute inset-0 bg-gradient-to-tr from-[#083f33]/55 via-transparent to-[#10bf8d]/10" />
               </div>
             </motion.div>
           </div>
