@@ -8,7 +8,8 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ['"Sharp Sans"', 'var(--font-manrope)', 'system-ui', 'sans-serif'],
-        display: ['"Sharp Sans"', 'var(--font-manrope)', 'system-ui', 'sans-serif'],
+        heading: ['var(--font-poppins)', '"Poppins"', 'var(--font-manrope)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-poppins)', '"Poppins"', 'var(--font-manrope)', 'system-ui', 'sans-serif'],
         serif: ['"Sharp Sans"', 'var(--font-manrope)', 'system-ui', 'sans-serif'],
         arabic: ['var(--font-amiri)', 'Noto Naskh Arabic', 'serif'],
       },

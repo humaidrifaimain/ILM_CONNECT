@@ -13,6 +13,7 @@
   --brand-bright: #10bf8d;
   --brand-gray: #b3b3b3;
   --font-brand: 'Sharp Sans', var(--font-manrope), system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-poppins), 'Poppins', var(--font-manrope), system-ui, -apple-system, sans-serif;
   --radius-control: 0.875rem;
   --radius-action: 999px;
 
@@ -153,8 +154,14 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-brand);
+  font-family: var(--font-heading);
+  font-weight: 700;
   text-wrap: balance;
+}
+
+.font-heading,
+.font-display {
+  font-family: var(--font-heading);
 }
 
 .brand-button {

@@ -71,10 +71,10 @@ export default function Header() {
           <Image
             src={showWhiteNav ? '/images/ilmbit-logo-white.png' : '/images/ilmbit-logo-green.png'}
             alt="ILMBIT"
-            width={50}
-            height={66}
+            width={56}
+            height={74}
             className={`w-auto object-contain transition-all duration-300 ${
-              scrolled ? 'h-[40px] sm:h-[44px]' : 'h-[48px] sm:h-[52px]'
+              scrolled ? 'h-[44px] sm:h-[48px]' : 'h-[52px] sm:h-[56px]'
             }`}
             priority
           />

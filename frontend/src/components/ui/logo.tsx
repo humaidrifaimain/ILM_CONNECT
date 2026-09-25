@@ -24,8 +24,8 @@ export default function Logo({
     xl: { box: 'h-16 w-16 rounded-2xl', img: 48, text: 'text-2xl sm:text-3xl' },
   }[size];
 
-  const fullLogoWidth = size === 'xl' ? 58 : size === 'lg' ? 50 : size === 'md' ? 42 : 34;
-  const fullLogoHeight = size === 'xl' ? 76 : size === 'lg' ? 65 : size === 'md' ? 55 : 44;
+  const fullLogoWidth = size === 'xl' ? 64 : size === 'lg' ? 55 : size === 'md' ? 46 : 38;
+  const fullLogoHeight = size === 'xl' ? 84 : size === 'lg' ? 72 : size === 'md' ? 60 : 49;
 
   const content = (
     <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>

@@ -8,9 +8,11 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Quote,
   X,
 } from 'lucide-react';
 import { motion, AnimatePresence, useInView, type Variants } from 'framer-motion';
+import WaitlistModal from '@/components/waitlist-modal';
 
 const sectionReveal: Variants = {
   hidden: { opacity: 0, y: 32 },
@@ -239,6 +241,7 @@ const diasporaTestimonials: TestimonialStory[] = [
 export default function HomePage() {
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [selectedStory, setSelectedStory] = useState<TestimonialStory | null>(null);
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   const visibleTestimonials = [0, 1, 2].map(
     (offset) => diasporaTestimonials[(testimonialIndex + offset) % diasporaTestimonials.length],
@@ -260,7 +263,7 @@ export default function HomePage() {
       {/* ========================================================================= */}
       {/* HERO SECTION — Ultra-Modern Minimal Glassmorphic Layout Matching Reference */}
       {/* ========================================================================= */}
-      <section className="relative min-h-[92vh] sm:min-h-[96vh] lg:min-h-[100vh] flex flex-col justify-between overflow-hidden bg-stone-950 text-white select-none">
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-stone-950 text-white select-none">
         <div
           className="absolute inset-0 z-0 bg-cover bg-center"
           style={{ backgroundImage: "url('/images/ilmbit-hero-poster.jpg')" }}
@@ -277,41 +280,37 @@ export default function HomePage() {
           >
             <source src="/ilmbit-hero-boomerang.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/10 to-black/75" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_22%,rgba(0,0,0,0.35)_100%)]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/35 to-black/75" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.45)_100%)]" />
         </div>
 
-        {/* ----------------------------------------------------------------------- */}
         {/* Top spacer for fixed header alignment */}
-        {/* ----------------------------------------------------------------------- */}
-        <div className="w-full h-16 sm:h-20 pointer-events-none" aria-hidden="true" />
+        <div className="w-full h-16 sm:h-20 shrink-0 pointer-events-none" aria-hidden="true" />
 
-        {/* ----------------------------------------------------------------------- */}
-        {/* Bottom-Center Hero Content */}
-        {/* ----------------------------------------------------------------------- */}
+        {/* Centered Hero Content */}
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: false, amount: 0.2 }}
           variants={sectionReveal}
-          className="relative z-20 mt-auto pb-10 sm:pb-14 pt-8 px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center"
+          className="relative z-20 my-auto py-12 sm:py-16 px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center max-w-4xl mx-auto w-full"
         >
-          <div className="relative mx-auto max-w-4xl w-full">
-            {/* Concise 2-Line Headline */}
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white leading-snug drop-shadow-md max-w-2xl mx-auto">
+          <div className="relative mx-auto max-w-3xl w-full">
+            {/* 2-Line Headline */}
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg max-w-3xl mx-auto">
               <span className="block">Learn Quran &amp; Islamic Studies</span>
-              <span className="block text-emerald-50 font-semibold text-base sm:text-2xl lg:text-[28px] mt-1">
+              <span className="block text-emerald-50 font-semibold text-lg sm:text-2xl lg:text-3xl mt-2">
                 from Qualified Scholars Worldwide
               </span>
             </h1>
 
             {/* Subtitle */}
-            <p className="mt-3.5 sm:mt-4 text-xs sm:text-sm text-stone-300 max-w-xl mx-auto leading-relaxed drop-shadow-md font-normal">
+            <p className="mt-4 sm:mt-5 text-sm sm:text-base text-stone-200 max-w-xl mx-auto leading-relaxed drop-shadow-md font-normal">
               Personalized 1:1 online Tajweed and Islamic studies with verified Sanad-certified scholars, tailored for diaspora families.
             </p>
 
             {/* Dual Pill CTA Buttons */}
-            <div className="mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            <div className="mt-7 sm:mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
               <Link
                 href="#courses"
                 className="brand-button brand-button-inverse px-7"
@@ -328,8 +327,8 @@ export default function HomePage() {
           </div>
         </motion.div>
 
-        {/* Subtle Bottom Ambient Spacer */}
-        <div className="relative z-20 pb-2" />
+        {/* Bottom spacer balancing fixed header */}
+        <div className="w-full h-16 sm:h-20 shrink-0 pointer-events-none" aria-hidden="true" />
       </section>
 
       {/* ========================================================================= */}
@@ -931,7 +930,7 @@ export default function HomePage() {
                       />
 
                       <div className="relative flex flex-1 flex-col px-7 pb-9 pt-6 sm:px-8">
-                        <span className="font-serif text-7xl font-bold leading-none text-[#10bf8d]/45" aria-hidden="true">“</span>
+                        <Quote className="h-12 w-12 fill-[#10bf8d]/20 text-[#10bf8d]/45" aria-hidden="true" />
                         <p className="mt-1 text-lg font-semibold leading-[1.48] tracking-[-0.02em] text-stone-950 lg:text-xl">
                           {testimonial.quote}
                         </p>
@@ -1041,29 +1040,21 @@ export default function HomePage() {
               whileInView="visible"
               viewport={{ once: false, amount: 0.2 }}
               variants={sectionReveal}
-              className="relative min-h-[420px] overflow-hidden rounded-[34px] border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.12)] sm:min-h-[440px] sm:p-10 lg:p-11"
+              className="relative min-h-[520px] overflow-hidden rounded-[34px] border border-[#095F46]/15 bg-[#083f33] p-8 text-white shadow-[0_22px_70px_rgba(20,32,27,0.12)] sm:min-h-[560px] sm:p-11 lg:p-12"
             >
               <Image
-                src="/images/home-sacred-journey-quran.jpg"
+                src="/images/about-waitlist-quran.jpg"
                 alt=""
                 fill
                 aria-hidden="true"
-                className="object-cover object-[58%_52%]"
+                className="object-cover object-[center_58%]"
                 sizes="(max-width: 1024px) 100vw, 960px"
               />
-              <div className="absolute inset-0 bg-[#063f31]/58" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#061f19]/94 via-[#074736]/74 to-[#095f46]/42" />
-              <div className="absolute inset-0 bg-gradient-to-b from-[#061f19]/52 via-[#095f46]/22 to-[#061f19]/72" />
-              <Image
-                src="/images/ilmbit-mark-white.png"
-                alt=""
-                width={420}
-                height={420}
-                aria-hidden="true"
-                className="pointer-events-none absolute -bottom-16 -right-12 h-64 w-64 select-none object-contain opacity-[0.18] mix-blend-screen sm:h-72 sm:w-72 lg:h-[320px] lg:w-[320px]"
-              />
+              <div className="absolute inset-0 bg-[#083f33]/38" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#071f19]/88 via-[#083f33]/54 to-[#083f33]/18" />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#071f19]/45 via-transparent to-[#071f19]/58" />
 
-              <div className="relative z-10 flex min-h-[344px] flex-col justify-start sm:min-h-[360px]">
+              <div className="relative z-10 flex min-h-[456px] flex-col justify-between sm:min-h-[478px]">
                 <div className="max-w-[620px]">
                   <h2 className="mb-6 text-4xl font-black leading-[0.94] tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
                     Begin Your Sacred Journey of Knowledge
@@ -1071,13 +1062,14 @@ export default function HomePage() {
                   <p className="max-w-xl text-base leading-relaxed text-emerald-50/78 sm:text-lg">
                     Tell us what you want to learn. We will use it to prepare the right scholar match and schedule.
                   </p>
-                  <Link
-                    href="/about#waitlist"
-                    className="mt-8 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-7 text-sm font-bold text-[#006B50] shadow-[0_14px_32px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#f8fffc] hover:shadow-[0_18px_40px_rgba(0,0,0,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                  <button
+                    type="button"
+                    onClick={() => setIsWaitlistOpen(true)}
+                    className="brand-button brand-button-inverse mt-8 px-8"
                   >
-                    Join the Waitlist
-                    <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                  </Link>
+                    <span>Join the Waitlist</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -1085,6 +1077,10 @@ export default function HomePage() {
         </section>
 
       </div>
+      <WaitlistModal
+        isOpen={isWaitlistOpen}
+        onClose={() => setIsWaitlistOpen(false)}
+      />
     </>
   );
 }

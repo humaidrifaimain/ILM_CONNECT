@@ -148,6 +148,89 @@ const journey = [
   },
 ];
 
+const learningRegions = [
+  { label: 'UK', flag: 'uk' },
+  { label: 'Europe', flag: 'eu' },
+  { label: 'Australia', flag: 'au' },
+  { label: 'US', flag: 'us' },
+] as const;
+
+const EU_FLAG_STARS = [
+  { cx: 14, cy: 4 },
+  { cx: 16.5, cy: 4.67 },
+  { cx: 18.33, cy: 6.5 },
+  { cx: 19, cy: 9 },
+  { cx: 18.33, cy: 11.5 },
+  { cx: 16.5, cy: 13.33 },
+  { cx: 14, cy: 14 },
+  { cx: 11.5, cy: 13.33 },
+  { cx: 9.67, cy: 11.5 },
+  { cx: 9, cy: 9 },
+  { cx: 9.67, cy: 6.5 },
+  { cx: 11.5, cy: 4.67 },
+];
+
+function RegionFlag({
+  region,
+  className = 'h-3.5 w-[22px] shrink-0 overflow-hidden rounded-[2px] ring-1 ring-white/25',
+}: {
+  region: (typeof learningRegions)[number]['flag'];
+  className?: string;
+}) {
+  const sharedClassName = className;
+
+  if (region === 'uk') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 28 18" className={sharedClassName}>
+        <rect width="28" height="18" fill="#17365D" />
+        <path d="M0 0 28 18M28 0 0 18" stroke="#fff" strokeWidth="5" />
+        <path d="M0 0 28 18M28 0 0 18" stroke="#C8102E" strokeWidth="2" />
+        <path d="M14 0v18M0 9h28" stroke="#fff" strokeWidth="6" />
+        <path d="M14 0v18M0 9h28" stroke="#C8102E" strokeWidth="3.2" />
+      </svg>
+    );
+  }
+
+  if (region === 'eu') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 28 18" className={sharedClassName}>
+        <rect width="28" height="18" fill="#003399" />
+        {EU_FLAG_STARS.map((star, i) => (
+          <circle key={i} cx={star.cx} cy={star.cy} r="0.75" fill="#FFCC00" />
+        ))}
+      </svg>
+    );
+  }
+
+  if (region === 'au') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 28 18" className={sharedClassName}>
+        <rect width="28" height="18" fill="#012169" />
+        <path d="M0 0 12 8M12 0 0 8" stroke="#fff" strokeWidth="2.8" />
+        <path d="M0 0 12 8M12 0 0 8" stroke="#C8102E" strokeWidth="1.2" />
+        <path d="M6 0v8M0 4h12" stroke="#fff" strokeWidth="3" />
+        <path d="M6 0v8M0 4h12" stroke="#C8102E" strokeWidth="1.5" />
+        <circle cx="7" cy="13" r="1.25" fill="#fff" />
+        <circle cx="20" cy="4" r="1" fill="#fff" />
+        <circle cx="24" cy="8" r="0.9" fill="#fff" />
+        <circle cx="20" cy="14" r="1" fill="#fff" />
+        <circle cx="16" cy="9" r="0.8" fill="#fff" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 28 18" className={sharedClassName}>
+      <rect width="28" height="18" fill="#fff" />
+      {[0, 2.76, 5.52, 8.28, 11.04, 13.8, 16.56].map((y) => (
+        <rect key={y} y={y} width="28" height="1.38" fill="#B22234" />
+      ))}
+      <rect width="12" height="9.7" fill="#3C3B6E" />
+      {[2, 6, 10].flatMap((x) => [2, 5, 8].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r="0.55" fill="#fff" />))}
+    </svg>
+  );
+}
+
 export default function AboutPage() {
   const [waitlistName, setWaitlistName] = useState('');
   const [waitlistEmail, setWaitlistEmail] = useState('');
@@ -197,14 +280,14 @@ export default function AboutPage() {
         {/* Background Visual with Signature Multi-Layer Ambient Lighting */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/about-hero-scholar.jpg"
-            alt="Islamic scholar in traditional academy library"
+            src="/images/about-hero-scholar-monochrome.jpg"
+            alt="Islamic scholar reading the Quran in a mosque courtyard"
             fill
             priority
             sizes="100vw"
-            className="object-cover object-[center_28%] opacity-85"
+            className="object-cover object-[55%_48%] opacity-90"
           />
-          <div className="absolute inset-0 bg-[#095F46]/45 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-[#095F46]/25 mix-blend-multiply" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#031e18]/85 via-[#095F46]/20 to-[#031e18]/95" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(3,30,24,0.65)_100%)]" />
         </div>
@@ -229,26 +312,6 @@ export default function AboutPage() {
               </span>
             </h1>
 
-            {/* Subtitle with drop-shadow and refined line-height */}
-            <p className="mt-3.5 sm:mt-4 text-xs sm:text-sm text-stone-200 max-w-xl mx-auto leading-relaxed drop-shadow-md font-normal">
-              Ilmbit exists for Muslim families who want authentic, structured Islamic learning without losing the warmth and discipline of traditional scholarship.
-            </p>
-
-            {/* Dual Pill CTA Buttons matching Site Standard */}
-            <div className="mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-              <Link
-                href="/about#waitlist"
-                className="brand-button brand-button-primary px-8"
-              >
-                Start Free Trial
-              </Link>
-              <Link
-                href="#standards"
-                className="brand-button brand-button-inverse px-7"
-              >
-                Our Standards
-              </Link>
-            </div>
           </div>
         </motion.div>
 
@@ -302,10 +365,10 @@ export default function AboutPage() {
           >
             <article className="group relative min-h-[390px] overflow-hidden rounded-3xl bg-stone-900 lg:col-span-7 lg:row-span-2 lg:min-h-[500px]">
               <Image
-                src="/images/about-verified-scholars-v2.png"
-                alt="Sanad-qualified Islamic scholar teaching a live online Quran lesson"
+                src="/images/about-verified-scholar.jpg"
+                alt="Quran teacher seated beside an open copy of the Holy Quran"
                 fill
-                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.025]"
+                className="object-cover object-[center_54%] transition-transform duration-700 group-hover:scale-[1.025]"
                 sizes="(max-width: 1024px) 100vw, 58vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#052d23]/95 via-[#052d23]/20 to-transparent" />
@@ -321,13 +384,13 @@ export default function AboutPage() {
 
             <article className="group relative min-h-[270px] overflow-hidden rounded-3xl bg-stone-900 lg:col-span-5 lg:min-h-0">
               <Image
-                src="/images/about-personal-attention-v2.png"
-                alt="Student receiving focused one-to-one online Quran instruction"
+                src="/images/about-personal-attention-online.jpg"
+                alt="Student receiving personal online Quran instruction"
                 fill
                 className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.035]"
                 sizes="(max-width: 1024px) 100vw, 42vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/15 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/20 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-7">
                 <h3 className="text-2xl font-bold tracking-tight">Personal Attention</h3>
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-stone-200">
@@ -336,25 +399,20 @@ export default function AboutPage() {
               </div>
             </article>
 
-            <article className="group relative flex min-h-[230px] flex-col justify-end overflow-hidden rounded-3xl bg-stone-900 lg:col-span-5 lg:min-h-0">
-              <Image
-                src="/images/about-built-around-you.png"
-                alt="Mother and child preparing for a flexible online Quran lesson at home"
-                fill
-                className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.035]"
-                sizes="(max-width: 1024px) 100vw, 42vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#052d23]/95 via-[#052d23]/35 to-transparent" />
-              <div className="relative p-6 text-white sm:p-7">
+            <article className="group relative flex min-h-[230px] flex-col justify-center overflow-hidden rounded-3xl border border-[#095F46]/12 bg-white lg:col-span-5 lg:min-h-0">
+              <div className="relative p-6 text-stone-950 sm:p-7">
                 <h3 className="text-2xl font-bold tracking-tight">Built Around You</h3>
-                <p className="mt-2 max-w-lg text-sm leading-relaxed text-emerald-50/85">
-                  Scheduling that works across UK, Europe, Australia, and US time zones.
+                <p className="mt-2 max-w-lg text-sm leading-relaxed text-stone-600">
+                  Flexible scheduling designed around international time zones.
                 </p>
-                <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold uppercase tracking-[0.08em] text-emerald-50/80">
-                  <span>UK</span>
-                  <span>Europe</span>
-                  <span>Australia</span>
-                  <span>US</span>
+                <div className="mt-5 flex items-center justify-center gap-3 sm:justify-start" aria-label="Available across the United Kingdom, Europe, Australia, and the United States">
+                  {learningRegions.map((region) => (
+                    <RegionFlag
+                      key={region.flag}
+                      region={region.flag}
+                      className="h-auto w-10 overflow-hidden rounded-[4px] shadow-sm ring-1 ring-stone-900/10 sm:w-11"
+                    />
+                  ))}
                 </div>
               </div>
             </article>
@@ -389,10 +447,10 @@ export default function AboutPage() {
               {/* Main Image with custom corner rounding */}
               <div className="relative w-full aspect-[4/3] rounded-3xl rounded-bl-[50px] sm:rounded-bl-[72px] overflow-hidden border-4 sm:border-6 border-white shadow-[0_16px_40px_rgba(0,0,0,0.08)] bg-stone-100">
                 <Image
-                  src="/images/about-platform-standards-scholar.jpg"
-                  alt="Sanad-certified Islamic scholar conducting online 1:1 Quran recitation session"
+                  src="/images/about-standards-quran.jpg"
+                  alt="An open copy of the Holy Quran on a reading stand"
                   fill
-                  className="object-cover object-[center_20%]"
+                  className="object-cover object-[center_58%]"
                   sizes="(max-width: 1024px) 100vw, 520px"
                 />
               </div>
@@ -502,21 +560,31 @@ export default function AboutPage() {
             whileInView="visible"
             viewport={{ once: false, amount: 0.2 }}
             variants={fadeUp}
-            className="lg:col-span-5"
+            className="group relative flex min-h-[390px] flex-col justify-end overflow-hidden rounded-3xl bg-stone-900 p-7 text-white sm:p-9 lg:col-span-5 lg:min-h-[460px]"
           >
-            <h2 className="text-2xl sm:text-3xl lg:text-[32px] font-bold tracking-tight text-stone-950 leading-[1.2]">
-              A calmer path from signup to steady learning.
-            </h2>
-            <p className="mt-3 text-xs sm:text-sm leading-relaxed text-stone-600 max-w-md">
-              The experience is intentionally simple: remove the friction, keep the scholar relationship strong, and make every next step obvious.
-            </p>
-            <div className="mt-6">
-              <Link
-                href="/about#waitlist"
-                className="brand-button brand-button-primary px-7"
-              >
-                Get Started <ChevronRight className="h-4 w-4" />
-              </Link>
+            <Image
+              src="/images/about-learning-journey.jpg"
+              alt="Muslim graduate holding her diploma outside a mosque"
+              fill
+              className="object-cover object-[center_58%] transition-transform duration-700 group-hover:scale-[1.025]"
+              sizes="(max-width: 1024px) 100vw, 42vw"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#052d23]/95 via-[#052d23]/45 to-stone-950/10" />
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold leading-[1.2] tracking-tight sm:text-3xl lg:text-[32px]">
+                A calmer path from signup to steady learning.
+              </h2>
+              <p className="mt-3 max-w-md text-xs leading-relaxed text-emerald-50/85 sm:text-sm">
+                The experience is intentionally simple: remove the friction, keep the scholar relationship strong, and make every next step obvious.
+              </p>
+              <div className="mt-6">
+                <Link
+                  href="/about#waitlist"
+                  className="brand-button brand-button-inverse px-7"
+                >
+                  Get Started <ChevronRight className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
           </motion.div>
 
@@ -570,23 +638,21 @@ export default function AboutPage() {
         >
           <div className="relative flex min-h-[320px] flex-col justify-between overflow-hidden bg-[#083f33] p-7 text-white sm:p-9 lg:min-h-0 lg:p-10">
             <Image
-              src="/images/home-sacred-journey-quran.jpg"
+              src="/images/about-waitlist-quran.jpg"
               alt=""
               fill
               aria-hidden="true"
-              className="object-cover object-[58%_52%]"
-              sizes="(max-width: 1024px) 100vw, 430px"
+              className="pointer-events-none select-none object-cover object-[center_58%] opacity-70"
+              sizes="(max-width: 1024px) 100vw, 40vw"
             />
-            <div className="absolute inset-0 bg-[#063f31]/58" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#061f19]/94 via-[#074736]/74 to-[#095f46]/42" />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#061f19]/52 via-[#095f46]/22 to-[#061f19]/72" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#052d23]/70 via-[#052d23]/80 to-[#031e18]/95" />
             <Image
               src="/images/ilmbit-mark-white.png"
               alt=""
               width={360}
               height={360}
               aria-hidden="true"
-              className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 select-none object-contain opacity-[0.18] mix-blend-screen sm:h-80 sm:w-80 lg:-bottom-20 lg:-right-24"
+              className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 select-none object-contain opacity-[0.075] sm:h-80 sm:w-80 lg:-bottom-20 lg:-right-24"
             />
             <div className="relative z-10">
               <h2 className="max-w-md text-3xl font-bold leading-[1.08] tracking-[-0.04em] text-white sm:text-4xl lg:text-[42px]">
