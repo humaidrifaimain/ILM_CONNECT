@@ -1051,9 +1051,9 @@ export default function HomePage() {
                 className="object-cover object-[58%_52%]"
                 sizes="(max-width: 1024px) 100vw, 960px"
               />
-              <div className="absolute inset-0 bg-[#062f27]/36" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#071f19]/92 via-[#073d32]/58 to-[#073d32]/20" />
-              <div className="absolute inset-0 bg-gradient-to-b from-[#071f19]/48 via-transparent to-[#071f19]/66" />
+              <div className="absolute inset-0 bg-[#063f31]/58" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#061f19]/94 via-[#074736]/74 to-[#095f46]/42" />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#061f19]/52 via-[#095f46]/22 to-[#061f19]/72" />
               <Image
                 src="/images/ilmbit-mark-white.png"
                 alt=""

@@ -570,12 +570,23 @@ export default function AboutPage() {
         >
           <div className="relative flex min-h-[320px] flex-col justify-between overflow-hidden bg-[#083f33] p-7 text-white sm:p-9 lg:min-h-0 lg:p-10">
             <Image
+              src="/images/home-sacred-journey-quran.jpg"
+              alt=""
+              fill
+              aria-hidden="true"
+              className="object-cover object-[58%_52%]"
+              sizes="(max-width: 1024px) 100vw, 430px"
+            />
+            <div className="absolute inset-0 bg-[#063f31]/58" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#061f19]/94 via-[#074736]/74 to-[#095f46]/42" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#061f19]/52 via-[#095f46]/22 to-[#061f19]/72" />
+            <Image
               src="/images/ilmbit-mark-white.png"
               alt=""
               width={360}
               height={360}
               aria-hidden="true"
-              className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 select-none object-contain opacity-[0.075] sm:h-80 sm:w-80 lg:-bottom-20 lg:-right-24"
+              className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 select-none object-contain opacity-[0.18] mix-blend-screen sm:h-80 sm:w-80 lg:-bottom-20 lg:-right-24"
             />
             <div className="relative z-10">
               <h2 className="max-w-md text-3xl font-bold leading-[1.08] tracking-[-0.04em] text-white sm:text-4xl lg:text-[42px]">
