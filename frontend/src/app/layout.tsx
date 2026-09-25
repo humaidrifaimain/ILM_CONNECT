@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import { Manrope, Amiri } from 'next/font/google';
+import { Manrope, Amiri, Poppins } from 'next/font/google';
 import './globals.css';
+import './color-refresh.css';
 import { Providers } from '@/lib/providers';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
@@ -15,6 +16,13 @@ const amiri = Amiri({
   subsets: ['arabic', 'latin'],
   weight: ['400', '700'],
   variable: '--font-amiri',
+  display: 'swap',
+});
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  variable: '--font-poppins',
   display: 'swap',
 });
 
@@ -48,8 +56,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${manrope.variable} ${amiri.variable} font-sans antialiased bg-white text-stone-900 min-h-screen`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${manrope.variable} ${amiri.variable} ${poppins.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased bg-white text-stone-900 min-h-screen" suppressHydrationWarning>
         <Providers>
           <div className="flex min-h-screen flex-col">
             <Header />

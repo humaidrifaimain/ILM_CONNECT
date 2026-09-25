@@ -1,0 +1,349 @@
+/* ILMBIT public-site color system.
+ * Undo: remove the color-refresh.css import from layout.tsx.
+ * Colors only; no layout, typography, content, or media changes.
+ * Green identifies actions and selected dark chapters. Neutral surfaces
+ * give photography and content room without a colored wash over the site.
+ */
+:root {
+  /* Brand primitives from the supplied guideline. */
+  --site-green: #095f46;
+  --site-green-hover: #074c38;
+  --site-green-bright: #10bf8d;
+
+  /* One neutral family and one forest family, shared by every public page. */
+  --site-canvas: #f5f7f6;
+  --site-surface: #ffffff;
+  --site-tint: #e8f0ed;
+  --site-line: #d6e0db;
+  --site-control-line: #84958c;
+  --site-ink: #202823;
+  --site-muted: #56635c;
+  --site-dark: #0b3027;
+  --site-forest: #0b4738;
+  --site-dark-card: #164639;
+  --site-dark-hover: #1b5142;
+  --site-dark-line: #477361;
+  --site-on-dark: #f5f7f6;
+  --site-on-dark-muted: #c6d8ce;
+  --site-on-dark-accent: #a3d8be;
+  --site-section-gradient: linear-gradient(115deg, var(--site-dark), var(--site-forest));
+}
+
+/* Shared public surfaces. Legacy warm stone/cream values are mapped onto
+ * these tokens so pricing, forms, cards, dialogs, and legal pages agree.
+ */
+.bg-sanctuary-light,
+main > [class*="bg-[#f7f8f5]"] {
+  background: var(--site-canvas);
+  color: var(--site-ink);
+}
+
+/* Keep the existing decorative elements, but eliminate the colored haze. */
+.bg-sanctuary-light > div.pointer-events-none {
+  background-color: transparent;
+}
+
+:is(.bg-sanctuary-light, main > section:has(.hero-brand-video), header.pointer-events-auto, header.pointer-events-auto + div) .brand-button-primary {
+  background-color: var(--site-green);
+  color: var(--site-surface);
+}
+
+:is(.bg-sanctuary-light, main > section:has(.hero-brand-video), header.pointer-events-auto, header.pointer-events-auto + div) .brand-button-primary:hover {
+  background-color: var(--site-green-hover);
+  border-color: var(--site-green-hover);
+}
+
+:is(.bg-sanctuary-light, main > [class*="bg-[#f7f8f5]"]) :is(.text-stone-950, .text-stone-900, .text-stone-800) {
+  color: var(--site-ink);
+}
+
+:is(.bg-sanctuary-light, main > [class*="bg-[#f7f8f5]"]) :is(.text-stone-700, .text-stone-600, .text-stone-500, .text-stone-400) {
+  color: var(--site-muted);
+}
+
+:is(.bg-sanctuary-light, main > [class*="bg-[#f7f8f5]"]) :is(.bg-white, [class*="bg-white/95"], [class*="bg-[#f7f7f3]"]) {
+  background-color: var(--site-surface);
+}
+
+:is(.bg-sanctuary-light, main > [class*="bg-[#f7f8f5]"]) :is(.bg-stone-50, .bg-stone-100, [class*="bg-emerald-50"]) {
+  background-color: var(--site-tint);
+}
+
+:is(.bg-sanctuary-light, main > [class*="bg-[#f7f8f5]"]) [class*="border-stone-"] {
+  border-color: var(--site-line);
+}
+
+/* Home and About hero overlays are neutral charcoal, with a much lighter
+ * edge vignette. Original video, poster, photographs, and image colors stay intact.
+ */
+main > section:has(.hero-brand-video) > div:first-child > .bg-gradient-to-b {
+  background: linear-gradient(180deg, rgb(0 0 0 / 40%), rgb(0 0 0 / 42%) 50%, rgb(0 0 0 / 55%));
+}
+
+main > section:has(.hero-brand-video) > div:first-child > div:last-child {
+  background: radial-gradient(ellipse at center, transparent 40%, rgb(0 0 0 / 14%) 100%);
+}
+
+.bg-sanctuary-light:has(> #standards) > section:first-of-type > div:first-child > .mix-blend-multiply {
+  background-color: transparent;
+}
+
+.bg-sanctuary-light:has(> #standards) > section:first-of-type > div:first-child > .bg-gradient-to-b {
+  background: linear-gradient(180deg, rgb(0 0 0 / 42%), rgb(0 0 0 / 15%) 45%, rgb(0 0 0 / 62%));
+}
+
+.bg-sanctuary-light:has(> #standards) > section:first-of-type > div:first-child > div:last-child {
+  background: radial-gradient(ellipse at center, transparent 40%, rgb(0 0 0 / 14%) 100%);
+}
+
+/* Light editorial sections share the same neutral ground. */
+.bg-sanctuary-light > #mission,
+.bg-sanctuary-light:has(> #standards) > section:nth-of-type(2),
+.bg-sanctuary-light > #stats + section:not(#how-it-works),
+.bg-sanctuary-light > #testimonials + section {
+  background: var(--site-canvas);
+  border-color: var(--site-line);
+}
+
+.bg-sanctuary-light > #mission [class*="bg-[#84cc16]"] {
+  background-color: var(--site-green-bright);
+}
+
+/* A quiet stats bridge, with the brand reserved for the figures. */
+.bg-sanctuary-light > #stats {
+  background: var(--site-tint);
+  border-color: var(--site-line);
+}
+
+.bg-sanctuary-light > #stats [class*="text-[#095F46]"] {
+  color: var(--site-green);
+}
+
+/* The timeline is the solid-green chapter. */
+.bg-sanctuary-light > #how-it-works {
+  background: var(--site-forest);
+  border-color: var(--site-dark-line);
+}
+
+.bg-sanctuary-light > #how-it-works h2 {
+  color: var(--site-on-dark);
+}
+
+.bg-sanctuary-light > #how-it-works .text-stone-600 {
+  color: var(--site-on-dark-muted);
+}
+
+.bg-sanctuary-light > #how-it-works .bg-stone-300 {
+  background-color: var(--site-dark-line);
+}
+
+.bg-sanctuary-light > #how-it-works [class*="ring-4"] {
+  background-color: var(--site-tint);
+  color: var(--site-green);
+  --tw-ring-color: var(--site-forest);
+}
+
+/* A restrained green-to-neutral wash, reused on the pricing page. */
+.bg-sanctuary-light > #courses,
+.bg-sanctuary-light:has(#standard-plans) {
+  background: linear-gradient(135deg, var(--site-tint), var(--site-canvas) 65%);
+  border-color: var(--site-line);
+}
+
+/* Testimonials and standards use exactly the same dark gradient. */
+.bg-sanctuary-light > :is(#testimonials, #standards) {
+  background: var(--site-section-gradient);
+  border-color: var(--site-dark-line);
+}
+
+.bg-sanctuary-light > #testimonials > div:first-child > div:first-child :is(h2, .text-stone-800),
+.bg-sanctuary-light > #standards :is(h2, .text-stone-900) {
+  color: var(--site-on-dark);
+}
+
+.bg-sanctuary-light > #testimonials > div:first-child > div:first-child :is(p, .text-stone-400),
+.bg-sanctuary-light > #standards :is(p.text-stone-600, p.text-stone-500) {
+  color: var(--site-on-dark-muted);
+}
+
+.bg-sanctuary-light > #testimonials [aria-label="Five out of five stars"] {
+  color: var(--site-on-dark-accent);
+}
+
+.bg-sanctuary-light > #testimonials button[class*="min-h-[405px]"] {
+  background-color: var(--site-dark-card);
+  border-color: var(--site-dark-line);
+}
+
+.bg-sanctuary-light > #testimonials button[class*="min-h-[405px]"]:hover {
+  background-color: var(--site-dark-hover);
+  border-color: var(--site-on-dark-accent);
+}
+
+.bg-sanctuary-light > #testimonials button[class*="min-h-[405px]"] > div:first-of-type p {
+  color: var(--site-on-dark);
+}
+
+.bg-sanctuary-light > #testimonials button[class*="min-h-[405px]"] > .bg-white {
+  background-color: var(--site-tint);
+}
+
+.bg-sanctuary-light > #testimonials button[class*="min-h-[405px]"] img[src*="ilmbit-mark-green"] {
+  opacity: 0.24;
+}
+
+.bg-sanctuary-light > #testimonials button[class*="min-h-[405px]"]:hover img[src*="ilmbit-mark-green"] {
+  opacity: 0.3;
+}
+
+.bg-sanctuary-light > #testimonials button[class*="min-h-[405px]"] svg {
+  color: var(--site-on-dark-accent);
+  fill: var(--site-dark-line);
+}
+
+.bg-sanctuary-light > #testimonials [aria-label^="Testimonial "] button {
+  background-color: var(--site-dark-line);
+}
+
+.bg-sanctuary-light > #testimonials [aria-label^="Testimonial "] button[class*="w-7"] {
+  background-color: var(--site-on-dark);
+}
+
+.bg-sanctuary-light > :is(#testimonials, #standards) :focus-visible {
+  outline-color: var(--site-on-dark-accent);
+  --tw-ring-color: var(--site-on-dark-accent);
+}
+
+/* Dark-section actions use the same light surface, including the final CTA. */
+.bg-sanctuary-light > #standards .brand-button-primary,
+.bg-sanctuary-light > #testimonials + section .brand-button-inverse {
+  background-color: var(--site-surface);
+  border-color: var(--site-surface);
+  color: var(--site-green);
+}
+
+.bg-sanctuary-light > #standards .brand-button-primary:hover,
+.bg-sanctuary-light > #testimonials + section .brand-button-inverse:hover {
+  background-color: var(--site-tint);
+  border-color: var(--site-tint);
+}
+
+.bg-sanctuary-light > #standards [class*="bg-[#095F46]"] {
+  background-color: var(--site-green);
+}
+
+.bg-sanctuary-light > #testimonials + section [class*="bg-[#083f33]"] {
+  background: var(--site-section-gradient);
+  border-color: var(--site-dark-line);
+}
+
+/* About photo captions get one neutral scrim instead of differing green
+ * overlays. The waitlist uses the same white form surface as other cards.
+ */
+.bg-sanctuary-light :is(article, #stats + section) .bg-gradient-to-t {
+  background: linear-gradient(to top, rgb(0 0 0 / 88%), rgb(0 0 0 / 18%) 55%, transparent);
+}
+
+.bg-sanctuary-light > #waitlist .bg-gradient-to-b {
+  background: linear-gradient(to bottom, rgb(11 48 39 / 40%), rgb(11 48 39 / 70%) 55%, var(--site-dark));
+}
+
+.bg-sanctuary-light > #waitlist [class*="bg-[#083f33]"] {
+  background-color: var(--site-dark);
+}
+
+.bg-sanctuary-light > #stats + section [class*="text-[#095F46]/45"] {
+  color: var(--site-green);
+}
+
+/* Header, footer, legal pages: reuse the page palette rather than adding
+ * a separate teal/charcoal family. Existing logo assets are untouched.
+ */
+body footer.bg-gradient-to-br {
+  background: var(--site-dark);
+  border-color: var(--site-dark-line);
+}
+
+body footer [class*="text-emerald-50/"],
+main > [class*="bg-[#f7f8f5]"] header :is([class*="text-emerald-50/"], [class*="text-emerald-100/"]) {
+  color: var(--site-on-dark-muted);
+}
+
+body footer a:hover {
+  color: var(--site-on-dark);
+}
+
+body footer [class*="text-emerald-300"],
+main > [class*="bg-[#f7f8f5]"] header .text-emerald-300 {
+  color: var(--site-on-dark-accent);
+}
+
+main > [class*="bg-[#f7f8f5]"] header {
+  background: var(--site-section-gradient);
+}
+
+/* Selection and focus remain readable across the two surface families. */
+.bg-sanctuary-light > :is(#how-it-works, #testimonials, #standards) ::selection {
+  background: var(--site-on-dark-accent);
+  color: var(--site-dark);
+}
+
+.bg-sanctuary-light > #testimonials .brand-icon-button:hover {
+  background-color: var(--site-tint);
+  border-color: var(--site-on-dark-accent);
+  color: var(--site-green);
+}
+
+/* Form boundaries, placeholders, and focus use the same neutral/green roles. */
+.bg-sanctuary-light > #waitlist :is(input, select, textarea) {
+  border-color: var(--site-control-line);
+}
+
+.bg-sanctuary-light > #waitlist :is(input, textarea)::placeholder {
+  color: var(--site-muted);
+}
+
+.bg-sanctuary-light > #waitlist :is(input, select, textarea):focus {
+  border-color: var(--site-green);
+}
+
+header.pointer-events-auto :is(.text-stone-600, .text-stone-700, .text-stone-800) {
+  color: var(--site-muted);
+}
+
+header.pointer-events-auto [class*="text-[#10BF8D]"] {
+  color: var(--site-on-dark-accent);
+}
+
+header.pointer-events-auto nav a:hover {
+  color: var(--site-green);
+}
+
+header.pointer-events-auto.shadow-none:has(img[src*="ilmbit-logo-white"]) nav a:hover {
+  color: var(--site-on-dark);
+}
+
+.bg-sanctuary-light > #testimonials [role="dialog"] :focus-visible {
+  outline-color: var(--site-green);
+  --tw-ring-color: var(--site-green);
+}
+
+header.pointer-events-auto + div :is(.text-stone-700, .text-stone-900) {
+  color: var(--site-ink);
+}
+
+header.pointer-events-auto + div .text-stone-300 {
+  color: var(--site-on-dark-muted);
+}
+
+header.pointer-events-auto + div [class*="bg-stone-200/"] {
+  background-color: var(--site-tint);
+}
+
+header.pointer-events-auto + div .text-emerald-400 {
+  color: var(--site-on-dark-accent);
+}
+
+header.pointer-events-auto + div [class*="bg-emerald-950/"] {
+  background-color: var(--site-dark-card);
+}
