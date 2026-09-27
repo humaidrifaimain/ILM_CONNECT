@@ -28,6 +28,10 @@ export default function CourseMaterialsPage() {
   const { data: studentProfile, isLoading: loadingProfile } = useQuery({
     queryKey: ['studentProfile'],
     queryFn: () => apiFetch('/profile/student'),
+    staleTime: 0,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: 'always',
   });
 
   // 2. Fetch learning paths to match the course
@@ -56,12 +60,17 @@ export default function CourseMaterialsPage() {
 
   // Determine unlock status based on student progress
   const currentLessonId = studentProfile?.progress?.currentLessonId;
-  const currentIdx = currentLessonId ? activeSlides.findIndex((s: any) => s.id === currentLessonId) : 0;
+  const hasAccessToCurrentPath =
+    Boolean(currentPath?.id) &&
+    studentProfile?.progress?.currentLearningPathId === currentPath.id;
+  const currentIdx = hasAccessToCurrentPath && currentLessonId
+    ? activeSlides.findIndex((slide: any) => slide.id === currentLessonId)
+    : -1;
 
   const slidesWithStatus = activeSlides.map((slide: any, idx: number) => {
-    // If lecturer explicitly set currentLessonId, unlock all up to currentIdx
-    // If no progress set yet, default to first lesson unlocked
-    const isUnlocked = currentLessonId ? idx <= currentIdx : idx <= 0;
+    // A lecturer-granted progress cursor unlocks lessons cumulatively up to that lesson.
+    // No permission record means all course content remains locked.
+    const isUnlocked = currentIdx >= 0 && idx <= currentIdx;
     return {
       ...slide,
       slideNumber: idx + 1,

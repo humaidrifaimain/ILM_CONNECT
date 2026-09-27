@@ -1,15 +1,42 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1';
 
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('ilm_token');
+}
+
+export function setAuthToken(token: string | null) {
+  if (typeof window === 'undefined') return;
+  if (token) {
+    localStorage.setItem('ilm_token', token);
+  } else {
+    localStorage.removeItem('ilm_token');
+  }
+}
+
+export interface ApiFetchOptions extends RequestInit {
+  skipRedirect?: boolean;
+}
+
+export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) {
+  const token = getAuthToken();
+  const authHeaders: Record<string, string> = {};
+
+  if (token) {
+    authHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   // Merge default headers and options
   const defaultOptions: RequestInit = {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...options.headers,
     },
-    // We must include credentials so the HTTP-only cookie containing the JWT is sent
+    cache: 'no-store', // Prevent Next.js from caching dynamic API requests
+    // We include credentials for cookies as well as Bearer token header
     credentials: 'include', 
   };
 
@@ -17,25 +44,36 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     let errorMessage = 'An error occurred';
-    let errorData: any = null;
+    let errorData: unknown = null;
     try {
       errorData = await response.json();
-      errorMessage = errorData.message || errorMessage;
-    } catch (e) {
+      if (
+        typeof errorData === 'object' &&
+        errorData !== null &&
+        'message' in errorData &&
+        typeof errorData.message === 'string'
+      ) {
+        errorMessage = errorData.message;
+      }
+    } catch {
       errorMessage = response.statusText;
     }
 
     // Special case for unauthorized
     if (response.status === 401) {
-      // We can trigger an event or redirect to login here if needed
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
-        window.location.href = '/auth/signin';
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ilm_token');
+        localStorage.removeItem('ilm_user');
+        if (!options.skipRedirect && !window.location.pathname.startsWith('/auth')) {
+          window.location.href = '/auth/signin';
+        }
       }
     }
 
-    const error: any = new Error(errorMessage);
-    error.data = errorData;
-    error.status = response.status;
+    const error = Object.assign(new Error(errorMessage), {
+      data: errorData,
+      status: response.status,
+    });
     throw error;
   }
 

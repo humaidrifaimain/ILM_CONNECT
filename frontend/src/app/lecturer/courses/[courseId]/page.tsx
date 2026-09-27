@@ -40,16 +40,12 @@ export default function LecturerCourseDetailPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [previewLesson, setPreviewLesson] = useState<any | null>(null);
   const [selectedStudentForModal, setSelectedStudentForModal] = useState<any | null>(null);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
   const showNotification = (type: 'success' | 'error', message: string) => {
-    setNotification({ type, message });
     if (type === 'success') {
       toast.success('Access Updated', message);
     } else {
       toast.error('Update Failed', message);
     }
-    setTimeout(() => setNotification(null), 4000);
   };
 
   // 1. Fetch Course with modules and lessons
@@ -216,53 +212,6 @@ export default function LecturerCourseDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
-      {/* Top-Right Popup Notification (Below Navigation Bar) */}
-      {notification && (
-        <div
-          className={`fixed top-20 right-6 z-[9999] flex items-start gap-3.5 p-4 rounded-2xl shadow-2xl border backdrop-blur-md max-w-sm w-full transition-all duration-300 animate-in slide-in-from-top-4 fade-in ${
-            notification.type === 'success'
-              ? 'bg-emerald-950/95 text-emerald-100 border-emerald-500/50 shadow-emerald-950/30 ring-1 ring-emerald-500/20'
-              : 'bg-rose-950/95 text-rose-100 border-rose-500/50 shadow-rose-950/30 ring-1 ring-rose-500/20'
-          }`}
-        >
-          <div
-            className={`p-2 rounded-xl flex-shrink-0 mt-0.5 ${
-              notification.type === 'success'
-                ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30'
-                : 'bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/30'
-            }`}
-          >
-            {notification.type === 'success' ? (
-              <CheckCircle2 className="h-5 w-5" />
-            ) : (
-              <AlertCircle className="h-5 w-5" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4
-              className={`text-xs font-bold uppercase tracking-wider mb-0.5 ${
-                notification.type === 'success' ? 'text-emerald-400' : 'text-rose-400'
-              }`}
-            >
-              {notification.type === 'success' ? 'Permission Updated' : 'Action Failed'}
-            </h4>
-            <p className="text-xs font-medium leading-relaxed opacity-95">
-              {notification.message}
-            </p>
-          </div>
-          <button
-            onClick={() => setNotification(null)}
-            className={`p-1 rounded-lg transition-colors flex-shrink-0 ${
-              notification.type === 'success'
-                ? 'text-emerald-400/80 hover:text-emerald-200 hover:bg-white/10'
-                : 'text-rose-400/80 hover:text-rose-200 hover:bg-white/10'
-            }`}
-            title="Dismiss notification"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* Breadcrumb & Navigation */}
       <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
@@ -278,21 +227,21 @@ export default function LecturerCourseDetailPage() {
         <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[hsl(var(--primary)/0.06)] blur-3xl pointer-events-none" />
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
           <div className="space-y-3 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))]">
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[hsl(var(--foreground))]">
+              {course.title}
+            </h1>
+
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
                 {course.level || 'Curriculum'}
               </span>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+              <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
                 {course.difficulty || 'All Levels'}
               </span>
               <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1 ml-1">
                 <Clock className="h-3.5 w-3.5" /> 45 min lessons
               </span>
             </div>
-
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[hsl(var(--foreground))]">
-              {course.title}
-            </h1>
             <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
               {course.description || 'Comprehensive learning path with interactive lessons and assigned student materials.'}
             </p>

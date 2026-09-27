@@ -1,5 +1,5 @@
 // ============================================
-// IlmConnect — Mock Data for Development
+// Ilmbit — Mock Data for Development
 // ============================================
 
 export interface Lecturer {
@@ -322,13 +322,13 @@ export const testimonials = [
   {
     name: 'Sarah Ahmed',
     location: 'London, UK',
-    text: 'IlmConnect has been a blessing for our family. My children can now learn proper Quran recitation with a qualified teacher from the comfort of our home. The flexibility of scheduling around school hours is invaluable.',
+    text: 'Ilmbit has been a blessing for our family. My children can now learn proper Quran recitation with a qualified teacher from the comfort of our home. The flexibility of scheduling around school hours is invaluable.',
     rating: 5,
   },
   {
     name: 'Muhammad Rashid',
     location: 'Sydney, Australia',
-    text: 'As a revert to Islam, finding qualified teachers in my area was nearly impossible. IlmConnect connected me with a patient, knowledgeable scholar who has transformed my understanding of the deen.',
+    text: 'As a revert to Islam, finding qualified teachers in my area was nearly impossible. Ilmbit connected me with a patient, knowledgeable scholar who has transformed my understanding of the deen.',
     rating: 5,
   },
   {

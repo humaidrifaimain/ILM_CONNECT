@@ -65,21 +65,24 @@ export default function AdminFinancePage() {
       </div>
 
       {/* Revenue breakdown chart */}
-      <div className="p-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-        <h2 className="font-semibold mb-4">Revenue by Tier</h2>
+      <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-stone-950">Revenue by Course & Plan</h2>
+          <span className="text-xs text-stone-500 font-medium">Standard (2/wk) vs Fast Track (3/wk)</span>
+        </div>
         <div className="space-y-4">
           {[
-            { tier: 'Quran Basic', students: 65, revenue: 975000, color: 'from-blue-500 to-blue-400' },
-            { tier: 'Quran Premium', students: 52, revenue: 936000, color: 'from-[hsl(168,80%,26%)] to-[hsl(168,60%,40%)]' },
-            { tier: 'Hadith & Fiqh', students: 25, revenue: 500000, color: 'from-[hsl(var(--accent))] to-amber-400' },
+            { tier: 'Intermediate: Tajweed Recitation (Fast Track & Standard)', students: 68, revenue: 1120000, color: 'from-[#095F46] to-emerald-600' },
+            { tier: 'Beginner: Noorani Qaida (Fast Track & Standard)', students: 54, revenue: 860000, color: 'from-emerald-700 to-teal-500' },
+            { tier: 'Advanced: Hifz Memorization (Fast Track & Standard)', students: 32, revenue: 580000, color: 'from-stone-800 to-stone-600' },
           ].map((t) => (
             <div key={t.tier}>
               <div className="flex items-center justify-between text-sm mb-1.5">
-                <span className="font-medium">{t.tier} <span className="text-[hsl(var(--muted-foreground))] font-normal">({t.students} students)</span></span>
-                <span className="font-medium">Rs. {(t.revenue/1000).toFixed(0)}K</span>
+                <span className="font-semibold text-stone-900">{t.tier} <span className="text-stone-500 font-normal">({t.students} students)</span></span>
+                <span className="font-bold text-stone-950">Rs. {(t.revenue/1000).toFixed(0)}K</span>
               </div>
-              <div className="h-3 rounded-full bg-[hsl(var(--muted))]">
-                <div className={`h-full rounded-full bg-gradient-to-r ${t.color}`} style={{ width: `${(t.revenue / 1000000) * 100}%` }} />
+              <div className="h-3 rounded-full bg-stone-100">
+                <div className={`h-full rounded-full bg-gradient-to-r ${t.color}`} style={{ width: `${(t.revenue / 1200000) * 100}%` }} />
               </div>
             </div>
           ))}

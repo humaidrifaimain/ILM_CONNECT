@@ -1,5 +1,5 @@
 /* ============================================
-   IlmConnect Design System — Global Styles
+   Ilmbit Design System — Global Styles
    ============================================ */
 
 @tailwind base;
@@ -8,96 +8,107 @@
 
 /* ---- CSS Custom Properties (Design Tokens) ---- */
 :root {
-  /* Primary — Deep Teal/Emerald */
-  --primary: 168 80% 26%;
-  --primary-hover: 168 80% 22%;
-  --primary-light: 168 60% 94%;
+  --brand-primary: #095f46;
+  --brand-secondary: #0b8663;
+  --brand-bright: #10bf8d;
+  --brand-gray: #b3b3b3;
+  --font-brand: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-subtext: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-heading: var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif;
+  --radius-control: 0.875rem;
+  --radius-action: 999px;
+
+  /* Primary — ILMBIT Brand Green #095F46 */
+  --primary: 163 83% 20%;
+  --primary-hover: 163 85% 16%;
+  --primary-light: 161 48% 94%;
   --primary-foreground: 0 0% 100%;
 
-  /* Accent — Gold (used sparingly) */
-  --accent: 45 84% 40%;
-  --accent-hover: 45 84% 35%;
-  --accent-light: 45 80% 95%;
-  --accent-foreground: 0 0% 10%;
+  /* Accent — ILMBIT Bright Green #10BF8D */
+  --accent: 161 85% 41%;
+  --accent-hover: 161 85% 35%;
+  --accent-light: 161 55% 94%;
+  --accent-foreground: 164 83% 14%;
 
-  /* Neutrals — Warm Grays */
-  --background: 40 20% 99%;
-  --foreground: 220 20% 10%;
+  /* Neutrals — Crisp Clean White & High-Contrast Black */
+  --background: 0 0% 100%;
+  --foreground: 220 25% 10%;
   --card: 0 0% 100%;
-  --card-foreground: 220 20% 10%;
+  --card-foreground: 220 25% 10%;
   --popover: 0 0% 100%;
-  --popover-foreground: 220 20% 10%;
-  --muted: 40 10% 96%;
-  --muted-foreground: 220 10% 45%;
-  --border: 40 10% 90%;
-  --input: 40 10% 90%;
-  --ring: 168 80% 26%;
+  --popover-foreground: 220 25% 10%;
+  --muted: 163 20% 96%;
+  --muted-foreground: 0 0% 42%;
+  --border: 220 13% 90%;
+  --input: 220 13% 90%;
+  --ring: 163 83% 20%;
 
   /* Semantic */
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --success: 142 72% 29%;
+  --success: 163 83% 20%;
   --success-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 10%;
   --info: 199 89% 48%;
   --info-foreground: 0 0% 100%;
 
-  /* Sidebar */
-  --sidebar: 168 30% 12%;
-  --sidebar-foreground: 168 10% 90%;
-  --sidebar-accent: 168 40% 18%;
-  --sidebar-accent-foreground: 168 10% 95%;
-  --sidebar-border: 168 20% 20%;
+  /* Sidebar — Clean White with #095F46 Accents */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 220 25% 12%;
+  --sidebar-accent: 163 45% 94%;
+  --sidebar-accent-foreground: 163 83% 20%;
+  --sidebar-border: 220 13% 90%;
 
   /* Radius */
-  --radius: 0.625rem;
+  --radius: 0.875rem;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
 }
 
 .dark {
-  --primary: 168 65% 45%;
-  --primary-hover: 168 65% 50%;
-  --primary-light: 168 40% 15%;
+  /* Prevent dark-mode illegibility: keep high-contrast white & #095F46 palette */
+  --primary: 163 83% 20%;
+  --primary-hover: 163 83% 16%;
+  --primary-light: 163 45% 94%;
   --primary-foreground: 0 0% 100%;
 
-  --accent: 45 84% 50%;
-  --accent-hover: 45 84% 55%;
-  --accent-light: 45 40% 15%;
-  --accent-foreground: 0 0% 100%;
+  --accent: 45 84% 40%;
+  --accent-hover: 45 84% 35%;
+  --accent-light: 45 80% 95%;
+  --accent-foreground: 0 0% 10%;
 
-  --background: 220 20% 7%;
-  --foreground: 40 10% 93%;
-  --card: 220 18% 10%;
-  --card-foreground: 40 10% 93%;
-  --popover: 220 18% 10%;
-  --popover-foreground: 40 10% 93%;
-  --muted: 220 15% 15%;
-  --muted-foreground: 220 10% 55%;
-  --border: 220 15% 18%;
-  --input: 220 15% 18%;
-  --ring: 168 65% 45%;
+  --background: 0 0% 100%;
+  --foreground: 220 25% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 25% 10%;
+  --muted: 163 20% 96%;
+  --muted-foreground: 220 15% 38%;
+  --border: 220 13% 90%;
+  --input: 220 13% 90%;
+  --ring: 163 83% 20%;
 
-  --destructive: 0 62% 55%;
-  --success: 142 60% 45%;
-  --warning: 38 80% 55%;
-  --info: 199 80% 55%;
+  --destructive: 0 72% 51%;
+  --success: 163 83% 20%;
+  --warning: 38 92% 50%;
+  --info: 199 89% 48%;
 
-  --sidebar: 220 20% 6%;
-  --sidebar-foreground: 168 10% 90%;
-  --sidebar-accent: 168 30% 15%;
-  --sidebar-accent-foreground: 168 10% 95%;
-  --sidebar-border: 220 15% 15%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 220 25% 12%;
+  --sidebar-accent: 163 45% 94%;
+  --sidebar-accent-foreground: 163 83% 20%;
+  --sidebar-border: 220 13% 90%;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
 }
 
 /* ---- Base Reset ---- */
@@ -117,9 +128,141 @@ html {
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-brand);
   line-height: 1.6;
   min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border-radius: var(--radius-action);
+}
+
+a[class*="bg-[#095F46]"],
+a[class*="bg-[hsl(var(--primary))]"] {
+  border-radius: var(--radius-action);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+h1 span,
+h2 span,
+h3 span,
+h4 span,
+h5 span,
+h6 span,
+.font-heading span,
+.font-display span {
+  font-family: inherit;
+}
+
+.font-heading,
+.font-display {
+  font-family: var(--font-heading);
+}
+
+.font-subtext,
+.subtext,
+p {
+  font-family: var(--font-subtext);
+}
+
+.brand-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-action);
+  padding: 0.625rem 1.5rem;
+  font-family: var(--font-brand);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.brand-button:hover {
+  text-decoration: none;
+}
+
+.brand-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.brand-button:disabled,
+.brand-button[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.brand-button-primary {
+  background: var(--brand-primary);
+  color: #fff;
+}
+
+.brand-button-primary:hover {
+  background: #043f2e;
+  border-color: #043f2e;
+  box-shadow: 0 9px 24px rgba(4, 63, 46, 0.28);
+  transform: translateY(-2px);
+}
+
+.brand-button-secondary {
+  border-color: rgba(9, 95, 70, 0.24);
+  background: #fff;
+  color: var(--brand-primary);
+}
+
+.brand-button-secondary:hover {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary);
+  color: #fff;
+  box-shadow: 0 7px 20px rgba(9, 95, 70, 0.18);
+  transform: translateY(-2px);
+}
+
+.brand-button-inverse {
+  border-color: rgba(255, 255, 255, 0.36);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.brand-button-inverse:hover {
+  border-color: #fff;
+  background: #fff;
+  color: var(--brand-primary);
+  box-shadow: 0 9px 24px rgba(0, 0, 0, 0.16);
+  transform: translateY(-2px);
+}
+
+.brand-icon-button {
+  display: inline-flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, opacity 180ms ease;
 }
 
 /* ---- Typography Utilities ---- */
@@ -128,21 +271,21 @@ body {
 }
 
 .text-gradient-primary {
-  background: linear-gradient(135deg, hsl(168 80% 26%), hsl(168 60% 40%));
+  background: linear-gradient(135deg, #095F46, #0B8663, #10BF8D);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-gradient-gold {
-  background: linear-gradient(135deg, hsl(45 84% 40%), hsl(38 92% 50%));
+  background: linear-gradient(135deg, #0B8663, #10BF8D);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .dark .text-gradient-primary {
-  background: linear-gradient(135deg, hsl(168 65% 45%), hsl(168 50% 60%));
+  background: linear-gradient(135deg, #095F46, #0B8663, #10BF8D);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -168,6 +311,29 @@ body {
 .dark .glass {
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Liquid Glass Effect ---- */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.90);
+  box-shadow:
+    0 12px 36px -4px rgba(0, 0, 0, 0.10),
+    0 4px 12px -2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+.dark .liquid-glass {
+  background: rgba(18, 23, 23, 0.75) !important;
+  backdrop-filter: blur(28px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 12px 36px -4px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* ---- Skeleton Loading Animation ---- */
@@ -203,6 +369,16 @@ body {
 
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* ---- Fade In Opacity (no transform, preserves backdrop-filter root context) ---- */
+@keyframes fadeInOpacity {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in-opacity {
+  animation: fadeInOpacity 0.35s ease-out forwards;
 }
 
 /* ---- Pulse Glow ---- */
@@ -255,4 +431,118 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  .hero-brand-video {
+    display: none;
+  }
+}
+
+/* ---- Hero Sanctuary-Inspired Animated Light Ambient Gradient ---- */
+@keyframes ambientDrift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.bg-sanctuary-light {
+  background: linear-gradient(
+    -45deg,
+    #faf8f5,
+    #f4f8f6,
+    #faf6f0,
+    #edf5f2,
+    #fcfbf8,
+    #f3f7f5
+  );
+  background-size: 300% 300%;
+  animation: ambientDrift 22s ease-in-out infinite;
+}
+
+@keyframes ambientOrb1 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(60px, -45px) scale(1.12);
+    opacity: 0.8;
+  }
+}
+
+@keyframes ambientOrb2 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-50px, 40px) scale(1.08);
+    opacity: 0.75;
+  }
+}
+
+.animate-ambient-orb-1 {
+  animation: ambientOrb1 20s ease-in-out infinite;
+}
+
+.animate-ambient-orb-2 {
+  animation: ambientOrb2 25s ease-in-out infinite;
+}
+
+/* ========================================================================= */
+/* How It Works Reference Card: Scooped Top-Right Notched Design */
+/* ========================================================================= */
+.hiw-notch-card {
+  position: relative;
+  background-color: #ffffff;
+  border-radius: 28px;
+  border-top-right-radius: 0;
+  border: 1px solid rgba(229, 231, 235, 0.95);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 12px -2px rgba(0, 0, 0, 0.02);
+}
+
+.hiw-notch-cutout {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 102px;
+  height: 42px;
+  background-color: #f6f8f6;
+  border-bottom-left-radius: 20px;
+  border-left: 1px solid rgba(229, 231, 235, 0.95);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.95);
+  z-index: 10;
+}
+
+/* Fillet on the top-left of the cutout notch */
+.hiw-notch-cutout::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -16px;
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border-top-right-radius: 16px;
+  box-shadow: 5px -5px 0 5px #f6f8f6;
+  pointer-events: none;
+}
+
+/* Fillet on the bottom-right of the cutout notch */
+.hiw-notch-cutout::after {
+  content: '';
+  position: absolute;
+  bottom: -16px;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border-top-right-radius: 16px;
+  box-shadow: 5px -5px 0 5px #f6f8f6;
+  pointer-events: none;
 }

@@ -331,7 +331,7 @@ function LecturerMessagesContent() {
           <div className="flex flex-col sm:flex-row justify-center gap-2">
             <Link
               href="/student/messages"
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow transition-all"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow transition-all"
             >
               Go to Student Messages →
             </Link>
@@ -379,7 +379,7 @@ function LecturerMessagesContent() {
               </AnimatePresence>
               <button
                 onClick={() => setShowStudentPicker(!showStudentPicker)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all"
               >
                 <Users className="h-3.5 w-3.5" />
                 New Chat
@@ -680,7 +680,7 @@ function LecturerMessagesContent() {
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
               <div className="flex items-center gap-2 mx-auto max-w-sm px-3 py-2 rounded-xl bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] text-xs text-center mb-4">
                 <Info className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>All messages are kept within the IlmConnect platform for safeguarding compliance.</span>
+                <span>All messages are kept within the Ilmbit platform for safeguarding compliance.</span>
               </div>
 
               {messagesLoading ? (
@@ -756,7 +756,7 @@ function LecturerMessagesContent() {
                             <div
                               className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words transition-all duration-700 ${
                                 isMine
-                                  ? 'bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] text-white rounded-br-sm'
+                                  ? 'bg-[#095F46] text-white rounded-br-sm'
                                   : isUnread
                                   ? 'bg-[hsl(var(--card))] border-2 border-red-500/60 shadow-md shadow-red-500/10 ring-2 ring-red-500/20 text-[hsl(var(--foreground))] rounded-bl-sm font-medium'
                                   : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] rounded-bl-sm'
@@ -837,7 +837,7 @@ function LecturerMessagesContent() {
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() || sendMutation.isPending}
-                  className="h-11 w-11 flex items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg transition-all flex-shrink-0"
+                  className="h-11 w-11 flex items-center justify-center rounded-xl bg-[#095F46] hover:bg-[#074c38] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-md transition-all flex-shrink-0"
                 >
                   {sendMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

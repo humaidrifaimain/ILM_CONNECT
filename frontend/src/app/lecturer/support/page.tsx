@@ -363,10 +363,10 @@ function LecturerSupportContent() {
               <div className="pt-2 border-t border-[hsl(var(--border))] flex items-center justify-between text-xs">
                 <span className="text-[hsl(var(--muted-foreground))]">Academic Desk Email:</span>
                 <a
-                  href="mailto:support@ilmconnect.com"
+                  href="mailto:support@ilmbit.com"
                   className="font-semibold text-[hsl(var(--primary))] hover:underline"
                 >
-                  support@ilmconnect.com
+                  support@ilmbit.com
                 </a>
               </div>
             </div>

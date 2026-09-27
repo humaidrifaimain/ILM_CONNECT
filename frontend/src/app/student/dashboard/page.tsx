@@ -112,7 +112,7 @@ export default function StudentDashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
 
-            <button onClick={() => setShowBookModal(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all">
+            <button onClick={() => setShowBookModal(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all">
               <Calendar className="h-4 w-4" /> Book Session
             </button>
           </div>
@@ -151,7 +151,7 @@ export default function StudentDashboard() {
                   </Link>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 uppercase">
+                  <div className="h-14 w-14 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-lg flex-shrink-0 uppercase shadow-sm">
                     {assignedLecturer.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                   </div>
                   <div className="flex-1">
@@ -190,7 +190,7 @@ export default function StudentDashboard() {
                     </div>
                     <Link
                       href={`/student/courses/beginner-qaida/sessions/${s.id}/room`}
-                      className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5 flex-shrink-0"
+                      className="px-4 py-2 rounded-lg text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center gap-1.5 flex-shrink-0"
                     >
                       <Play className="h-3 w-3 fill-current" /> Join
                     </Link>
@@ -215,10 +215,9 @@ export default function StudentDashboard() {
               {progress ? (
                 <>
                   <div>
-                    <div className="text-xs font-bold tracking-wider text-[hsl(var(--primary))] uppercase mb-1">
-                      {progress.currentLearningPath?.level} Level
+                    <div className="font-bold text-lg mb-1">
+                      {progress.currentLearningPath?.title}
                     </div>
-                    <div className="font-bold text-lg mb-1">{progress.currentLearningPath?.title}</div>
                     <p className="text-sm text-[hsl(var(--muted-foreground))]">
                       {progress.currentModule?.title}: {progress.currentLesson?.title}
                     </p>
@@ -229,7 +228,7 @@ export default function StudentDashboard() {
                       <span className="text-[hsl(var(--muted-foreground))]">{progress.progressPercentage}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-[hsl(var(--muted))]">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,40%)] transition-all" style={{ width: `${progress.progressPercentage}%` }} />
+                      <div className="h-full rounded-full bg-[#095F46] transition-all" style={{ width: `${progress.progressPercentage}%` }} />
                     </div>
                   </div>
                 </>
@@ -257,13 +256,13 @@ export default function StudentDashboard() {
                    <p className="text-sm text-[hsl(var(--muted-foreground))]">
                      You have <strong>1 free session</strong> remaining. Enjoy your first session without any payment!
                    </p>
-                   <button 
-                     onClick={() => activateTrialMutation.mutate()} 
-                     disabled={activateTrialMutation.isPending}
-                     className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all disabled:opacity-50"
-                   >
-                     {activateTrialMutation.isPending ? 'Activating...' : 'Activate Free Trial'}
-                   </button>
+                    <button 
+                      onClick={() => activateTrialMutation.mutate()} 
+                      disabled={activateTrialMutation.isPending}
+                      className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all disabled:opacity-50"
+                    >
+                      {activateTrialMutation.isPending ? 'Activating...' : 'Activate Free Trial'}
+                    </button>
                  </div>
               ) : (
                  <>
@@ -304,7 +303,7 @@ export default function StudentDashboard() {
             </div>
             <div className="flex gap-3">
               <button onClick={closeModal} disabled={isSubmittingChange} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] disabled:opacity-50">Cancel</button>
-              <button onClick={handleSubmitChangeRequest} disabled={isSubmittingChange} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] disabled:opacity-50">
+              <button onClick={handleSubmitChangeRequest} disabled={isSubmittingChange} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] disabled:opacity-50">
                 {isSubmittingChange ? 'Submitting...' : 'Request Change'}
               </button>
             </div>

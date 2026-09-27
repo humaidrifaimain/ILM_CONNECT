@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Resend } from 'resend';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface EmailDispatchPayload {
@@ -20,37 +21,65 @@ export class EmailNotificationService {
 
   /**
    * Dispatches an email notification.
-   * If SMTP or external provider credentials are configured in environment variables,
-   * it connects and sends. Otherwise, logs the full payload in structured format.
+   * Sends through Resend when RESEND_API_KEY is configured. In local development,
+   * a missing key keeps the existing simulated-email behavior.
    */
   async sendEmail(payload: EmailDispatchPayload): Promise<boolean> {
-    const { toEmail, recipientName, subject, textContent, htmlContent, eventType, metadata } = payload;
+    const { toEmail, recipientName, subject, textContent, htmlContent, eventType } = payload;
 
     this.logger.log(
       `[EmailNotification] Preparing email for ${recipientName} <${toEmail}> | Subject: "${subject}" | Event: ${eventType}`
     );
 
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    const fromAddress = process.env.SMTP_FROM || 'IlmConnect Notifications <notifications@ilmconnect.com>';
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromAddress =
+      process.env.RESEND_FROM_EMAIL || 'Ilmbit <onboarding@resend.dev>';
 
-    if (smtpHost && smtpUser && smtpPass) {
-      try {
-        // Dynamic nodemailer check if installed or custom HTTP transport
-        this.logger.log(`[EmailNotification] Dispatching via SMTP host: ${smtpHost} to ${toEmail}`);
-        // When real SMTP credentials are supplied by user, standard transport sends here.
-      } catch (err: any) {
-        this.logger.error(`[EmailNotification] Failed to send live email to ${toEmail}: ${err.message}`);
+    if (!apiKey) {
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error(
+          '[EmailNotification] RESEND_API_KEY is missing; email was not sent.',
+        );
+        return false;
       }
-    } else {
+
       this.logger.log(
         `[EmailNotification] (Simulated Mode - credentials pending) Email to ${toEmail}:\n` +
         `Subject: ${subject}\nBody: ${textContent}`
       );
+      return true;
     }
 
-    return true;
+    try {
+      const resend = new Resend(apiKey);
+      const { data, error } = await resend.emails.send({
+        from: fromAddress,
+        to: [toEmail],
+        subject,
+        html: htmlContent,
+        text: textContent,
+        ...(process.env.RESEND_REPLY_TO
+          ? { replyTo: process.env.RESEND_REPLY_TO }
+          : {}),
+      });
+
+      if (error) {
+        this.logger.error(
+          `[EmailNotification] Resend rejected email to ${toEmail}: ${error.message}`,
+        );
+        return false;
+      }
+
+      this.logger.log(
+        `[EmailNotification] Sent email to ${toEmail} via Resend (id: ${data?.id ?? 'unknown'})`,
+      );
+      return true;
+    } catch (err: any) {
+      this.logger.error(
+        `[EmailNotification] Failed to send email to ${toEmail}: ${err.message}`,
+      );
+      return false;
+    }
   }
 
   /**
@@ -89,22 +118,22 @@ export class EmailNotificationService {
     let mainDescription = '';
 
     if (eventType === 'BOOKING_CONFIRMED') {
-      subject = `[IlmConnect] Session Confirmed with ${actorName} for ${sessionDateFormatted}`;
+      subject = `[Ilmbit] Session Confirmed with ${actorName} for ${sessionDateFormatted}`;
       headline = 'New Session Scheduled';
       statusColor = '#059669';
       mainDescription = `A new session has been confirmed between you and ${actorName} (${roleLabel}).`;
     } else if (eventType === 'BOOKING_CANCELLED') {
-      subject = `[IlmConnect] Notice: Session on ${sessionDateFormatted} has been Cancelled`;
+      subject = `[Ilmbit] Notice: Session on ${sessionDateFormatted} has been Cancelled`;
       headline = 'Session Cancelled';
       statusColor = '#dc2626'; // Red
       mainDescription = `The scheduled session with ${actorName} (${roleLabel}) has been cancelled.`;
     } else if (eventType === 'BOOKING_RESCHEDULED') {
-      subject = `[IlmConnect] Session Rescheduled with ${actorName} to ${sessionDateFormatted}`;
+      subject = `[Ilmbit] Session Rescheduled with ${actorName} to ${sessionDateFormatted}`;
       headline = 'Session Rescheduled';
       statusColor = '#d97706'; // Amber
       mainDescription = `The session with ${actorName} (${roleLabel}) has been rescheduled to a new time.`;
     } else if (eventType === 'SESSION_STUDENT_NO_SHOW') {
-      subject = `[IlmConnect] Attendance Notice: Session Marked Absent on ${sessionDateFormatted}`;
+      subject = `[Ilmbit] Attendance Notice: Session Marked Absent on ${sessionDateFormatted}`;
       headline = 'Session Attendance: Marked Absent';
       statusColor = '#ea580c'; // Orange
       mainDescription = `You were marked absent by ${actorName} (${roleLabel}) for the scheduled session.`;
@@ -125,7 +154,7 @@ You can review your updated schedule on your dashboard:
 ${actionUrl}
 
 Barakallahu Feekum,
-The IlmConnect Team
+The Ilmbit Team
     `.trim();
 
     const htmlContent = `
@@ -138,7 +167,7 @@ The IlmConnect Team
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b;">
   <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
     <div style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 24px 32px; text-align: left;">
-      <h2 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">IlmConnect</h2>
+      <h2 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">Ilmbit</h2>
       <p style="margin: 4px 0 0; color: #a7f3d0; font-size: 13px;">Online Islamic Education Platform</p>
     </div>
     <div style="padding: 32px;">
@@ -183,12 +212,12 @@ The IlmConnect Team
 
       <div style="text-align: center; margin-top: 32px;">
         <a href="${actionUrl}" style="display: inline-block; background: linear-gradient(135deg, #065f46 0%, #047857 100%); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 2px 4px rgba(6, 95, 70, 0.2);">
-          Open IlmConnect Dashboard
+          Open Ilmbit Dashboard
         </a>
       </div>
     </div>
     <div style="background-color: #f1f5f9; padding: 16px 32px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-      © ${new Date().getFullYear()} IlmConnect. All rights reserved.
+      © ${new Date().getFullYear()} Ilmbit. All rights reserved.
     </div>
   </div>
 </body>

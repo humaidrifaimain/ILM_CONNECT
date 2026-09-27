@@ -26,6 +26,7 @@ const defaultCorsOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://ilm-connect-nine.vercel.app',
+  'https://ilm-connect-frontend.vercel.app',
 ];
 
 function parseCorsOrigins(): string[] {

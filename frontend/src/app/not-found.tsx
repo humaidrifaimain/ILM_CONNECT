@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BookOpen, Home, ArrowLeft } from 'lucide-react';
+import { Home } from 'lucide-react';
 
 export default function NotFound() {
   return (
@@ -11,7 +11,7 @@ export default function NotFound() {
           The page you&apos;re looking for doesn&apos;t exist or has been moved. Let us guide you back.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)]">
+          <Link href="/" className="brand-button brand-button-primary">
             <Home className="h-4 w-4" /> Go Home
           </Link>
 

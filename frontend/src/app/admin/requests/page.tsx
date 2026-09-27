@@ -286,7 +286,7 @@ export default function AdminRequestsPage() {
                             className={`h-10 w-10 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm ${
                               isLecturer
                                 ? 'bg-gradient-to-br from-purple-600 to-indigo-700'
-                                : 'bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,55%,42%)]'
+                                : 'bg-[#095F46]'
                             }`}
                           >
                             {displayName.substring(0, 2).toUpperCase()}
@@ -459,7 +459,7 @@ export default function AdminRequestsPage() {
                     className={`h-10 w-10 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm ${
                       currentSelectedTicket.user?.role === 'LECTURER'
                         ? 'bg-gradient-to-br from-purple-600 to-indigo-700'
-                        : 'bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,55%,42%)]'
+                        : 'bg-[#095F46]'
                     }`}
                   >
                     {getDisplayName(currentSelectedTicket).substring(0, 2).toUpperCase()}
@@ -586,7 +586,7 @@ export default function AdminRequestsPage() {
                           <div
                             className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
                               isAdminSender
-                                ? 'bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] text-white shadow-sm rounded-tr-none'
+                                ? 'bg-[#095F46] text-white shadow-sm rounded-tr-none'
                                 : 'bg-[hsl(var(--muted)/0.7)] text-[hsl(var(--foreground))] border border-[hsl(var(--border))] rounded-tl-none'
                             }`}
                           >
@@ -652,7 +652,7 @@ export default function AdminRequestsPage() {
                       type="button"
                       disabled={sendingReply || !replyText.trim()}
                       onClick={() => handleSendReply()}
-                      className="px-4 py-2 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5"
+                      className="px-4 py-2 rounded-xl font-bold text-xs text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
                     >
                       {sendingReply ? (
                         <>

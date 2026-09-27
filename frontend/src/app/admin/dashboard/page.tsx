@@ -7,23 +7,23 @@ import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   
   // Note: Only accessible by ADMIN or SUPER_ADMIN
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading: isStatsLoading } = useQuery({
     queryKey: ['adminStats'],
     queryFn: () => apiFetch('/admin/stats'),
-    enabled: isAdmin,
+    enabled: !!isAdmin,
   });
 
-  if (isLoading) {
+  if (isAuthLoading || (isAdmin && isStatsLoading)) {
     return <div className="min-h-screen p-8 animate-pulse">Loading admin dashboard...</div>;
   }
 
-  if (!stats) {
+  if (!isAdmin || !stats) {
     return <div className="p-8 text-red-500">Failed to load admin statistics. Ensure you have admin privileges.</div>;
   }
 

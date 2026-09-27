@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BookOpen } from 'lucide-react';
+import Image from 'next/image';
 
 interface LoadingScreenProps {
   message?: string;
@@ -25,11 +25,17 @@ export function LoadingScreen({
       {/* Central Animated Logo Emblem with Single Solid Rotating Ring */}
       <div className="relative mb-6 flex items-center justify-center">
         {/* Single continuous solid rotating line (no dashes or dots) */}
-        <div className="h-20 w-20 rounded-full border-2 border-[hsl(168,80%,26%/0.15)] border-t-[hsl(168,80%,26%)] animate-spin" />
+        <div className="h-20 w-20 rounded-full border-2 border-[#095F46]/20 border-t-[#095F46] animate-spin" />
 
-        {/* Center Ilm Connect Book Logo */}
-        <div className="absolute inset-2.5 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] flex items-center justify-center shadow-lg shadow-[hsl(168,80%,26%/0.25)] transition-transform">
-          <BookOpen className="h-7 w-7 text-white" strokeWidth={2.2} />
+        {/* Center Ilmbit Emblem */}
+        <div className="absolute inset-2.5 rounded-2xl bg-[#095F46] p-2 flex items-center justify-center shadow-lg shadow-[#095F46]/25 transition-transform">
+          <Image
+            src="/images/ilmbit-icon-white.png"
+            alt="Ilmbit Logo"
+            width={38}
+            height={38}
+            className="object-contain"
+          />
         </div>
       </div>
 

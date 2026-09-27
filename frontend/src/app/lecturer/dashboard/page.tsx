@@ -75,7 +75,7 @@ export default function LecturerDashboard() {
           <h1 className="text-2xl font-bold">Assalamu Alaikum, {profile.fullName.split(' ')[0]}!</h1>
           <p className="text-[hsl(var(--muted-foreground))]">You have {todaySessions.length} sessions today</p>
         </div>
-        <Link href="/lecturer/availability" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all">
+        <Link href="/lecturer/availability" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all">
           <Calendar className="h-4 w-4" /> Manage Availability
         </Link>
       </div>
@@ -87,7 +87,7 @@ export default function LecturerDashboard() {
           <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Pending Earnings (This Cycle)</div>
           <div className="text-2xl font-bold text-gradient-primary">Rs. {pendingEarnings.toLocaleString()}</div>
           <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Available for withdrawal</div>
-          <button onClick={() => setShowWithdrawModal(true)} className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all">
+          <button onClick={() => setShowWithdrawModal(true)} className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-sm transition-all">
             <Wallet className="h-3.5 w-3.5" /> Withdraw
           </button>
         </div>
@@ -139,7 +139,7 @@ export default function LecturerDashboard() {
                 <div className="text-xs text-[hsl(var(--muted-foreground))]">Quran Session</div>
                 <div className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
-              <Link href={`/lecturer/sessions/${s.id}/room`} className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5 flex-shrink-0">
+              <Link href={`/lecturer/sessions/${s.id}/room`} className="px-3 py-2 rounded-lg text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-sm transition-all flex items-center gap-1.5 flex-shrink-0">
                 <Play className="h-3 w-3 fill-current" /> Start
               </Link>
 
@@ -165,7 +165,7 @@ export default function LecturerDashboard() {
             </div>
             <div className="flex gap-3">
               <button disabled={isWithdrawing} onClick={() => setShowWithdrawModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] disabled:opacity-50">Cancel</button>
-              <button disabled={isWithdrawing} onClick={handleWithdraw} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] disabled:opacity-50">
+              <button disabled={isWithdrawing} onClick={handleWithdraw} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] disabled:opacity-50">
                 {isWithdrawing ? 'Processing...' : 'Confirm'}
               </button>
             </div>

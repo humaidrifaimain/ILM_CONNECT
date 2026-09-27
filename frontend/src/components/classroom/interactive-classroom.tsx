@@ -95,7 +95,7 @@ export function InteractiveClassroom({
     {
       id: '1',
       sender: userRole === 'student' ? sessionInfo.lecturerName : 'System',
-      text: 'Assalamu Alaikum! Welcome to today’s one-on-one session. Let us begin with Surah Al-Fatiha.',
+      text: 'Assalamu Alaikum! Welcome to today’s 1:1 session. Let us begin with Surah Al-Fatiha.',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);

@@ -223,7 +223,7 @@ function StudentSupportContent() {
           <div className="lg:col-span-2 space-y-6">
             <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
               <div className="flex items-start gap-4 mb-6">
-                <div className="h-12 w-12 rounded-2xl bg-[hsl(168,80%,26%)/0.12] text-[hsl(var(--primary))] flex items-center justify-center flex-shrink-0">
+                <div className="h-12 w-12 rounded-2xl bg-[#095F46]/10 text-[#095F46] flex items-center justify-center flex-shrink-0">
                   <RefreshCw className="h-6 w-6" />
                 </div>
                 <div>
@@ -259,7 +259,7 @@ function StudentSupportContent() {
                   {/* Current Lecturer Card */}
                   <div className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.5)] flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(168,65%,45%)] to-[hsl(168,50%,55%)] flex items-center justify-center text-white font-bold text-sm">
+                      <div className="h-10 w-10 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-sm">
                         {assignedLecturer?.fullName?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'ML'}
                       </div>
                       <div>
@@ -332,7 +332,7 @@ function StudentSupportContent() {
                   <button
                     type="submit"
                     disabled={createTicketMutation.isPending}
-                    className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-xl font-bold text-sm text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {createTicketMutation.isPending ? (
                       <>
@@ -480,7 +480,7 @@ function StudentSupportContent() {
                     <button
                       type="submit"
                       disabled={createTicketMutation.isPending || !issueSubject.trim() || !issueDescription.trim()}
-                      className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-3 rounded-xl font-bold text-sm text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {createTicketMutation.isPending ? (
                         <>
@@ -506,7 +506,7 @@ function StudentSupportContent() {
                 <div className="space-y-3 text-xs text-[hsl(var(--muted-foreground))]">
                   <div>
                     <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Camera or Microphone Issues?</p>
-                    <p className="leading-relaxed">Check your browser site permissions to allow audio/video for IlmConnect before entering the room.</p>
+                    <p className="leading-relaxed">Check your browser site permissions to allow audio/video for Ilmbit before entering the room.</p>
                   </div>
                   <div>
                     <p className="font-semibold text-[hsl(var(--foreground))] mb-0.5">Need to Reschedule a Class?</p>
@@ -587,10 +587,10 @@ function StudentSupportContent() {
               <div className="pt-2 border-t border-[hsl(var(--border))] flex items-center justify-between text-xs">
                 <span className="text-[hsl(var(--muted-foreground))]">Official Support Email:</span>
                 <a
-                  href="mailto:support@ilmconnect.com"
+                  href="mailto:support@ilmbit.com"
                   className="font-semibold text-[hsl(var(--primary))] hover:underline"
                 >
-                  support@ilmconnect.com
+                  support@ilmbit.com
                 </a>
               </div>
             </div>
@@ -821,7 +821,7 @@ function StudentSupportContent() {
                           <div
                             className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
                               isAdminSender
-                                ? 'bg-gradient-to-br from-emerald-700 to-[hsl(168,80%,26%)] text-white shadow-sm rounded-tl-none'
+                                ? 'bg-[#095F46] text-white shadow-sm rounded-tl-none'
                                 : 'bg-[hsl(var(--muted)/0.8)] text-[hsl(var(--foreground))] border border-[hsl(var(--border))] rounded-tr-none'
                             }`}
                           >
@@ -852,7 +852,7 @@ function StudentSupportContent() {
                     type="button"
                     disabled={sendingStudentReply || !studentReply.trim()}
                     onClick={handleSendStudentReply}
-                    className="px-4 py-2 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl font-bold text-xs text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
                   >
                     {sendingStudentReply ? (
                       <>

@@ -7,26 +7,26 @@ export default function MyCoursesPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight mb-1">My Courses</h1>
-        <p className="text-[hsl(var(--muted-foreground))]">
+        <h1 className="text-2xl font-bold tracking-tight mb-1 text-stone-950">My Courses</h1>
+        <p className="text-stone-600 text-sm">
           Manage your enrolled courses.
         </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="p-6 rounded-xl border-2 border-[hsl(var(--primary))] bg-[hsl(var(--card))] shadow-sm relative overflow-hidden flex flex-col h-full">
+        <div className="p-6 rounded-xl border-2 border-[#095F46] bg-white shadow-sm relative overflow-hidden flex flex-col h-full">
           <div className="absolute top-0 right-0 p-4">
-             <span className="inline-flex items-center rounded-full bg-[hsl(var(--primary)/0.1)] px-2.5 py-0.5 text-xs font-semibold text-[hsl(var(--primary))]">
+             <span className="inline-flex items-center rounded-full bg-[#095F46]/10 px-2.5 py-0.5 text-xs font-semibold text-[#095F46]">
                 Active
               </span>
           </div>
           <div className="flex items-center gap-4 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-[hsl(var(--primary)/0.1)] flex items-center justify-center text-[hsl(var(--primary))] flex-shrink-0">
+            <div className="h-12 w-12 rounded-lg bg-[#095F46]/10 flex items-center justify-center text-[#095F46] flex-shrink-0">
               <Library className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold line-clamp-1">Beginner: Noorani Qaida</h2>
-              <p className="text-sm text-[hsl(var(--muted-foreground))]">Instructor: Sheikh Ahmed Al-Farsi</p>
+              <h2 className="text-xl font-bold text-stone-950 line-clamp-1">Beginner: Noorani Qaida</h2>
+              <p className="text-sm text-stone-600">Instructor: Sheikh Ahmed Al-Farsi</p>
             </div>
           </div>
           

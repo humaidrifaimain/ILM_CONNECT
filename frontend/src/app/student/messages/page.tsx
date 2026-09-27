@@ -306,7 +306,7 @@ function StudentMessagesContent() {
           <div className="flex flex-col sm:flex-row justify-center gap-2">
             <Link
               href="/lecturer/messages"
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow transition-all"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow transition-all"
             >
               Go to Lecturer Messages →
             </Link>
@@ -374,7 +374,7 @@ function StudentMessagesContent() {
               {assignedLecturerId && (
                 <button
                   onClick={handleStartFirstConversation}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all"
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all"
                 >
                   Message {assignedLecturerName}
                 </button>
@@ -399,7 +399,7 @@ function StudentMessagesContent() {
                   >
                     {/* Avatar with Presence Indicator */}
                     <div className="relative flex-shrink-0">
-                      <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[hsl(168,65%,45%)] to-[hsl(168,50%,55%)] flex items-center justify-center text-white font-bold text-sm">
+                      <div className="h-11 w-11 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-sm">
                         {thread.otherUser.initials}
                       </div>
 
@@ -509,7 +509,7 @@ function StudentMessagesContent() {
                 <ArrowLeft className="h-5 w-5" />
               </button>
               <div className="relative flex-shrink-0">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[hsl(168,65%,45%)] to-[hsl(168,50%,55%)] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                <div className="h-9 w-9 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                   {selectedThread.otherUser.initials}
                 </div>
                 <span
@@ -677,7 +677,7 @@ function StudentMessagesContent() {
                           className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
                         >
                           {!isMine && (
-                            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[hsl(168,65%,45%)] to-[hsl(168,50%,55%)] flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0 mr-2 mt-1">
+                            <div className="h-7 w-7 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0 mr-2 mt-1">
                               {selectedThread.otherUser.initials}
                             </div>
                           )}
@@ -687,7 +687,7 @@ function StudentMessagesContent() {
                             <div
                               className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words transition-all duration-700 ${
                                 isMine
-                                  ? 'bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] text-white rounded-br-sm'
+                                  ? 'bg-[#095F46] text-white rounded-br-sm'
                                   : isUnread
                                   ? 'bg-[hsl(var(--card))] border-2 border-red-500/60 shadow-md shadow-red-500/10 ring-2 ring-red-500/20 text-[hsl(var(--foreground))] rounded-bl-sm font-medium'
                                   : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] rounded-bl-sm'
@@ -768,7 +768,7 @@ function StudentMessagesContent() {
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() || sendMutation.isPending}
-                  className="h-11 w-11 flex items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg transition-all flex-shrink-0"
+                  className="h-11 w-11 flex items-center justify-center rounded-xl bg-[#095F46] hover:bg-[#074c38] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-md transition-all flex-shrink-0"
                 >
                   {sendMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

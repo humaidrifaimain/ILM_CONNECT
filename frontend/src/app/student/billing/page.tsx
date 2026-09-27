@@ -29,27 +29,27 @@ export default function BillingPage() {
       <h1 className="text-2xl font-bold">Billing & Subscription</h1>
 
       {/* Current Plan */}
-      <div className="p-6 rounded-2xl border-2 border-[hsl(var(--primary))] bg-[hsl(var(--card))]">
+      <div className="p-6 rounded-2xl border-2 border-[#095F46] bg-white shadow-sm">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-bold">{subscription?.tier || 'No Active Plan'}</h2>
-              <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]">{subscription ? 'Active' : 'Inactive'}</span>
+              <h2 className="text-lg font-bold text-stone-950">{subscription?.tier || 'No Active Plan'}</h2>
+              <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-[#095F46]/10 text-[#095F46]">{subscription ? 'Active' : 'Inactive'}</span>
             </div>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">
+            <p className="text-sm text-stone-600 mb-4">
               {subscription?.tier?.includes('Fast Track') ? '12 sessions/month' : '8 sessions/month'} · 45 min each · Recordings included
             </p>
-            <div className="text-3xl font-bold">${subscription?.lkrAmount === 17700 ? '59' : subscription?.lkrAmount === 26700 ? '89' : '0'}<span className="text-base font-normal text-[hsl(var(--muted-foreground))]">/month</span></div>
-            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+            <div className="text-3xl font-extrabold text-stone-950">${subscription?.lkrAmount === 17700 ? '59' : subscription?.lkrAmount === 26700 ? '89' : '0'}<span className="text-base font-normal text-stone-500">/month</span></div>
+            <p className="text-xs text-stone-500 mt-1">
               Next billing date: {subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'N/A'}
             </p>
           </div>
         </div>
         <div className="flex gap-3 mt-6">
-          <Link href="/pricing" className="px-4 py-2 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors">Change Plan</Link>
+          <Link href="/pricing" className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] transition-colors shadow-sm">Change Plan</Link>
           <button
             onClick={() => toast.info('Subscription Assistance', 'To cancel or adjust your subscription, please visit Support or message your advisor.')}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors"
+            className="px-4 py-2 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 transition-colors"
           >
             Cancel Subscription
           </button>

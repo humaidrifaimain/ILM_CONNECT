@@ -214,7 +214,7 @@ export default function AvailabilityPage() {
               <Calendar className="h-3.5 w-3.5" /> Monthly
             </button>
           </div>
-          <button onClick={handleSave} disabled={isSaving || Object.keys(localSlots).length === 0} className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] disabled:opacity-50">
+          <button onClick={handleSave} disabled={isSaving || Object.keys(localSlots).length === 0} className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] shadow-sm transition-all disabled:opacity-50">
             {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>

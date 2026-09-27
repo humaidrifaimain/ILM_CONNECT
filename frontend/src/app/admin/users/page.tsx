@@ -364,7 +364,7 @@ export default function AdminUsersPage() {
                   <tr key={u.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.4)] transition-colors">
                     <td className="py-3 px-5">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
+                        <div className="h-9 w-9 rounded-full bg-[#095F46] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
                           {u.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
@@ -508,7 +508,7 @@ export default function AdminUsersPage() {
                     className="w-full flex items-center justify-between p-3 rounded-xl border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.05)] transition-all text-left group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-[#095F46] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                         {l.fullName?.slice(0, 2).toUpperCase() || 'LC'}
                       </div>
                       <div>
@@ -597,20 +597,20 @@ export default function AdminUsersPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                  placeholder="ahmed.scholar@ilmconnect.com"
+                  placeholder="ahmed.scholar@ilmbit.com"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">
-                  Initial Password <span className="text-[hsl(var(--muted-foreground))] font-normal">(Optional, defaults to ilmconnect123)</span>
+                  Initial Password <span className="text-[hsl(var(--muted-foreground))] font-normal">(Optional, defaults to ilmbit123)</span>
                 </label>
                 <input
                   type="text"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                  placeholder="ilmconnect123"
+                  placeholder="ilmbit123"
                 />
               </div>
 

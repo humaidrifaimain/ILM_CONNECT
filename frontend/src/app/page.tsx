@@ -1,218 +1,1007 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { BookOpen, Star, ChevronRight, GraduationCap, ShieldCheck, Clock, Users, Sparkles, ArrowRight, Check } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { courseOfferings, testimonials } from '@/lib/mock-data';
+import {
+  ChevronRight,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Quote,
+  X,
+} from 'lucide-react';
+import { motion, AnimatePresence, useInView, type Variants } from 'framer-motion';
+import WaitlistModal from '@/components/waitlist-modal';
+import HowItWorks from '@/components/how-it-works';
 
-const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0 } };
+const sectionReveal: Variants = {
+  hidden: { opacity: 0, y: 32 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
 
-const steps = [
-  { num: '1', title: 'Sign Up', desc: 'Create your account in minutes and tell us about your learning goals', icon: '📝' },
-  { num: '2', title: 'Choose Your Course', desc: 'Select Tajweed for Quran recitation or Hifz for memorization', icon: '📖' },
-  { num: '3', title: 'Get Matched with a Maulavi', desc: 'We assign a qualified scholar based on your needs and schedule', icon: '🤝' },
-  { num: '4', title: 'Start Learning', desc: 'Join 1:1 live sessions twice a week and track your progress', icon: '🎓' },
+const cardStagger: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const cardItem: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
+function AnimatedCounter({
+  target,
+  duration = 2000,
+  decimals = 0,
+  suffix = '',
+}: {
+  target: number;
+  duration?: number;
+  decimals?: number;
+  suffix?: string;
+}) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-20px' });
+
+  useEffect(() => {
+    if (!inView) return;
+
+    let start: number | null = null;
+    let animationFrameId: number;
+
+    const easeOutExpo = (x: number): number => {
+      return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+    };
+
+    const step = (timestamp: number) => {
+      if (start === null) start = timestamp;
+      const elapsed = timestamp - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeOutExpo(progress);
+
+      setCount(eased * target);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setCount(target);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [inView, target, duration]);
+
+  const formatted =
+    decimals > 0
+      ? count.toFixed(decimals)
+      : Math.floor(count).toLocaleString('en-US');
+
+  return (
+    <span ref={ref} className="tabular-nums">
+      {formatted}{suffix}
+    </span>
+  );
+}
+
+const platformStats = [
+  {
+    target: 12,
+    suffix: '+',
+    decimals: 0,
+    label: 'Qualified Scholars',
+  },
+  {
+    target: 150,
+    suffix: '+',
+    decimals: 0,
+    label: 'Active Students',
+  },
+  {
+    target: 4.85,
+    suffix: '',
+    decimals: 2,
+    label: 'Average Rating',
+  },
+  {
+    target: 10000,
+    suffix: '+',
+    decimals: 0,
+    label: 'Teaching Hours Completed',
+  },
 ];
 
+
+
+
+
+
+interface TestimonialStory {
+  name: string;
+  role: string;
+  location: string;
+  quote: string;
+  fullStory: string;
+  course: string;
+  avatar: string;
+}
+
+const diasporaTestimonials: TestimonialStory[] = [
+  {
+    name: 'Sarah Ahmed',
+    role: 'Parent of 2',
+    location: 'London, UK',
+    quote: 'Ilmbit has boosted our children’s Quran fluency astronomically, transforming how they engage with the Holy Quran.',
+    fullStory: 'Ilmbit has boosted our children’s Quran fluency astronomically, transforming how they engage with the Holy Quran. Finding punctual, gentle teachers in London with high Tajweed standards was always a challenge. Now my 8-year-old and 11-year-old look forward to their classes with Maulavi Ismail.',
+    course: '1:1 Tajweed Recitation',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop&crop=face',
+  },
+  {
+    name: 'Dr. Tariq Mansoor',
+    role: 'Father & Physician',
+    location: 'Toronto, Canada',
+    quote: 'Ilmbit is more essential to our family routine than our local weekend school. It’s a powerful solution to diaspora education.',
+    fullStory: 'Ilmbit is more essential to our family routine than our local weekend school. It’s a powerful solution to diaspora education. With my unpredictable hospital shifts, being able to reschedule and get reliable 1:1 attention for my sons has been an absolute game changer.',
+    course: 'Hifz Memorization',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=face',
+  },
+  {
+    name: 'Muhammad Rashid',
+    role: 'Adult Revert Student',
+    location: 'Sydney, Australia',
+    quote: 'Finding patient, authentic Sri Lankan scholars was nearly impossible until Ilmbit. My recitation confidence has reached a whole new level.',
+    fullStory: 'Finding patient, authentic Sri Lankan scholars was nearly impossible until Ilmbit. As a revert learning Arabic phonetics from scratch, Sheikh Ahmed’s patience and encouragement gave me the confidence to recite accurately in daily prayers without hesitation.',
+    course: 'Noorani Qaida & Tajweed',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop&crop=face',
+  },
+  {
+    name: 'Amina Diallo',
+    role: 'Mother of 9yo student',
+    location: 'Paris, France',
+    quote: 'The 1:1 Tajweed coaching from Maulavi Ismail is exceptional. My daughter eagerly prepares for her live sessions twice every week.',
+    fullStory: 'The 1:1 Tajweed coaching from Maulavi Ismail is exceptional. My daughter eagerly prepares for her live sessions twice every week. Her pronunciation and rhythm have blossomed in just three months, and the progress feedback keeps our whole family motivated.',
+    course: 'Tajweed Recitation',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&crop=face',
+  },
+  {
+    name: 'Fatima Zahra',
+    role: 'Parent & Educator',
+    location: 'Dallas, USA',
+    quote: 'The structured progress reports and authentic scholar discipline gave our home the exact spiritual grounding we were searching for.',
+    fullStory: 'The structured progress reports and authentic scholar discipline gave our home the exact spiritual grounding and recitation excellence we were searching for. You get traditional madrasa quality with modern LMS scheduling and recording.',
+    course: '1:1 Tajweed Recitation',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&h=120&fit=crop&crop=face',
+  },
+  {
+    name: 'Zayd Al-Husseini',
+    role: 'Hifz Student',
+    location: 'Dubai, UAE',
+    quote: 'Completed my Hifz revision with Sheikh Ahmed. His gentle correction and deep mastery of Hafs recitation is something you rarely find online.',
+    fullStory: 'Completed my Hifz revision with Sheikh Ahmed. His gentle correction and deep mastery of Hafs recitation is something you rarely find online. The virtual classroom tools and audio clarity made reviewing five Juz a week seamless.',
+    course: 'Advanced Hifz Revision',
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&h=120&fit=crop&crop=face',
+  },
+];
+
+const TESTIMONIAL_ROTATION_MS = 6500;
+
 export default function HomePage() {
+  const [testimonialIndex, setTestimonialIndex] = useState(0);
+  const [selectedStory, setSelectedStory] = useState<TestimonialStory | null>(null);
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+  const testimonialRef = useRef<HTMLDivElement>(null);
+  const testimonialsInView = useInView(testimonialRef, { once: false, amount: 0.35 });
+
+  const changeTestimonial = (direction: 'previous' | 'next') => {
+    setTestimonialIndex((current) => {
+      if (direction === 'previous') {
+        return (current - 1 + diasporaTestimonials.length) % diasporaTestimonials.length;
+      }
+      return (current + 1) % diasporaTestimonials.length;
+    });
+  };
+
+  useEffect(() => {
+    if (!testimonialsInView || selectedStory) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setTestimonialIndex((current) => (current + 1) % diasporaTestimonials.length);
+    }, TESTIMONIAL_ROTATION_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [testimonialIndex, testimonialsInView, selectedStory]);
+
+  const activeTestimonial = diasporaTestimonials[testimonialIndex];
+  const activePortrait = activeTestimonial.avatar.replace('w=120&h=120', 'w=800&h=900');
+
   return (
     <>
-      {/* Hero — Two-Block Split Layout */}
-      <section className="relative overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-stretch min-h-[600px] lg:min-h-[700px]">
-            {/* Left block — Content */}
-            <motion.div initial="hidden" animate="visible" variants={fadeUp} transition={{ duration: 0.6 }} className="flex-1 flex flex-col justify-center py-16 lg:py-24 lg:pr-12">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] text-sm font-medium mb-6 w-fit">
-                <ShieldCheck className="h-4 w-4" /> Trusted by 150+ families worldwide
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
-                Learn Islam from{' '}
-                <span className="text-gradient-primary">Qualified Scholars</span>
-                <br />
-                <span className="text-[hsl(var(--accent))]">Anywhere in the World</span>
-              </h1>
-              <p className="text-lg sm:text-xl text-[hsl(var(--muted-foreground))] max-w-xl mb-8 leading-relaxed">
-                Personalized 1:1 online Tajweed and Hifz sessions with certified Sri Lankan Islamic scholars. Structured, professional, and designed for the Muslim diaspora.
-              </p>
-              <div className="flex flex-wrap gap-3 mb-12">
-                <Link href="/auth/signup" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:from-[hsl(168,80%,22%)] hover:to-[hsl(168,60%,30%)] shadow-lg hover:shadow-xl transition-all pulse-glow">
-                  Start Learning <ChevronRight className="h-5 w-5" />
-                </Link>
-                <Link href="/about" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-base font-semibold border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors">
-                  How It Works
-                </Link>
-              </div>
-              {/* Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { val: '12+', label: 'Qualified Scholars' },
-                  { val: '150+', label: 'Active Students' },
-                  { val: '4.85', label: 'Average Rating' },
-                  { val: '10K+', label: 'Sessions Completed' },
-                ].map((s) => (
-                  <div key={s.label} className="text-center p-3 rounded-xl bg-[hsl(var(--card))] shadow-sm border border-[hsl(var(--border))]">
-                    <div className="text-xl lg:text-2xl font-bold text-gradient-primary">{s.val}</div>
-                    <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+      {/* ========================================================================= */}
+      {/* 1. HERO SECTION — Background Video, Headline & Dual CTAs */}
+      {/* ========================================================================= */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-stone-950 text-white select-none">
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/images/ilmbit-hero-poster.jpg')" }}
+        >
+          <video
+            className="hero-brand-video h-full w-full object-cover object-center"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/images/ilmbit-hero-poster.jpg"
+            aria-hidden="true"
+          >
+            <source src="/ilmbit-hero-boomerang.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/35 to-black/75" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,rgba(0,0,0,0.45)_100%)]" />
+        </div>
 
-            {/* Right block — Image */}
-            <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="hidden lg:block w-1/2 relative rounded-2xl overflow-hidden my-8">
-              <Image src="/images/hero-split.png" alt="Islamic calligraphy and study scene" fill className="object-cover" priority />
-              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[hsl(var(--background))/0.1]" />
-            </motion.div>
-            {/* Mobile image */}
-            <div className="lg:hidden w-full h-64 relative rounded-2xl overflow-hidden mb-8">
-              <Image src="/images/hero-split.png" alt="Islamic calligraphy and study scene" fill className="object-cover" />
+        {/* Top spacer for fixed header alignment */}
+        <div className="w-full h-16 sm:h-20 shrink-0 pointer-events-none" aria-hidden="true" />
+
+        {/* Centered Hero Content */}
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.15 }}
+          variants={sectionReveal}
+          className="relative z-20 my-auto py-12 sm:py-16 px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center max-w-4xl mx-auto w-full"
+        >
+          <div className="relative mx-auto max-w-3xl w-full">
+            {/* 2-Line Headline */}
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight drop-shadow-lg max-w-3xl mx-auto">
+              <span className="block">Learn Quran &amp; Islamic Studies</span>
+              <span className="block text-emerald-50 font-semibold text-lg sm:text-2xl lg:text-3xl mt-2">
+                from Qualified Scholars Worldwide
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <p className="mt-4 sm:mt-5 text-sm sm:text-base text-stone-200 max-w-xl mx-auto leading-relaxed drop-shadow-md font-normal">
+              Personalized 1:1 online Tajweed and Islamic studies with verified Sanad-certified scholars, tailored for diaspora families.
+            </p>
+
+            {/* Dual Pill CTA Buttons */}
+            <div className="mt-7 sm:mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+              <Link
+                href="#courses"
+                className="brand-button brand-button-inverse px-7"
+              >
+                View Courses
+              </Link>
+              <Link
+                href="/about#waitlist"
+                className="brand-button brand-button-primary px-8"
+              >
+                Book Free Trial
+              </Link>
             </div>
           </div>
-        </div>
+        </motion.div>
+
+        {/* Bottom spacer balancing fixed header */}
+        <div className="w-full h-16 sm:h-20 shrink-0 pointer-events-none" aria-hidden="true" />
       </section>
 
-      {/* Courses */}
-      <section className="py-20 lg:py-28 bg-[hsl(var(--card))]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">Our Courses</h2>
-            <p className="text-[hsl(var(--muted-foreground))] max-w-xl mx-auto">Choose the right course for your Islamic education journey</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
-            {courseOfferings.map((course, i) => (
-              <motion.div key={course.id} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} transition={{ delay: i * 0.1 }} className={`relative rounded-2xl border p-8 flex flex-col ${course.comingSoon ? 'border-dashed border-[hsl(var(--border))] opacity-80' : i === 0 ? 'border-[hsl(var(--primary))] shadow-xl bg-[hsl(var(--card))]' : 'border-[hsl(var(--border))] bg-[hsl(var(--card))]'}`}>
-                {course.comingSoon && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[hsl(var(--accent))] text-white text-xs font-semibold whitespace-nowrap">
-                    Coming Soon
-                  </div>
-                )}
-                {i === 0 && !course.comingSoon && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] text-white text-xs font-semibold">
-                    Most Popular
-                  </div>
-                )}
-                <h3 className="text-xl font-bold mb-1">{course.name}</h3>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">{course.description}</p>
-                {course.isGroup && (
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 mb-4 w-fit">
-                    <Users className="h-3 w-3" /> Group Classes
-                  </div>
-                )}
+      {/* ========================================================================= */}
+      {/* LIGHT-THEMED SANCTUARY CONTAINER (Animated Gradient & Ambient Glow) */}
+      {/* ========================================================================= */}
+      <div className="relative bg-sanctuary-light overflow-hidden text-stone-900 select-none">
+        {/* Ambient floating glow orbs matching hero sanctuary palette */}
+        <div className="absolute top-[3%] -right-[15%] w-[650px] h-[650px] rounded-full bg-emerald-200/35 blur-[140px] animate-ambient-orb-1 pointer-events-none" />
+        <div className="absolute top-[26%] -left-[15%] w-[600px] h-[600px] rounded-full bg-teal-100/45 blur-[130px] animate-ambient-orb-2 pointer-events-none" />
+        <div className="absolute top-[50%] -right-[12%] w-[700px] h-[700px] rounded-full bg-teal-200/30 blur-[140px] animate-ambient-orb-1 pointer-events-none" />
+        <div className="absolute top-[75%] -left-[14%] w-[650px] h-[650px] rounded-full bg-emerald-200/25 blur-[130px] animate-ambient-orb-2 pointer-events-none" />
 
-                {!course.comingSoon ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-3 mb-5 p-4 rounded-xl bg-[hsl(var(--muted))]">
-                      <div>
-                        <div className="text-xs text-[hsl(var(--muted-foreground))] mb-0.5">Basic</div>
-                        <div className="text-2xl font-bold">${course.basicPriceUSD}<span className="text-sm font-normal text-[hsl(var(--muted-foreground))]">/mo</span></div>
+        {/* ========================================================================= */}
+        {/* 2. WHY ILMBIT / MISSION SECTION — Editorial Split Showcase */}
+        {/* ========================================================================= */}
+        <section
+          id="mission"
+          className="relative z-20 py-16 sm:py-24 border-b border-stone-200/60 select-none overflow-hidden"
+        >
+          {/* Subtle decorative curved arrow bottom right */}
+          <svg
+            className="absolute bottom-6 right-6 sm:right-16 w-20 h-20 text-stone-300 pointer-events-none hidden sm:block opacity-60"
+            viewBox="0 0 100 100"
+            fill="none"
+          >
+            <path
+              d="M 30 85 C 42 45, 68 28, 82 15"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeDasharray="4 4"
+              strokeLinecap="round"
+            />
+            <path
+              d="M 72 18 L 82 14 L 86 25"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-14 items-center">
+              {/* Left Column: Overlapping Organic Shaped Photo Composition */}
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.15 }}
+                variants={sectionReveal}
+                className="lg:col-span-6 relative pb-10 sm:pb-12 pl-4 sm:pl-8 pr-2"
+              >
+                {/* Subtle top-left decorative flourish arrow */}
+                <svg
+                  className="absolute -top-10 left-0 w-16 h-16 text-stone-300 pointer-events-none hidden sm:block opacity-60 -rotate-12"
+                  viewBox="0 0 100 100"
+                  fill="none"
+                >
+                  <path
+                    d="M 20 20 C 50 15, 68 38, 58 72"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeDasharray="4 4"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 48 68 L 58 74 L 66 64"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+
+                {/* Main Scholar Photo Frame */}
+                <div className="relative w-full max-w-[490px] mx-auto aspect-[4/3] rounded-t-[36px] sm:rounded-t-[44px] rounded-br-[110px] sm:rounded-br-[150px] rounded-bl-[36px] overflow-hidden shadow-[0_16px_45px_rgba(0,0,0,0.09)] border border-stone-200/80 bg-stone-100">
+                  <Image
+                    src="/images/why-ilm-scholar.jpg"
+                    alt="Islamic scholar teaching Quran online via laptop"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 490px"
+                  />
+                  {/* Soft inner vignette */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-stone-900/10 via-transparent to-transparent pointer-events-none" />
+                </div>
+
+                {/* Small Lime Accent Dot on Right Outer Border */}
+                <div className="absolute right-0 sm:right-4 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#84cc16] shadow-sm z-20" />
+
+                {/* Overlapping Inset Student Hands / Quran Photo at Bottom-Left */}
+                <div className="absolute bottom-0 left-0 sm:left-2 w-44 sm:w-56 md:w-60 aspect-[4/3] rounded-[28px] sm:rounded-[36px] border-[6px] sm:border-[8px] border-white shadow-[0_20px_45px_rgba(0,0,0,0.16)] overflow-hidden bg-stone-100 z-10">
+                  <Image
+                    src="/images/why-ilm-quran-hands.jpg"
+                    alt="Student following Holy Quran recitation with wooden pointer"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 176px, 240px"
+                  />
+                </div>
+              </motion.div>
+
+              {/* Right Column: Narrative, Value Proposition & Checklist */}
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.15 }}
+                variants={sectionReveal}
+                className="lg:col-span-6 flex flex-col justify-center lg:pl-4"
+              >
+                {/* High-Impact Heading with Brand Green Accent */}
+                <h2 className="max-w-[620px] text-3xl sm:text-4xl lg:text-[40px] xl:text-[44px] font-bold sm:font-extrabold tracking-tight text-stone-950 leading-[1.14] sm:leading-[1.12] mb-5">
+                  Grow In Sacred Knowledge So You Can{' '}
+                  <span className="text-[#095F46] block sm:inline mt-1 sm:mt-0">Live With Purpose &amp; Iman</span>
+                </h2>
+
+                {/* Narrative Paragraph */}
+                <p className="text-stone-500 font-normal text-sm sm:text-base leading-relaxed mb-7 max-w-xl">
+                  Finding verified, authentic Islamic teachers who can guide your family with patience and consistency shouldn&apos;t be difficult. Ilmbit bridges you directly with qualified scholars for structured 1:1 online learning tailored to your timezone and personal pace.
+                </p>
+
+                {/* Clean Feature Checklist with Brand Green Checkmarks */}
+                <div className="space-y-3.5 mb-9">
+                  {[
+                    'Flexible 1:1 training programs',
+                    'Experienced scholars & certified teachers',
+                    'Free incoming trial lesson',
+                  ].map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-3.5">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-[#095F46] bg-[#095F46]/10 shrink-0">
+                        <svg
+                          className="w-3.5 h-3.5 stroke-[2.5]"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
                       </div>
+                      <h3 className="font-bold text-stone-900 text-sm sm:text-base tracking-tight">
+                        {feature}
+                      </h3>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA Button — Redirects to /about with Brand Green #095F46 */}
+                <div className="flex items-center">
+                  <Link
+                    href="/about"
+                    className="brand-button brand-button-primary px-9"
+                  >
+                    Learn More
+                  </Link>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 3. PLATFORM STATS SECTION (Commented out for waitlist release) */}
+        {/* ========================================================================= */}
+        {/*
+        <section
+          id="stats"
+          className="relative z-20 py-8 sm:py-10 border-b border-stone-200/60 select-none bg-[#f8faf8]"
+        >
+          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              variants={sectionReveal}
+              className="grid grid-cols-2 md:grid-cols-4 items-center"
+            >
+              {platformStats.map((stat, idx) => {
+                const isLastDesktop = idx === 3;
+                const hasRightBorderMobile = idx % 2 === 0;
+                const hasBottomBorderMobile = idx < 2;
+                return (
+                  <div
+                    key={stat.label}
+                    className={`text-center py-3 sm:py-4 px-2 sm:px-6
+                      ${!isLastDesktop ? 'md:border-r md:border-stone-300/70' : 'md:border-r-0'} 
+                      ${hasRightBorderMobile ? 'border-r border-stone-300/70' : ''} 
+                      ${hasBottomBorderMobile ? 'border-b border-stone-300/70 pb-6 md:border-b-0 md:pb-4' : 'pt-6 md:pt-4'}
+                    `}
+                  >
+                    <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#095F46] tracking-tight mb-1.5">
+                      <AnimatedCounter
+                        target={stat.target}
+                        decimals={stat.decimals}
+                        suffix={stat.suffix}
+                        duration={2000}
+                      />
+                    </h3>
+                    <p className="text-stone-900 text-xs sm:text-sm lg:text-[15px] font-bold tracking-tight">
+                      {stat.label}
+                    </p>
+                  </div>
+                );
+              })}
+            </motion.div>
+          </div>
+        </section>
+        */}
+
+        {/* ========================================================================= */}
+        {/* 4. HOW IT WORKS SECTION — Interactive 4-Step Student Guide */}
+        {/* ========================================================================= */}
+        <section
+          id="how-it-works"
+          className="py-16 sm:py-20 lg:py-24 bg-[#f6f8f6] text-stone-900 border-b border-stone-200/60 scroll-mt-16 select-none relative overflow-hidden"
+        >
+          <div className="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+            {/* Section Header */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              variants={sectionReveal}
+              className="text-center max-w-3xl mx-auto mb-10 sm:mb-14"
+            >
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-stone-950 mb-3 sm:mb-4">
+                How It Works
+              </h2>
+              <p className="text-stone-600 font-normal text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+                Start learning in minutes. Our streamlined process connects you with certified scholars seamlessly.
+              </p>
+            </motion.div>
+
+            <HowItWorks />
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 5. COURSES & PRICING SECTION — Minimalist 3-Card Grid */}
+        {/* ========================================================================= */}
+        <section
+          id="courses"
+          className="py-14 sm:py-18 lg:py-20 bg-transparent text-stone-900 scroll-mt-16 relative overflow-hidden border-b border-stone-200/60 select-none"
+        >
+          <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+            {/* Header matching user voice instructions & Reference */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              variants={sectionReveal}
+              className="text-center max-w-2xl mx-auto mb-8 sm:mb-10 lg:mb-12"
+            >
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-stone-950 mb-3">
+                Our Courses
+              </h2>
+              <p className="text-stone-500 font-normal text-xs sm:text-sm lg:text-base max-w-xl mx-auto leading-relaxed">
+                Choose the right course for your Islamic education journey
+              </p>
+            </motion.div>
+
+            {/* 3 Pricing & Course Cards Grid matching Reference Image */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              variants={cardStagger}
+              className="grid md:grid-cols-3 gap-4 lg:gap-6 items-stretch"
+            >
+              {/* CARD 1: Beginner Plan (Noorani Qaida) */}
+              <motion.div
+                variants={cardItem}
+                className="rounded-3xl bg-white/95 backdrop-blur-md border border-stone-200/90 p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col justify-between hover:shadow-lg transition-all duration-300"
+              >
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black text-stone-950 tracking-tight mb-2">
+                    Noorani Qaida
+                  </h3>
+                  <p className="text-stone-500 text-xs sm:text-[13px] leading-relaxed mb-5">
+                    For beginners and children learning Quranic Arabic letters, correct pronunciation, and basic reading rules.
+                  </p>
+
+                  {/* Price Tag */}
+                  <div className="flex items-baseline gap-1 mb-6 pb-5 border-b border-stone-100">
+                    <span className="text-3xl sm:text-4xl font-black tracking-tight text-stone-950">
+                      $49
+                    </span>
+                    <span className="text-xs font-semibold text-stone-400">
+                      / month
+                    </span>
+                  </div>
+
+                  <Link
+                    href="/about#waitlist"
+                    className="brand-button brand-button-primary mb-6 w-full"
+                  >
+                    Select Plan
+                  </Link>
+
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-3">
+                    What&apos;s Included
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-stone-600 font-medium">
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>8 sessions per month (2/week)</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>45-minute 1:1 live sessions</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>Letter pronunciation &amp; Makharij</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>Session recordings &amp; notes</span>
+                    </li>
+                  </ul>
+
+                  <div className="mt-5 pt-4 border-t border-stone-100">
+                    <div className="rounded-2xl bg-emerald-50/70 border border-emerald-100/90 p-3 sm:p-3.5 flex flex-col gap-2">
+                      <p className="text-sm font-bold text-stone-900">
+                        Start Strong
+                      </p>
+                      <Link href="/pricing#fast-track-plans" className="brand-button brand-button-secondary w-full justify-between px-4 text-xs">
+                        <span>Explore Fast Track Plan</span>
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* CARD 2: Intermediate Plan (Tajweed Mastery) — Matching Card Style */}
+              <motion.div
+                variants={cardItem}
+                className="rounded-3xl bg-white/95 backdrop-blur-md border border-stone-200/90 p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col justify-between hover:shadow-lg transition-all duration-300"
+              >
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black text-stone-950 tracking-tight mb-2">
+                    Tajweed Mastery
+                  </h3>
+                  <p className="text-stone-500 text-xs sm:text-[13px] leading-relaxed mb-5">
+                    Master the science of Tajweed, rules of elongation, stops, and beautiful melodic recitation with Sanad scholars.
+                  </p>
+
+                  {/* Price Tag */}
+                  <div className="flex items-baseline gap-1 mb-6 pb-5 border-b border-stone-100">
+                    <span className="text-3xl sm:text-4xl font-black tracking-tight text-stone-950">
+                      $59
+                    </span>
+                    <span className="text-xs font-semibold text-stone-400">
+                      / month
+                    </span>
+                  </div>
+
+                  <Link
+                    href="/about#waitlist"
+                    className="brand-button brand-button-primary mb-6 w-full"
+                  >
+                    Select Plan
+                  </Link>
+
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-3">
+                    What&apos;s Included
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-stone-600 font-medium">
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>8 sessions per month (2/week)</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>45-minute 1:1 live sessions</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>Comprehensive Tajweed theoretical rules</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>Melodic recitation &amp; Waqf guidance</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>Monthly progress evaluation</span>
+                    </li>
+                  </ul>
+
+                  <div className="mt-5 pt-4 border-t border-stone-100">
+                    <div className="rounded-2xl bg-emerald-50/70 border border-emerald-100/90 p-3 sm:p-3.5 flex flex-col gap-2">
+                      <p className="text-sm font-bold text-stone-900">
+                        Recite Better
+                      </p>
+                      <Link href="/pricing#fast-track-plans" className="brand-button brand-button-secondary w-full justify-between px-4 text-xs">
+                        <span>Explore Fast Track Plan</span>
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* CARD 3: Intensive Memorization (Hifz) */}
+              <motion.div
+                variants={cardItem}
+                className="rounded-3xl bg-white/95 backdrop-blur-md border border-stone-200/90 p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col justify-between hover:shadow-lg transition-all duration-300"
+              >
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black text-stone-950 tracking-tight mb-2">
+                    Hifz Program
+                  </h3>
+                  <p className="text-stone-500 text-xs sm:text-[13px] leading-relaxed mb-5">
+                    Structured Quran memorization with dedicated daily revision, retention strategies, and individual Sanad pathway.
+                  </p>
+
+                  {/* Price Tag */}
+                  <div className="flex items-baseline gap-1 mb-6 pb-5 border-b border-stone-100">
+                    <span className="text-3xl sm:text-4xl font-black tracking-tight text-stone-950">
+                      $79
+                    </span>
+                    <span className="text-xs font-semibold text-stone-400">
+                      / month
+                    </span>
+                  </div>
+
+                  <Link
+                    href="/about#waitlist"
+                    className="brand-button brand-button-primary mb-6 w-full"
+                  >
+                    Select Plan
+                  </Link>
+
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-3">
+                    What&apos;s Included
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-stone-600 font-medium">
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>8 sessions per month (2/week)</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>45-minute 1:1 live sessions</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>Dedicated Hifz coach</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>Structured memorization schedule</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0 stroke-[2.5]" />
+                      <span>Revision tracking &amp; lecturer messaging</span>
+                    </li>
+                  </ul>
+
+                  <div className="mt-5 pt-4 border-t border-stone-100">
+                    <div className="rounded-2xl bg-emerald-50/70 border border-emerald-100/90 p-3 sm:p-3.5 flex flex-col gap-2">
+                      <p className="text-sm font-bold text-stone-900">
+                        Memorize More
+                      </p>
+                      <Link href="/pricing#fast-track-plans" className="brand-button brand-button-secondary w-full justify-between px-4 text-xs">
+                        <span>Explore Fast Track Plan</span>
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 6. TESTIMONIALS SECTION (Commented out for waitlist release) */}
+        {/* ========================================================================= */}
+        {/*
+        <section id="testimonials" className="py-14 sm:py-18 lg:py-20 bg-transparent scroll-mt-16 text-stone-900 border-b border-stone-200/60 select-none">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              variants={sectionReveal}
+              className="mx-auto mb-9 max-w-2xl text-center sm:mb-11"
+            >
+              <h2 className="mb-3 text-3xl font-black tracking-tight text-stone-950 sm:text-4xl lg:text-5xl">
+                What Our Community Says
+              </h2>
+              <p className="mx-auto max-w-xl text-sm leading-relaxed text-stone-500 sm:text-base">
+                From families and students learning with Ilmbit around the world.
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-2 text-xs sm:text-sm">
+                <span className="tracking-[0.12em] text-[#a66b13]" aria-label="Five out of five stars">★★★★★</span>
+                <span className="font-bold text-stone-800">4.8</span>
+                <span className="text-stone-400">from 500+ family reviews</span>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              variants={sectionReveal}
+              ref={testimonialRef}
+              className="relative mx-auto max-w-4xl"
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={testimonialIndex}
+                  initial={{ opacity: 0, y: 14, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -12, scale: 0.985 }}
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden rounded-[28px] border border-white/18 bg-[#f1f4f0] text-stone-950 shadow-[0_24px_70px_rgba(0,0,0,0.18)] sm:rounded-[32px]"
+                  aria-live="polite"
+                >
+                  <div className="relative grid min-h-[360px] md:grid-cols-[1.18fr_0.82fr]">
+                    <div className="order-1 flex flex-col justify-between px-6 py-7 sm:px-9 sm:py-9 md:order-1 lg:px-12 lg:py-11">
                       <div>
-                        <div className="text-xs text-[hsl(var(--muted-foreground))] mb-0.5 flex items-center gap-1">Premium <Sparkles className="h-3 w-3 text-[hsl(var(--accent))]" /></div>
-                        <div className="text-2xl font-bold">${course.premiumPriceUSD}<span className="text-sm font-normal text-[hsl(var(--muted-foreground))]">/mo</span></div>
+                        <Quote className="h-9 w-9 fill-[#095f46]/10 text-[#095f46]" aria-hidden="true" />
+                        <p className="mt-5 pr-24 text-xl font-semibold leading-[1.35] tracking-tight text-stone-950 sm:pr-32 sm:text-2xl md:pr-0 lg:text-[28px]">
+                          &ldquo;{activeTestimonial.quote}&rdquo;
+                        </p>
+                      </div>
+
+                      <div className="mt-8">
+                        <p className="text-sm font-black text-stone-950 sm:text-base">{activeTestimonial.name}</p>
+                        <p className="mt-1 text-xs font-medium text-stone-500 sm:text-sm">
+                          {activeTestimonial.role} · {activeTestimonial.location}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStory(activeTestimonial)}
+                          className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#095f46] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#074c38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
+                        >
+                          Read full story
+                          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
                       </div>
                     </div>
-                    {course.premiumExtras.length > 0 && (
-                      <div className="mb-4 p-3 rounded-lg bg-[hsl(var(--accent-light))] border border-[hsl(var(--accent)/0.2)]">
-                        <div className="text-xs font-semibold text-[hsl(var(--accent))] mb-1.5">Premium adds:</div>
-                        {course.premiumExtras.map(e => (
-                          <div key={e} className="flex items-center gap-1.5 text-xs text-[hsl(var(--foreground))]">
-                            <Sparkles className="h-3 w-3 text-[hsl(var(--accent))] flex-shrink-0" /> {e}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="mb-5 p-4 rounded-xl bg-[hsl(var(--muted))] text-center">
-                    <div className="text-sm text-[hsl(var(--muted-foreground))]">Pricing to be announced</div>
+
+                    <div className="absolute right-5 top-5 order-2 h-24 w-24 overflow-hidden rounded-2xl bg-[#dfe7e1] shadow-[0_14px_30px_rgba(9,95,70,0.16)] sm:right-8 sm:top-8 sm:h-28 sm:w-28 md:relative md:right-auto md:top-auto md:h-auto md:w-auto md:rounded-none md:shadow-none">
+                      <Image
+                        src={activePortrait}
+                        alt={activeTestimonial.name}
+                        fill
+                        unoptimized
+                        className="object-cover object-center"
+                        sizes="(max-width: 767px) 100vw, 360px"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#095f46]/12 via-transparent to-transparent md:bg-gradient-to-r md:from-[#f1f4f0] md:via-transparent md:to-transparent" />
+                    </div>
                   </div>
-                )}
+                </motion.div>
+              </AnimatePresence>
 
-                <ul className="space-y-2 mb-6 flex-1">
-                  {course.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <Check className="h-4 w-4 text-[hsl(var(--success))] mt-0.5 flex-shrink-0" />
-                      <span>{f}</span>
-                    </li>
+              <div className="mt-7 flex items-center justify-center gap-4 sm:gap-5">
+                <button
+                  type="button"
+                  onClick={() => changeTestimonial('previous')}
+                  aria-label="Previous testimonial"
+                  className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <div className="flex items-center gap-1.5" aria-label={`Testimonial ${testimonialIndex + 1} of ${diasporaTestimonials.length}`}>
+                  {diasporaTestimonials.map((testimonial, index) => (
+                    <button
+                      key={testimonial.name}
+                      type="button"
+                      onClick={() => setTestimonialIndex(index)}
+                      aria-label={`Show ${testimonial.name}'s testimonial`}
+                      aria-current={index === testimonialIndex ? 'true' : undefined}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${index === testimonialIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/35 hover:bg-white/70'}`}
+                    />
                   ))}
-                </ul>
-                <Link href={course.comingSoon ? '#' : '/auth/signup'} className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all ${course.comingSoon ? 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] cursor-not-allowed' : 'bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] text-white hover:shadow-lg'}`}>
-                  {course.comingSoon ? 'Coming Soon' : 'Get Started'}
-                  {!course.comingSoon && <ChevronRight className="h-4 w-4" />}
-                </Link>
-              </motion.div>
-            ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => changeTestimonial('next')}
+                  aria-label="Next testimonial"
+                  className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.div>
           </div>
+
+          -- Read Story Modal Dialog --
+          <AnimatePresence>
+            {selectedStory && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
+                <motion.div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="testimonial-dialog-title"
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="relative w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-stone-100"
+                >
+                  <button
+                    onClick={() => setSelectedStory(null)}
+                    aria-label="Close story"
+                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+
+                  <div className="mb-6 border-b border-stone-200 pb-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#095f46]">Community story</p>
+                    <h3 id="testimonial-dialog-title" className="mt-3 text-xl font-bold tracking-tight text-stone-950">{selectedStory.name}</h3>
+                    <p className="mt-1 text-sm text-stone-500">{selectedStory.role} · {selectedStory.location}</p>
+                  </div>
+
+                  <p className="text-stone-800 text-sm sm:text-base leading-relaxed mb-6 font-medium">
+                    &ldquo;{selectedStory.fullStory}&rdquo;
+                  </p>
+
+                  <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-between text-xs text-stone-600">
+                    <span className="font-semibold text-stone-900">Enrolled In: {selectedStory.course}</span>
+                    <span className="text-emerald-700 font-bold">Verified Diaspora Family</span>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        </section>
+        */}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 7. BOTTOM CALL TO ACTION / WAITLIST BANNER SECTION */}
+      {/* ========================================================================= */}
+      <section className="relative w-full overflow-hidden bg-[#f5f7f6] py-20 sm:py-24 lg:py-28 text-stone-900 select-none border-t border-stone-200/70">
+        <Image
+          src="/images/home-cta-quran.jpg"
+          alt=""
+          fill
+          aria-hidden="true"
+          className="object-cover object-[center_52%] opacity-[0.05] mix-blend-multiply"
+          sizes="100vw"
+        />
+        {/* Soft atmospheric gradients matching site standards */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#f5f7f6] via-[#f5f7f6]/95 to-[#eaf2ee]/85" />
+        <div className="absolute -top-32 right-1/4 h-96 w-96 rounded-full bg-emerald-200/25 blur-3xl pointer-events-none" />
+
+        {/* Brand Mark Watermark */}
+        <Image
+          src="/images/ilmbit-mark-green.png"
+          alt=""
+          width={380}
+          height={380}
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-8 bottom-0 w-52 select-none object-contain opacity-[0.07] sm:w-72 lg:right-10 lg:w-96"
+        />
+
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.15 }}
+            variants={sectionReveal}
+            className="flex flex-col justify-center max-w-[640px]"
+          >
+            <h2 className="mb-4 text-4xl font-black leading-[0.96] tracking-[-0.04em] text-stone-950 sm:text-5xl lg:text-6xl">
+              Begin Your Sacred Journey of Knowledge
+            </h2>
+            <p className="max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg">
+              Tell us what you want to learn. We will use it to prepare the right scholar match and schedule.
+            </p>
+
+            <div className="mt-8">
+              <Link
+                href="/about#waitlist"
+                className="brand-button brand-button-primary px-8 text-base shadow-sm"
+              >
+                <span>Join the Waitlist</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* How It Works — Redesigned */}
-      <section className="py-20 lg:py-28 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <Image src="/images/islamic-pattern.png" alt="" fill className="object-cover opacity-5 dark:opacity-[0.03]" />
-        </div>
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">How It Works</h2>
-            <p className="text-[hsl(var(--muted-foreground))] max-w-xl mx-auto">Start learning in minutes — our streamlined process gets you from sign-up to your first session seamlessly</p>
-          </div>
-          <div className="grid md:grid-cols-4 gap-6 lg:gap-4">
-            {steps.map((s, i) => (
-              <motion.div key={s.num} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} transition={{ delay: i * 0.1 }} className="relative text-center">
-                {/* Connector line */}
-                {i < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-10 left-[60%] w-[80%] h-px bg-gradient-to-r from-[hsl(var(--primary)/0.3)] to-[hsl(var(--primary)/0.1)]" />
-                )}
-                <div className="relative inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-gradient-to-br from-[hsl(var(--primary-light))] to-[hsl(var(--card))] border border-[hsl(var(--border))] shadow-sm mb-5 mx-auto text-3xl">
-                  {s.icon}
-                  <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-[hsl(var(--primary))] text-white text-xs font-bold flex items-center justify-center">{s.num}</div>
-                </div>
-                <h3 className="font-semibold text-lg mb-2">{s.title}</h3>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed max-w-[200px] mx-auto">{s.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-          <div className="text-center mt-12">
-            <Image src="/images/how-it-works.png" alt="Student learning online with a laptop and Quran" width={800} height={400} className="rounded-2xl shadow-lg border border-[hsl(var(--border))] mx-auto max-w-full h-auto" />
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20 lg:py-28 bg-[hsl(var(--card))]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">What Families Say</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} transition={{ delay: i * 0.1 }} className="p-6 rounded-2xl bg-[hsl(var(--background))] border border-[hsl(var(--border))] shadow-sm">
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.rating }).map((_, j) => <Star key={j} className="h-4 w-4 text-[hsl(var(--accent))] fill-current" />)}
-                </div>
-                <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-4">&ldquo;{t.text}&rdquo;</p>
-                <div>
-                  <div className="font-medium text-sm">{t.name}</div>
-                  <div className="text-xs text-[hsl(var(--muted-foreground))]">{t.location}</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20 lg:py-28 bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,20%)] text-white">
-        <div className="mx-auto max-w-3xl px-4 text-center">
-          <h2 className="text-3xl lg:text-4xl font-bold mb-4">Begin Your Journey of Knowledge</h2>
-          <p className="text-lg text-white/80 mb-8">Book a free 30-minute trial session with one of our qualified scholars. No commitment required.</p>
-          <Link href="/auth/signup" className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-lg font-semibold bg-white text-[hsl(168,80%,26%)] hover:bg-white/90 shadow-xl transition-all">
-            Start Free Trial <ChevronRight className="h-5 w-5" />
-          </Link>
-        </div>
-      </section>
+      {/* ========================================================================= */}
+      {/* 8. WAITLIST MODAL POPUP COMPONENT */}
+      {/* ========================================================================= */}
+      <WaitlistModal
+        isOpen={isWaitlistOpen}
+        onClose={() => setIsWaitlistOpen(false)}
+      />
     </>
   );
 }

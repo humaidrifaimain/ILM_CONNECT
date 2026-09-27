@@ -339,7 +339,7 @@ export default function LecturerSessionsPage() {
                   {(isScheduled || isInProgress) && (
                     <Link
                       href={`/lecturer/sessions/${s.id}/room`}
-                      className="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5"
+                      className="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center gap-1.5"
                     >
                       <Play className="h-3.5 w-3.5 fill-current" /> Join Class
                     </Link>
@@ -711,7 +711,7 @@ export default function LecturerSessionsPage() {
               <button
                 onClick={handleSaveNotes}
                 disabled={isSavingNotes}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] transition-colors disabled:opacity-50"
               >
                 {isSavingNotes ? 'Saving...' : 'Save Notes'}
               </button>

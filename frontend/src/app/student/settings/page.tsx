@@ -23,7 +23,7 @@ export default function StudentSettingsPage() {
         <h2 className="font-semibold mb-4">Profile</h2>
         <div className="flex items-center gap-4 mb-6">
           <div className="relative">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white font-bold text-xl">AK</div>
+            <div className="h-16 w-16 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-xl">AK</div>
             <button className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-[hsl(var(--card))] border border-[hsl(var(--border))] flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
               <Camera className="h-3.5 w-3.5" />
             </button>
@@ -58,7 +58,7 @@ export default function StudentSettingsPage() {
         <button
           onClick={handleSaveProfile}
           disabled={isSaving}
-          className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] transition-colors shadow-sm disabled:opacity-50"
         >
           {isSaving ? 'Saving...' : 'Save Changes'}
         </button>

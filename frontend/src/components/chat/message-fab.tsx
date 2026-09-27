@@ -80,8 +80,8 @@ export default function MessageFAB() {
           transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           className={`relative h-14 w-14 rounded-full flex items-center justify-center text-white shadow-xl transition-all duration-300 ${
             hasUnread
-              ? 'bg-gradient-to-tr from-[hsl(168,85%,24%)] via-[hsl(168,80%,30%)] to-[hsl(168,65%,38%)] shadow-[hsl(168,80%,26%)/0.4]'
-              : 'bg-gradient-to-tr from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] shadow-[hsl(168,80%,26%)/0.3] hover:shadow-[hsl(168,80%,26%)/0.5]'
+              ? 'bg-[#095F46] hover:bg-[#074c38] shadow-[#095F46]/40'
+              : 'bg-[#095F46] hover:bg-[#074c38] shadow-[#095F46]/30 hover:shadow-[#095F46]/50'
           }`}
         >
           {/* Subtle icon bounce when unread */}

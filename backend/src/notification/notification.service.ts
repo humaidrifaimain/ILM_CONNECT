@@ -203,9 +203,10 @@ export class NotificationService {
       this.logger.error(`Failed to create in-app notification: ${e.message}`);
     }
 
+    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
     const actionUrl = recipient.role.toUpperCase() === 'LECTURER'
-      ? 'http://localhost:3000/lecturer/sessions'
-      : 'http://localhost:3000/student/dashboard';
+      ? `${frontendUrl}/lecturer/sessions`
+      : `${frontendUrl}/student/dashboard`;
 
     // 2. Email Notification Dispatch
     if (recipient.email) {
