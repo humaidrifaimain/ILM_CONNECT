@@ -19,20 +19,22 @@ function AnimatedCounter({
   duration = 2000,
   decimals = 0,
   suffix = '',
+  start = false,
 }: {
   target: number;
   duration?: number;
   decimals?: number;
   suffix?: string;
+  start?: boolean;
 }) {
   const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-20px' });
+  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
-    if (!inView) return;
+    if (!start || hasAnimatedRef.current) return;
+    hasAnimatedRef.current = true;
 
-    let start: number | null = null;
+    let startTime: number | null = null;
     let animationFrameId: number;
 
     const easeOutExpo = (x: number): number => {
@@ -40,8 +42,8 @@ function AnimatedCounter({
     };
 
     const step = (timestamp: number) => {
-      if (start === null) start = timestamp;
-      const elapsed = timestamp - start;
+      if (startTime === null) startTime = timestamp;
+      const elapsed = timestamp - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = easeOutExpo(progress);
 
@@ -56,7 +58,7 @@ function AnimatedCounter({
 
     animationFrameId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [inView, target, duration]);
+  }, [start, target, duration]);
 
   const formatted =
     decimals > 0
@@ -64,7 +66,7 @@ function AnimatedCounter({
       : Math.floor(count).toLocaleString('en-US');
 
   return (
-    <span ref={ref} className="tabular-nums">
+    <span className="tabular-nums">
       {formatted}{suffix}
     </span>
   );
@@ -236,6 +238,12 @@ export default function AboutPage() {
   const [waitlistNotes, setWaitlistNotes] = useState('');
   const [isWaitlistSubmitting, setIsWaitlistSubmitting] = useState(false);
   const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
+  const statsRef = useRef<HTMLDivElement>(null);
+  const statsActive = useInView(statsRef, {
+    once: true,
+    amount: 0.35,
+    margin: '0px 0px -10% 0px',
+  });
 
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -492,21 +500,27 @@ export default function AboutPage() {
               variants={fadeUp}
               className="lg:col-span-6"
             >
-              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:gap-6">
-                {platformStats.map((stat) => (
+              <div
+                ref={statsRef}
+                className="grid w-full grid-cols-2 overflow-hidden rounded-[28px] border border-stone-200/80 bg-white shadow-[0_18px_50px_rgba(9,95,70,0.07)]"
+              >
+                {platformStats.map((stat, idx) => (
                   <div
                     key={stat.label}
-                    className="min-h-[112px] rounded-2xl border border-stone-200/80 bg-white/80 p-4 text-center flex flex-col justify-center items-center shadow-[0_4px_20px_rgba(9,95,70,0.03)] hover:shadow-md transition-all sm:min-h-[136px] sm:p-6 lg:min-h-[148px] lg:p-8"
+                    className={`p-6 sm:p-8 lg:p-9 ${
+                      idx % 2 === 0 ? 'border-r border-stone-200/80' : ''
+                    } ${idx < 2 ? 'border-b border-stone-200/80' : ''}`}
                   >
-                    <div className="text-2xl sm:text-4xl lg:text-[42px] font-black text-[#095F46] tracking-tight mb-1.5 sm:mb-2">
+                    <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl">
                       <AnimatedCounter
                         target={stat.target}
                         decimals={stat.decimals}
                         suffix={stat.suffix}
                         duration={2000}
+                        start={statsActive}
                       />
-                    </div>
-                    <p className="text-stone-600 text-xs sm:text-sm font-semibold tracking-tight leading-snug">
+                    </h3>
+                    <p className="max-w-[150px] text-xs font-bold leading-snug tracking-tight text-stone-600 sm:text-sm">
                       {stat.label}
                     </p>
                   </div>
