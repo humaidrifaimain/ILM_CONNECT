@@ -376,14 +376,14 @@ export default function HomePage() {
               <div
                 id="stats"
                 ref={statsRef}
-                className="grid w-full grid-cols-2 overflow-hidden rounded-[28px] border border-stone-200/80 bg-white/70 shadow-[0_18px_50px_rgba(9,95,70,0.07)] backdrop-blur-sm"
+                className="grid w-full grid-cols-2 bg-[#eef7f3]"
               >
                 {platformStats.map((stat, idx) => (
                   <div
                     key={stat.label}
-                    className={`p-6 sm:p-8 lg:p-9 ${
-                      idx % 2 === 0 ? 'border-r border-stone-200/80' : ''
-                    } ${idx < 2 ? 'border-b border-stone-200/80' : ''}`}
+                    className={`flex min-h-[112px] flex-col items-center justify-center px-5 py-7 text-center sm:min-h-[132px] sm:px-8 sm:py-9 ${
+                      idx % 2 === 0 ? 'border-r border-[#d5e3dc]' : ''
+                    } ${idx < 2 ? 'border-b border-[#d5e3dc]' : ''}`}
                   >
                     <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl">
                       <AnimatedCounter
@@ -394,7 +394,7 @@ export default function HomePage() {
                         start={statsActive}
                       />
                     </h3>
-                    <p className="max-w-[150px] text-xs font-bold leading-snug tracking-tight text-stone-600 sm:text-sm">
+                    <p className="text-xs font-bold leading-snug tracking-tight text-stone-600 sm:text-sm">
                       {stat.label}
                     </p>
                   </div>
