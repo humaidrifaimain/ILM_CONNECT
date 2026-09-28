@@ -5,64 +5,37 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   ChevronRight,
-  ArrowLeft,
-  ArrowRight,
   Check,
   Quote,
+  ArrowLeft,
+  ArrowRight,
   X,
 } from 'lucide-react';
-import { motion, AnimatePresence, useInView, type Variants } from 'framer-motion';
+import { motion, useInView, AnimatePresence, type Variants } from 'framer-motion';
 import WaitlistModal from '@/components/waitlist-modal';
 import HowItWorks from '@/components/how-it-works';
-
-const sectionReveal: Variants = {
-  hidden: { opacity: 0, y: 32 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const },
-  },
-};
-
-const cardStagger: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.05,
-    },
-  },
-};
-
-const cardItem: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
-  },
-};
 
 function AnimatedCounter({
   target,
   duration = 2000,
   decimals = 0,
   suffix = '',
+  start = false,
 }: {
   target: number;
   duration?: number;
   decimals?: number;
   suffix?: string;
+  start?: boolean;
 }) {
   const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-20px' });
+  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
-    if (!inView) return;
+    if (!start || hasAnimatedRef.current) return;
 
-    let start: number | null = null;
+    hasAnimatedRef.current = true;
+    let animationStart: number | null = null;
     let animationFrameId: number;
 
     const easeOutExpo = (x: number): number => {
@@ -70,8 +43,8 @@ function AnimatedCounter({
     };
 
     const step = (timestamp: number) => {
-      if (start === null) start = timestamp;
-      const elapsed = timestamp - start;
+      if (animationStart === null) animationStart = timestamp;
+      const elapsed = timestamp - animationStart;
       const progress = Math.min(elapsed / duration, 1);
       const eased = easeOutExpo(progress);
 
@@ -86,7 +59,7 @@ function AnimatedCounter({
 
     animationFrameId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [inView, target, duration]);
+  }, [start, target, duration]);
 
   const formatted =
     decimals > 0
@@ -94,7 +67,7 @@ function AnimatedCounter({
       : Math.floor(count).toLocaleString('en-US');
 
   return (
-    <span ref={ref} className="tabular-nums">
+    <span className="tabular-nums">
       {formatted}{suffix}
     </span>
   );
@@ -127,11 +100,6 @@ const platformStats = [
   },
 ];
 
-
-
-
-
-
 interface TestimonialStory {
   name: string;
   role: string;
@@ -139,7 +107,6 @@ interface TestimonialStory {
   quote: string;
   fullStory: string;
   course: string;
-  avatar: string;
 }
 
 const diasporaTestimonials: TestimonialStory[] = [
@@ -150,7 +117,6 @@ const diasporaTestimonials: TestimonialStory[] = [
     quote: 'Ilmbit has boosted our children’s Quran fluency astronomically, transforming how they engage with the Holy Quran.',
     fullStory: 'Ilmbit has boosted our children’s Quran fluency astronomically, transforming how they engage with the Holy Quran. Finding punctual, gentle teachers in London with high Tajweed standards was always a challenge. Now my 8-year-old and 11-year-old look forward to their classes with Maulavi Ismail.',
     course: '1:1 Tajweed Recitation',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop&crop=face',
   },
   {
     name: 'Dr. Tariq Mansoor',
@@ -159,7 +125,6 @@ const diasporaTestimonials: TestimonialStory[] = [
     quote: 'Ilmbit is more essential to our family routine than our local weekend school. It’s a powerful solution to diaspora education.',
     fullStory: 'Ilmbit is more essential to our family routine than our local weekend school. It’s a powerful solution to diaspora education. With my unpredictable hospital shifts, being able to reschedule and get reliable 1:1 attention for my sons has been an absolute game changer.',
     course: 'Hifz Memorization',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=face',
   },
   {
     name: 'Muhammad Rashid',
@@ -168,7 +133,6 @@ const diasporaTestimonials: TestimonialStory[] = [
     quote: 'Finding patient, authentic Sri Lankan scholars was nearly impossible until Ilmbit. My recitation confidence has reached a whole new level.',
     fullStory: 'Finding patient, authentic Sri Lankan scholars was nearly impossible until Ilmbit. As a revert learning Arabic phonetics from scratch, Sheikh Ahmed’s patience and encouragement gave me the confidence to recite accurately in daily prayers without hesitation.',
     course: 'Noorani Qaida & Tajweed',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop&crop=face',
   },
   {
     name: 'Amina Diallo',
@@ -177,7 +141,6 @@ const diasporaTestimonials: TestimonialStory[] = [
     quote: 'The 1:1 Tajweed coaching from Maulavi Ismail is exceptional. My daughter eagerly prepares for her live sessions twice every week.',
     fullStory: 'The 1:1 Tajweed coaching from Maulavi Ismail is exceptional. My daughter eagerly prepares for her live sessions twice every week. Her pronunciation and rhythm have blossomed in just three months, and the progress feedback keeps our whole family motivated.',
     course: 'Tajweed Recitation',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&crop=face',
   },
   {
     name: 'Fatima Zahra',
@@ -186,7 +149,6 @@ const diasporaTestimonials: TestimonialStory[] = [
     quote: 'The structured progress reports and authentic scholar discipline gave our home the exact spiritual grounding we were searching for.',
     fullStory: 'The structured progress reports and authentic scholar discipline gave our home the exact spiritual grounding and recitation excellence we were searching for. You get traditional madrasa quality with modern LMS scheduling and recording.',
     course: '1:1 Tajweed Recitation',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&h=120&fit=crop&crop=face',
   },
   {
     name: 'Zayd Al-Husseini',
@@ -195,18 +157,61 @@ const diasporaTestimonials: TestimonialStory[] = [
     quote: 'Completed my Hifz revision with Sheikh Ahmed. His gentle correction and deep mastery of Hafs recitation is something you rarely find online.',
     fullStory: 'Completed my Hifz revision with Sheikh Ahmed. His gentle correction and deep mastery of Hafs recitation is something you rarely find online. The virtual classroom tools and audio clarity made reviewing five Juz a week seamless.',
     course: 'Advanced Hifz Revision',
-    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&h=120&fit=crop&crop=face',
   },
 ];
 
 const TESTIMONIAL_ROTATION_MS = 6500;
 
+
+
+const sectionReveal: Variants = {
+  hidden: { opacity: 0, y: 32 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
+const cardStagger: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const cardItem: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
+const revealViewport = {
+  once: true,
+  amount: 0.22,
+  margin: '0px 0px -12% 0px',
+} as const;
+
 export default function HomePage() {
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [selectedStory, setSelectedStory] = useState<TestimonialStory | null>(null);
-  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
   const testimonialRef = useRef<HTMLDivElement>(null);
-  const testimonialsInView = useInView(testimonialRef, { once: false, amount: 0.35 });
+  const testimonialsInView = useInView(testimonialRef, { once: true, amount: 0.2 });
+
+  const statsRef = useRef<HTMLDivElement>(null);
+  const statsActive = useInView(statsRef, {
+    once: true,
+    amount: 0.35,
+    margin: '0px 0px -10% 0px',
+  });
 
   const changeTestimonial = (direction: 'previous' | 'next') => {
     setTestimonialIndex((current) => {
@@ -230,14 +235,14 @@ export default function HomePage() {
   }, [testimonialIndex, testimonialsInView, selectedStory]);
 
   const activeTestimonial = diasporaTestimonials[testimonialIndex];
-  const activePortrait = activeTestimonial.avatar.replace('w=120&h=120', 'w=800&h=900');
+
 
   return (
     <>
       {/* ========================================================================= */}
       {/* 1. HERO SECTION — Background Video, Headline & Dual CTAs */}
       {/* ========================================================================= */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-stone-950 text-white select-none">
+      <section className="home-hero-section relative flex flex-col items-center justify-center overflow-hidden bg-stone-950 text-white select-none">
         <div
           className="absolute inset-0 z-0 bg-cover bg-center"
           style={{ backgroundImage: "url('/images/ilmbit-hero-poster.jpg')" }}
@@ -265,7 +270,7 @@ export default function HomePage() {
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, amount: 0.15 }}
+          viewport={revealViewport}
           variants={sectionReveal}
           className="relative z-20 my-auto py-12 sm:py-16 px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center max-w-4xl mx-auto w-full"
         >
@@ -295,7 +300,7 @@ export default function HomePage() {
                 href="/about#waitlist"
                 className="brand-button brand-button-primary px-8"
               >
-                Book Free Trial
+                Join Waitlist
               </Link>
             </div>
           </div>
@@ -316,201 +321,88 @@ export default function HomePage() {
         <div className="absolute top-[75%] -left-[14%] w-[650px] h-[650px] rounded-full bg-emerald-200/25 blur-[130px] animate-ambient-orb-2 pointer-events-none" />
 
         {/* ========================================================================= */}
-        {/* 2. WHY ILMBIT / MISSION SECTION — Editorial Split Showcase */}
+        {/* 2. WHY ILMBIT / MISSION SECTION — Reference-Style Content & Stats */}
         {/* ========================================================================= */}
         <section
           id="mission"
-          className="relative z-20 py-16 sm:py-24 border-b border-stone-200/60 select-none overflow-hidden"
+          className="relative z-20 overflow-hidden border-b border-stone-200/60 py-14 select-none sm:py-18 lg:py-20"
         >
-          {/* Subtle decorative curved arrow bottom right */}
-          <svg
-            className="absolute bottom-6 right-6 sm:right-16 w-20 h-20 text-stone-300 pointer-events-none hidden sm:block opacity-60"
-            viewBox="0 0 100 100"
-            fill="none"
-          >
-            <path
-              d="M 30 85 C 42 45, 68 28, 82 15"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeDasharray="4 4"
-              strokeLinecap="round"
-            />
-            <path
-              d="M 72 18 L 82 14 L 86 25"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-
-          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-14 items-center">
-              {/* Left Column: Overlapping Organic Shaped Photo Composition */}
-              <motion.div
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.15 }}
-                variants={sectionReveal}
-                className="lg:col-span-6 relative pb-10 sm:pb-12 pl-4 sm:pl-8 pr-2"
-              >
-                {/* Subtle top-left decorative flourish arrow */}
-                <svg
-                  className="absolute -top-10 left-0 w-16 h-16 text-stone-300 pointer-events-none hidden sm:block opacity-60 -rotate-12"
-                  viewBox="0 0 100 100"
-                  fill="none"
-                >
-                  <path
-                    d="M 20 20 C 50 15, 68 38, 58 72"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeDasharray="4 4"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 48 68 L 58 74 L 66 64"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-
-                {/* Main Scholar Photo Frame */}
-                <div className="relative w-full max-w-[490px] mx-auto aspect-[4/3] rounded-t-[36px] sm:rounded-t-[44px] rounded-br-[110px] sm:rounded-br-[150px] rounded-bl-[36px] overflow-hidden shadow-[0_16px_45px_rgba(0,0,0,0.09)] border border-stone-200/80 bg-stone-100">
-                  <Image
-                    src="/images/why-ilm-scholar.jpg"
-                    alt="Islamic scholar teaching Quran online via laptop"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 490px"
-                  />
-                  {/* Soft inner vignette */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-stone-900/10 via-transparent to-transparent pointer-events-none" />
-                </div>
-
-                {/* Small Lime Accent Dot on Right Outer Border */}
-                <div className="absolute right-0 sm:right-4 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#84cc16] shadow-sm z-20" />
-
-                {/* Overlapping Inset Student Hands / Quran Photo at Bottom-Left */}
-                <div className="absolute bottom-0 left-0 sm:left-2 w-44 sm:w-56 md:w-60 aspect-[4/3] rounded-[28px] sm:rounded-[36px] border-[6px] sm:border-[8px] border-white shadow-[0_20px_45px_rgba(0,0,0,0.16)] overflow-hidden bg-stone-100 z-10">
-                  <Image
-                    src="/images/why-ilm-quran-hands.jpg"
-                    alt="Student following Holy Quran recitation with wooden pointer"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 176px, 240px"
-                  />
-                </div>
-              </motion.div>
-
-              {/* Right Column: Narrative, Value Proposition & Checklist */}
-              <motion.div
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.15 }}
-                variants={sectionReveal}
-                className="lg:col-span-6 flex flex-col justify-center lg:pl-4"
-              >
-                {/* High-Impact Heading with Brand Green Accent */}
-                <h2 className="max-w-[620px] text-3xl sm:text-4xl lg:text-[40px] xl:text-[44px] font-bold sm:font-extrabold tracking-tight text-stone-950 leading-[1.14] sm:leading-[1.12] mb-5">
-                  Grow In Sacred Knowledge So You Can{' '}
-                  <span className="text-[#095F46] block sm:inline mt-1 sm:mt-0">Live With Purpose &amp; Iman</span>
-                </h2>
-
-                {/* Narrative Paragraph */}
-                <p className="text-stone-500 font-normal text-sm sm:text-base leading-relaxed mb-7 max-w-xl">
-                  Finding verified, authentic Islamic teachers who can guide your family with patience and consistency shouldn&apos;t be difficult. Ilmbit bridges you directly with qualified scholars for structured 1:1 online learning tailored to your timezone and personal pace.
-                </p>
-
-                {/* Clean Feature Checklist with Brand Green Checkmarks */}
-                <div className="space-y-3.5 mb-9">
-                  {[
-                    'Flexible 1:1 training programs',
-                    'Experienced scholars & certified teachers',
-                    'Free incoming trial lesson',
-                  ].map((feature, idx) => (
-                    <div key={idx} className="flex items-center gap-3.5">
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-[#095F46] bg-[#095F46]/10 shrink-0">
-                        <svg
-                          className="w-3.5 h-3.5 stroke-[2.5]"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </div>
-                      <h3 className="font-bold text-stone-900 text-sm sm:text-base tracking-tight">
-                        {feature}
-                      </h3>
-                    </div>
-                  ))}
-                </div>
-
-                {/* CTA Button — Redirects to /about with Brand Green #095F46 */}
-                <div className="flex items-center">
-                  <Link
-                    href="/about"
-                    className="brand-button brand-button-primary px-9"
-                  >
-                    Learn More
-                  </Link>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* 3. PLATFORM STATS SECTION (Commented out for waitlist release) */}
-        {/* ========================================================================= */}
-        {/*
-        <section
-          id="stats"
-          className="relative z-20 py-8 sm:py-10 border-b border-stone-200/60 select-none bg-[#f8faf8]"
-        >
-          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_0.78fr] lg:items-center lg:gap-16 lg:px-8">
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
+              viewport={revealViewport}
               variants={sectionReveal}
-              className="grid grid-cols-2 md:grid-cols-4 items-center"
+              className="flex flex-col justify-center"
             >
-              {platformStats.map((stat, idx) => {
-                const isLastDesktop = idx === 3;
-                const hasRightBorderMobile = idx % 2 === 0;
-                const hasBottomBorderMobile = idx < 2;
-                return (
+              <h2 className="max-w-[610px] text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15]">
+                Grow In Sacred Knowledge So You Can{' '}
+                <span className="block text-[#095F46]">Live With Purpose &amp; Iman</span>
+              </h2>
+
+              <p className="mt-6 max-w-[560px] text-sm font-normal leading-relaxed text-stone-500 sm:text-base">
+                Finding verified, authentic Islamic teachers who can guide your family with patience and consistency shouldn&apos;t be difficult. Ilmbit bridges you directly with qualified scholars for structured 1:1 online learning tailored to your timezone and personal pace.
+              </p>
+
+              <div className="mt-7 space-y-3.5">
+                {[
+                  'Flexible 1:1 training programs',
+                  'Experienced scholars & certified teachers',
+                  'Free incoming trial lesson',
+                ].map((feature, idx) => (
+                  <div key={idx} className="flex items-center gap-3.5">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#095F46]/10 text-[#095F46]">
+                      <Check className="h-3.5 w-3.5 stroke-[2.5]" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-sm font-bold tracking-tight text-stone-900 sm:text-base">
+                      {feature}
+                    </h3>
+                  </div>
+                ))}
+              </div>
+
+            </motion.div>
+
+            {/* --------------------------------------------------------------------- */}
+            {/* 3. PLATFORM STATS SECTION (Right Column) */}
+            {/* --------------------------------------------------------------------- */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={revealViewport}
+              variants={sectionReveal}
+              className="flex items-center"
+            >
+              <div
+                id="stats"
+                ref={statsRef}
+                className="grid w-full grid-cols-2 overflow-hidden rounded-[28px] border border-stone-200/80 bg-white/70 shadow-[0_18px_50px_rgba(9,95,70,0.07)] backdrop-blur-sm"
+              >
+                {platformStats.map((stat, idx) => (
                   <div
                     key={stat.label}
-                    className={`text-center py-3 sm:py-4 px-2 sm:px-6
-                      ${!isLastDesktop ? 'md:border-r md:border-stone-300/70' : 'md:border-r-0'} 
-                      ${hasRightBorderMobile ? 'border-r border-stone-300/70' : ''} 
-                      ${hasBottomBorderMobile ? 'border-b border-stone-300/70 pb-6 md:border-b-0 md:pb-4' : 'pt-6 md:pt-4'}
-                    `}
+                    className={`p-6 sm:p-8 lg:p-9 ${
+                      idx % 2 === 0 ? 'border-r border-stone-200/80' : ''
+                    } ${idx < 2 ? 'border-b border-stone-200/80' : ''}`}
                   >
-                    <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#095F46] tracking-tight mb-1.5">
+                    <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl">
                       <AnimatedCounter
                         target={stat.target}
                         decimals={stat.decimals}
                         suffix={stat.suffix}
                         duration={2000}
+                        start={statsActive}
                       />
                     </h3>
-                    <p className="text-stone-900 text-xs sm:text-sm lg:text-[15px] font-bold tracking-tight">
+                    <p className="max-w-[150px] text-xs font-bold leading-snug tracking-tight text-stone-600 sm:text-sm">
                       {stat.label}
                     </p>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </motion.div>
           </div>
         </section>
-        */}
 
         {/* ========================================================================= */}
         {/* 4. HOW IT WORKS SECTION — Interactive 4-Step Student Guide */}
@@ -524,11 +416,11 @@ export default function HomePage() {
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
+              viewport={revealViewport}
               variants={sectionReveal}
               className="text-center max-w-3xl mx-auto mb-10 sm:mb-14"
             >
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-stone-950 mb-3 sm:mb-4">
+              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15] mb-3 sm:mb-4">
                 How It Works
               </h2>
               <p className="text-stone-600 font-normal text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
@@ -552,11 +444,11 @@ export default function HomePage() {
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
+              viewport={revealViewport}
               variants={sectionReveal}
               className="text-center max-w-2xl mx-auto mb-8 sm:mb-10 lg:mb-12"
             >
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-stone-950 mb-3">
+              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15] mb-3">
                 Our Courses
               </h2>
               <p className="text-stone-500 font-normal text-xs sm:text-sm lg:text-base max-w-xl mx-auto leading-relaxed">
@@ -568,7 +460,7 @@ export default function HomePage() {
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
+              viewport={revealViewport}
               variants={cardStagger}
               className="grid md:grid-cols-3 gap-4 lg:gap-6 items-stretch"
             >
@@ -782,19 +674,18 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 6. TESTIMONIALS SECTION (Commented out for waitlist release) */}
+        {/* 6. TESTIMONIALS SECTION */}
         {/* ========================================================================= */}
-        {/*
         <section id="testimonials" className="py-14 sm:py-18 lg:py-20 bg-transparent scroll-mt-16 text-stone-900 border-b border-stone-200/60 select-none">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
+              viewport={revealViewport}
               variants={sectionReveal}
               className="mx-auto mb-9 max-w-2xl text-center sm:mb-11"
             >
-              <h2 className="mb-3 text-3xl font-black tracking-tight text-stone-950 sm:text-4xl lg:text-5xl">
+              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15] mb-3">
                 What Our Community Says
               </h2>
               <p className="mx-auto max-w-xl text-sm leading-relaxed text-stone-500 sm:text-base">
@@ -810,10 +701,10 @@ export default function HomePage() {
             <motion.div
               initial="hidden"
               whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
+              viewport={revealViewport}
               variants={sectionReveal}
               ref={testimonialRef}
-              className="relative mx-auto max-w-4xl"
+              className="relative mx-auto max-w-3xl"
             >
               <AnimatePresence mode="wait">
                 <motion.div
@@ -822,44 +713,37 @@ export default function HomePage() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -12, scale: 0.985 }}
                   transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                  className="overflow-hidden rounded-[28px] border border-white/18 bg-[#f1f4f0] text-stone-950 shadow-[0_24px_70px_rgba(0,0,0,0.18)] sm:rounded-[32px]"
+                  className="overflow-hidden rounded-[28px] border border-stone-200/90 bg-white/95 backdrop-blur-sm text-stone-950 shadow-[0_20px_50px_rgba(9,95,70,0.06)] sm:rounded-[32px] p-6 sm:p-9 lg:p-10"
                   aria-live="polite"
                 >
-                  <div className="relative grid min-h-[360px] md:grid-cols-[1.18fr_0.82fr]">
-                    <div className="order-1 flex flex-col justify-between px-6 py-7 sm:px-9 sm:py-9 md:order-1 lg:px-12 lg:py-11">
-                      <div>
+                  <div className="flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
                         <Quote className="h-9 w-9 fill-[#095f46]/10 text-[#095f46]" aria-hidden="true" />
-                        <p className="mt-5 pr-24 text-xl font-semibold leading-[1.35] tracking-tight text-stone-950 sm:pr-32 sm:text-2xl md:pr-0 lg:text-[28px]">
-                          &ldquo;{activeTestimonial.quote}&rdquo;
-                        </p>
+                        <span className="inline-flex items-center rounded-full bg-[#095f46]/10 px-3 py-1 text-xs font-bold text-[#095f46]">
+                          {activeTestimonial.course}
+                        </span>
                       </div>
-
-                      <div className="mt-8">
-                        <p className="text-sm font-black text-stone-950 sm:text-base">{activeTestimonial.name}</p>
-                        <p className="mt-1 text-xs font-medium text-stone-500 sm:text-sm">
-                          {activeTestimonial.role} · {activeTestimonial.location}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStory(activeTestimonial)}
-                          className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#095f46] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#074c38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
-                        >
-                          Read full story
-                          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                        </button>
-                      </div>
+                      <p className="text-xl font-semibold leading-[1.4] tracking-tight text-stone-950 sm:text-2xl lg:text-[26px]">
+                        &ldquo;{activeTestimonial.quote}&rdquo;
+                      </p>
                     </div>
 
-                    <div className="absolute right-5 top-5 order-2 h-24 w-24 overflow-hidden rounded-2xl bg-[#dfe7e1] shadow-[0_14px_30px_rgba(9,95,70,0.16)] sm:right-8 sm:top-8 sm:h-28 sm:w-28 md:relative md:right-auto md:top-auto md:h-auto md:w-auto md:rounded-none md:shadow-none">
-                      <Image
-                        src={activePortrait}
-                        alt={activeTestimonial.name}
-                        fill
-                        unoptimized
-                        className="object-cover object-center"
-                        sizes="(max-width: 767px) 100vw, 360px"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#095f46]/12 via-transparent to-transparent md:bg-gradient-to-r md:from-[#f1f4f0] md:via-transparent md:to-transparent" />
+                    <div className="mt-8 pt-6 border-t border-stone-200/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <p className="text-base font-black text-stone-950 sm:text-lg">{activeTestimonial.name}</p>
+                        <p className="mt-0.5 text-xs font-medium text-stone-500 sm:text-sm">
+                          {activeTestimonial.role} · {activeTestimonial.location}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStory(activeTestimonial)}
+                        className="inline-flex items-center gap-2 rounded-full bg-[#095f46] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#074c38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2 self-start sm:self-auto cursor-pointer"
+                      >
+                        Read full story
+                        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -870,7 +754,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => changeTestimonial('previous')}
                   aria-label="Previous testimonial"
-                  className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
+                  className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2 cursor-pointer"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
@@ -882,7 +766,7 @@ export default function HomePage() {
                       onClick={() => setTestimonialIndex(index)}
                       aria-label={`Show ${testimonial.name}'s testimonial`}
                       aria-current={index === testimonialIndex ? 'true' : undefined}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${index === testimonialIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/35 hover:bg-white/70'}`}
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${index === testimonialIndex ? 'w-8 bg-[#095f46]' : 'w-2.5 bg-stone-300 hover:bg-stone-400'}`}
                     />
                   ))}
                 </div>
@@ -890,7 +774,7 @@ export default function HomePage() {
                   type="button"
                   onClick={() => changeTestimonial('next')}
                   aria-label="Next testimonial"
-                  className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2"
+                  className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2 cursor-pointer"
                 >
                   <ArrowRight className="h-4 w-4" />
                 </button>
@@ -898,7 +782,7 @@ export default function HomePage() {
             </motion.div>
           </div>
 
-          -- Read Story Modal Dialog --
+          {/* Read Story Modal Dialog — No pictures */}
           <AnimatePresence>
             {selectedStory && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
@@ -938,7 +822,6 @@ export default function HomePage() {
             )}
           </AnimatePresence>
         </section>
-        */}
       </div>
 
       {/* ========================================================================= */}
@@ -971,11 +854,11 @@ export default function HomePage() {
           <motion.div
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.15 }}
+            viewport={revealViewport}
             variants={sectionReveal}
             className="flex flex-col justify-center max-w-[640px]"
           >
-            <h2 className="mb-4 text-4xl font-black leading-[0.96] tracking-[-0.04em] text-stone-950 sm:text-5xl lg:text-6xl">
+            <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15] mb-4">
               Begin Your Sacred Journey of Knowledge
             </h2>
             <p className="max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg">

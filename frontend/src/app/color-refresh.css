@@ -99,7 +99,7 @@ main > section:has(.hero-brand-video) > div:first-child > div:last-child {
 /* Light editorial sections share the same neutral ground. */
 .bg-sanctuary-light > #mission,
 .bg-sanctuary-light:has(> #standards) > section:nth-of-type(2),
-.bg-sanctuary-light > #stats + section:not(#how-it-works),
+.bg-sanctuary-light > :is(#stats, #standards) + section:not(#how-it-works),
 .bg-sanctuary-light > #testimonials + section {
   background: var(--site-canvas);
   border-color: var(--site-line);
@@ -240,7 +240,7 @@ main > section:has(.hero-brand-video) > div:first-child > div:last-child {
 /* About photo captions get one neutral scrim instead of differing green
  * overlays. The waitlist uses the same white form surface as other cards.
  */
-.bg-sanctuary-light :is(article, #stats + section) .bg-gradient-to-t {
+.bg-sanctuary-light :is(article, :is(#stats, #standards) + section) .bg-gradient-to-t {
   background: linear-gradient(to top, rgb(0 0 0 / 88%), rgb(0 0 0 / 18%) 55%, transparent);
 }
 
@@ -252,7 +252,7 @@ main > section:has(.hero-brand-video) > div:first-child > div:last-child {
   background-color: var(--site-dark);
 }
 
-.bg-sanctuary-light > #stats + section [class*="text-[#095F46]/45"] {
+.bg-sanctuary-light > :is(#stats, #standards) + section [class*="text-[#095F46]/45"] {
   color: var(--site-green);
 }
 

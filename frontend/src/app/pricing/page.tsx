@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Check, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import { Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
 
 const fadeUp: Variants = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0 } };
 
@@ -135,6 +135,7 @@ const faqs = [
 
 export default function PricingPage() {
   const [openFaqs, setOpenFaqs] = useState<number[]>([]);
+  const shouldReduceMotion = useReducedMotion();
 
   const toggleFaq = (index: number) => {
     setOpenFaqs((prev) =>
@@ -149,7 +150,21 @@ export default function PricingPage() {
       <div className="absolute top-[35%] -left-28 h-[32rem] w-[32rem] rounded-full bg-teal-100/50 blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-1/4 h-80 w-80 rounded-full bg-emerald-100/40 blur-3xl pointer-events-none" />
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-20 sm:space-y-24">
+      <motion.a
+        href="#fast-track-plans"
+        aria-label="Scroll to Fast Track plans"
+        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-[#095F46]/20 bg-white/95 text-[#095F46] shadow-[0_10px_30px_rgba(9,95,70,0.18)] backdrop-blur transition-colors duration-200 hover:bg-[#095F46] hover:text-white sm:bottom-7 sm:right-7 sm:h-14 sm:w-14"
+      >
+        <motion.span
+          aria-hidden="true"
+          animate={shouldReduceMotion ? undefined : { y: [0, 5, 0] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <ChevronDown className="h-5 w-5 stroke-[2.5] sm:h-6 sm:w-6" />
+        </motion.span>
+      </motion.a>
+
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-14 sm:space-y-16 lg:space-y-20">
         {/* Clean, Minimal Page Header */}
         <motion.div
           initial="hidden"
@@ -175,12 +190,15 @@ export default function PricingPage() {
             whileInView="visible"
             viewport={{ once: true, amount: 0.15 }}
             variants={fadeUp}
-            className="text-center max-w-2xl mx-auto"
+            className="text-center max-w-3xl mx-auto"
           >
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-stone-950 mb-2">
-              Standard Plans (2 Sessions / Week)
+            <h2 className="text-2xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.2] mb-2 sm:whitespace-nowrap">
+              <span>Standard Plans</span>{' '}
+              <span className="text-sm sm:text-xl lg:text-2xl font-normal text-stone-500 tracking-normal whitespace-nowrap">
+                (2 Sessions / Week)
+              </span>
             </h2>
-            <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">
+            <p className="text-stone-600 text-xs sm:text-sm leading-relaxed max-w-2xl mx-auto">
               8 live 1:1 sessions per month with qualified scholars. Steady, structured learning with a complimentary 30-minute trial session.
             </p>
           </motion.div>
@@ -244,29 +262,33 @@ export default function PricingPage() {
                     href="/about#waitlist"
                     className="brand-button brand-button-primary w-full"
                   >
-                    Start Free Trial
+                    Join Waitlist
                   </Link>
                 </div>
               </motion.div>
             ))}
           </div>
+
         </section>
 
         {/* ========================================================================= */}
         {/* SECTION 2: Fast Track Plans (3 Sessions / Week · Direct Enrollment)       */}
         {/* ========================================================================= */}
-        <section id="fast-track-plans" className="scroll-mt-24 space-y-8">
+        <section id="fast-track-plans" className="scroll-mt-24 space-y-8 rounded-[2rem] border border-[#095F46]/10 bg-white/45 px-0 py-8 sm:px-6 sm:py-10 lg:px-8">
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.15 }}
             variants={fadeUp}
-            className="text-center max-w-2xl mx-auto"
+            className="text-center max-w-3xl mx-auto"
           >
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-stone-950 mb-2">
-              Fast Track Plans (3 Sessions / Week)
+            <h2 className="text-2xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.2] mb-2 sm:whitespace-nowrap">
+              <span>Fast Track Plans</span>{' '}
+              <span className="text-sm sm:text-xl lg:text-2xl font-normal text-stone-500 tracking-normal whitespace-nowrap">
+                (3 Sessions / Week)
+              </span>
             </h2>
-            <p className="text-stone-600 text-xs sm:text-sm leading-relaxed">
+            <p className="text-stone-600 text-xs sm:text-sm leading-relaxed max-w-2xl mx-auto">
               12 live 1:1 sessions per month with replayable cloud recordings and detailed monthly progress reports. Designed for intensive, rapid progress.
             </p>
           </motion.div>
@@ -355,7 +377,7 @@ export default function PricingPage() {
             variants={fadeUp}
             className="text-center mb-10"
           >
-            <h2 className="text-2xl sm:text-3xl font-black text-stone-950 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold text-stone-950 tracking-tight leading-[1.15]">
               Frequently Asked Questions
             </h2>
           </motion.div>

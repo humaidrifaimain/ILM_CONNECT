@@ -58,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       className={`${manrope.variable} ${amiri.variable} ${bricolageGrotesque.variable}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="font-sans antialiased bg-white text-stone-900 min-h-screen" suppressHydrationWarning>

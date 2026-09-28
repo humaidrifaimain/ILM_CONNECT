@@ -144,6 +144,23 @@ button {
   border-radius: var(--radius-action);
 }
 
+.home-hero-section {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+@supports (min-height: 100dvh) {
+  .home-hero-section {
+    min-height: 100dvh;
+  }
+}
+
+@media (max-width: 767px) {
+  .home-hero-section {
+    min-height: calc(100dvh + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 a[class*="bg-[#095F46]"],
 a[class*="bg-[hsl(var(--primary))]"] {
   border-radius: var(--radius-action);

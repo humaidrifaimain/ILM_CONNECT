@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 
@@ -16,17 +16,37 @@ export default function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const scrolledRef = useRef(false);
 
   const isDarkHero = pathname === '/' || pathname === '/about';
 
   useEffect(() => {
+    let frameId = 0;
+
     const handleScroll = () => {
-      // Smooth transition to floating pill navbar when scrolling past 30px
-      setScrolled(window.scrollY > 30);
+      if (frameId) return;
+
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        const nextScrolled = scrolledRef.current
+          ? window.scrollY > 12
+          : window.scrollY > 48;
+
+        if (nextScrolled !== scrolledRef.current) {
+          scrolledRef.current = nextScrolled;
+          setScrolled(nextScrolled);
+        }
+      });
     };
+
+    scrolledRef.current = window.scrollY > 48;
+    setScrolled(scrolledRef.current);
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -68,16 +88,31 @@ export default function Header() {
         }`}
       >
         <Link href="/" className="col-start-1 row-start-1 flex items-center justify-self-start" aria-label="ILMBIT home">
-          <Image
-            src={showWhiteNav ? '/images/ilmbit-logo-white.png' : '/images/ilmbit-logo-green.png'}
-            alt="ILMBIT"
-            width={56}
-            height={74}
-            className={`w-auto object-contain transition-all duration-300 ${
-              scrolled ? 'h-[44px] sm:h-[48px]' : 'h-[52px] sm:h-[56px]'
-            }`}
-            priority
-          />
+          <span className="relative block h-[52px] w-[40px] sm:h-[56px] sm:w-[42px]">
+            <Image
+              src="/images/ilmbit-logo-white.png"
+              alt="ILMBIT"
+              width={56}
+              height={74}
+              className={`absolute inset-0 h-full w-auto object-contain transition-[height,opacity] duration-300 ${
+                showWhiteNav ? 'opacity-100' : 'opacity-0'
+              } ${scrolled ? 'h-[44px] sm:h-[48px]' : 'h-[52px] sm:h-[56px]'}`}
+              loading="eager"
+              priority
+            />
+            <Image
+              src="/images/ilmbit-logo-green.png"
+              alt=""
+              aria-hidden="true"
+              width={56}
+              height={74}
+              className={`absolute inset-0 h-full w-auto object-contain transition-[height,opacity] duration-300 ${
+                showWhiteNav ? 'opacity-0' : 'opacity-100'
+              } ${scrolled ? 'h-[44px] sm:h-[48px]' : 'h-[52px] sm:h-[56px]'}`}
+              loading="eager"
+              priority
+            />
+          </span>
         </Link>
 
         {/* Center: Desktop Navigation Links */}

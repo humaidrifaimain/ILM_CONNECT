@@ -13,14 +13,6 @@ import {
 } from '@/lib/country-calling-codes';
 
 const fadeUp: Variants = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0 } };
-const sectionReveal: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
-  },
-};
 
 function AnimatedCounter({
   target,
@@ -344,7 +336,7 @@ export default function AboutPage() {
               variants={fadeUp}
               className="lg:col-span-7"
             >
-              <h2 className="text-2xl sm:text-3xl lg:text-[32px] font-bold tracking-tight text-stone-950 leading-[1.2]">
+              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15]">
                 Make Serious Islamic Education{' '}
                 <span className="text-[#095F46]">Easier To Access,</span> And Easier To Stay With!
               </h2>
@@ -431,70 +423,50 @@ export default function AboutPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 3. PLATFORM STANDARDS SECTION — Sanad Verification & Quality Benchmarks */}
       {/* ========================================================================= */}
-      <section id="standards" className="relative z-10 border-y border-stone-200/70 bg-white/50 py-14 sm:py-16 lg:py-20 backdrop-blur-sm scroll-mt-20">
+      {/* 3. PLATFORM STANDARDS & STATS SECTION */}
+      {/* ========================================================================= */}
+      <section id="standards" className="relative z-10 border-y border-stone-200/70 bg-white/50 py-16 sm:py-20 lg:py-28 backdrop-blur-sm scroll-mt-20">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           
-          {/* Top Row: Left Image with Badge vs Right Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* Top Middle: Heading (Max 4 Words) & Reduced Description */}
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.15 }}
+            variants={fadeUp}
+            className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 lg:mb-18"
+          >
+            <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15]">
+              Elevating Islamic Education Standards
+            </h2>
+            <p className="mt-4 text-sm sm:text-base text-stone-600 leading-relaxed max-w-lg mx-auto">
+              Held to the highest benchmarks of authentic Islamic guidance.
+            </p>
+          </motion.div>
+
+          {/* 2-Column Grid: Point Form on Left, Stats on Right */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 xl:gap-20 items-center">
             
-            {/* Left Column: Image with Custom Rounded Corner & Floating Badge (matching reference) */}
+            {/* Left Column: 6 Points Form + CTA Button */}
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.15 }}
               variants={fadeUp}
-              className="lg:col-span-5 relative"
+              className="lg:col-span-6 flex flex-col justify-center"
             >
-              {/* Floating Circular Badge in Top-Left */}
-              <div className="absolute -top-3 -left-3 sm:-top-5 sm:-left-5 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white shadow-[0_12px_36px_rgba(0,0,0,0.12)] border border-stone-100 flex flex-col items-center justify-center p-2 text-center z-20">
-                <span className="text-lg sm:text-xl font-black text-[#095F46] tracking-tight leading-none">100%</span>
-                <span className="text-[9px] sm:text-[10px] font-bold text-stone-600 uppercase tracking-wider mt-0.5 leading-tight text-center">Sanad Verified</span>
-              </div>
-
-              {/* Main Image with custom corner rounding */}
-              <div className="relative w-full aspect-[4/3] rounded-3xl rounded-bl-[50px] sm:rounded-bl-[72px] overflow-hidden border-4 sm:border-6 border-white shadow-[0_16px_40px_rgba(0,0,0,0.08)] bg-stone-100">
-                <Image
-                  src="/images/about-standards-quran.jpg"
-                  alt="An open copy of the Holy Quran on a reading stand"
-                  fill
-                  className="object-cover object-[center_58%]"
-                  sizes="(max-width: 1024px) 100vw, 520px"
-                />
-              </div>
-            </motion.div>
-
-            {/* Right Column: Title, Minimal Description, 6 Points Grid, and Button */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
-              variants={fadeUp}
-              className="lg:col-span-7 flex flex-col justify-center"
-            >
-              {/* Bold Main Heading - font size matched to Section 2 */}
-              <h2 className="text-2xl sm:text-3xl lg:text-[32px] font-bold tracking-tight text-stone-950 leading-[1.2] mb-3">
-                Elevating Islamic Education With Uncompromising Standards
-              </h2>
-
-              {/* Minimal Introductory Description Paragraph */}
-              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed mb-5">
-                Every class, curriculum module, and scholar relationship is held to the highest benchmarks of authentic Islamic guidance.
-              </p>
-
-              {/* 6 Points in 2-Column Checklist Form (Compact & breathable) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-7 mb-9">
                 {values.map((val) => (
-                  <div key={val.title} className="flex items-start gap-2.5">
-                    <div className="w-4.5 h-4.5 rounded-full bg-[#095F46] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                  <div key={val.title} className="flex items-start gap-3.5">
+                    <div className="w-5 h-5 rounded-full bg-[#095F46] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
                       <Check className="w-3 h-3 stroke-[3]" />
                     </div>
                     <div>
-                      <div className="text-xs sm:text-[13px] font-bold text-stone-900 leading-snug">
+                      <div className="text-sm sm:text-[15px] font-bold text-stone-900 leading-snug">
                         {val.title}
                       </div>
-                      <p className="text-[11px] sm:text-xs text-stone-500 leading-snug mt-0.5">
+                      <p className="text-xs sm:text-sm text-stone-500 leading-relaxed mt-1.5">
                         {val.desc}
                       </p>
                     </div>
@@ -502,67 +474,49 @@ export default function AboutPage() {
                 ))}
               </div>
 
-              {/* CTA Button */}
               <div>
                 <Link
                   href="/about#waitlist"
-                  className="brand-button brand-button-primary px-7"
+                  className="brand-button brand-button-primary px-7 inline-flex"
                 >
-                  Start Free Trial
+                  Join Waitlist
                 </Link>
               </div>
             </motion.div>
+
+            {/* Right Column: Platform Stats (2x2 Grid) */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              variants={fadeUp}
+              className="lg:col-span-6"
+            >
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:gap-6">
+                {platformStats.map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="min-h-[112px] rounded-2xl border border-stone-200/80 bg-white/80 p-4 text-center flex flex-col justify-center items-center shadow-[0_4px_20px_rgba(9,95,70,0.03)] hover:shadow-md transition-all sm:min-h-[136px] sm:p-6 lg:min-h-[148px] lg:p-8"
+                  >
+                    <div className="text-2xl sm:text-4xl lg:text-[42px] font-black text-[#095F46] tracking-tight mb-1.5 sm:mb-2">
+                      <AnimatedCounter
+                        target={stat.target}
+                        decimals={stat.decimals}
+                        suffix={stat.suffix}
+                        duration={2000}
+                      />
+                    </div>
+                    <p className="text-stone-600 text-xs sm:text-sm font-semibold tracking-tight leading-snug">
+                      {stat.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
           </div>
         </div>
       </section>
-
-      {/* ========================================================================= */}
-      {/* 4. PLATFORM STATS STRIP (Commented out for waitlist release) */}
-      {/* ========================================================================= */}
-      {/*
-      <section
-        id="stats"
-        className="relative z-20 py-8 sm:py-10 border-b border-stone-200/60 select-none bg-[#f8faf8]"
-      >
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.15 }}
-            variants={sectionReveal}
-            className="grid grid-cols-2 md:grid-cols-4 items-center"
-          >
-            {platformStats.map((stat, idx) => {
-              const isLastDesktop = idx === 3;
-              const hasRightBorderMobile = idx % 2 === 0;
-              const hasBottomBorderMobile = idx < 2;
-              return (
-                <div
-                  key={stat.label}
-                  className={`text-center py-3 sm:py-4 px-2 sm:px-6
-                    ${!isLastDesktop ? 'md:border-r md:border-stone-300/70' : 'md:border-r-0'}
-                    ${hasRightBorderMobile ? 'border-r border-stone-300/70' : ''}
-                    ${hasBottomBorderMobile ? 'border-b border-stone-300/70 pb-6 md:border-b-0 md:pb-4' : 'pt-6 md:pt-4'}
-                  `}
-                >
-                  <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#095F46] tracking-tight mb-1.5">
-                    <AnimatedCounter
-                      target={stat.target}
-                      decimals={stat.decimals}
-                      suffix={stat.suffix}
-                      duration={2000}
-                    />
-                  </div>
-                  <div className="text-stone-700 text-xs sm:text-sm lg:text-[15px] font-semibold tracking-tight">
-                    {stat.label}
-                  </div>
-                </div>
-              );
-            })}
-          </motion.div>
-        </div>
-      </section>
-      */}
 
       {/* ========================================================================= */}
       {/* 5. LEARNING JOURNEY / CALMER PATH — 4-Step Structured Process */}
@@ -585,7 +539,7 @@ export default function AboutPage() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#052d23]/95 via-[#052d23]/45 to-stone-950/10" />
             <div className="relative z-10">
-              <h2 className="text-2xl font-bold leading-[1.2] tracking-tight sm:text-3xl lg:text-[32px]">
+              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold leading-[1.15] tracking-tight">
                 A calmer path from signup to steady learning.
               </h2>
               <p className="mt-3 max-w-md text-xs leading-relaxed text-emerald-50/85 sm:text-sm">
@@ -673,7 +627,7 @@ export default function AboutPage() {
               className="pointer-events-none absolute -bottom-24 -right-20 h-72 w-72 select-none object-contain opacity-[0.075] sm:h-80 sm:w-80 lg:-bottom-20 lg:-right-24"
             />
             <div className="relative z-10">
-              <h2 className="max-w-md text-3xl font-bold leading-[1.08] tracking-[-0.04em] text-white sm:text-4xl lg:text-[42px]">
+              <h2 className="max-w-md text-3xl sm:text-4xl lg:text-[42px] font-bold leading-[1.15] tracking-tight text-white">
                 Begin Your Sacred Journey of Knowledge
               </h2>
               <p className="mt-4 sm:mt-5 max-w-sm text-sm leading-relaxed text-emerald-50/75 sm:text-base">
@@ -825,8 +779,8 @@ export default function AboutPage() {
                   />
                 </div>
 
-                {/* Form Submit Button & Priority Matching Guarantee */}
-                <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center justify-between">
+                {/* Form Submit Button */}
+                <div className="pt-2">
                   <button
                     type="submit"
                     disabled={isWaitlistSubmitting}
@@ -835,10 +789,6 @@ export default function AboutPage() {
                     <span>{isWaitlistSubmitting ? 'Joining Waitlist...' : 'Join the Priority Waitlist'}</span>
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                  <p className="text-[11px] font-medium leading-relaxed text-stone-500 flex items-center justify-center sm:justify-start gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#10bf8d] shrink-0" />
-                    <span>Priority matching · No credit card required</span>
-                  </p>
                 </div>
               </form>
             ) : (
