@@ -103,7 +103,7 @@ const values = [
   {
     title: 'Verified Scholars',
     desc: 'Personally vetted for authentic Sanad lineage and teaching adab.',
-    image: '/images/about-scholar-teaching-main.jpg',
+    image: '/images/about-card-verified-scholars-generated.png',
   },
   {
     title: 'Live 1:1 Sessions',
@@ -113,7 +113,7 @@ const values = [
   {
     title: 'Built for Diaspora',
     desc: 'Flexible scheduling adapted for UK, US, Europe & Australia.',
-    image: '/images/about-built-around-you.png',
+    image: '/images/about-card-built-diaspora-generated.png',
   },
   {
     title: 'Structured Progress',
@@ -123,7 +123,7 @@ const values = [
   {
     title: 'Parent Confidence',
     desc: 'Direct communication, consistent scheduling, and safe environment.',
-    image: '/images/about-student-learning-inset.jpg',
+    image: '/images/about-card-parent-confidence-generated.png',
   },
   {
     title: 'Rooted Curriculum',
