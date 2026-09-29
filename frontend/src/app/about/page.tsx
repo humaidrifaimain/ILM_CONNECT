@@ -66,7 +66,7 @@ function AnimatedCounter({
       : Math.floor(count).toLocaleString('en-US');
 
   return (
-    <span className="tabular-nums">
+    <span className="tabular-nums" suppressHydrationWarning>
       {formatted}{suffix}
     </span>
   );
@@ -434,7 +434,7 @@ export default function AboutPage() {
       {/* ========================================================================= */}
       {/* 3. PLATFORM STANDARDS & STATS SECTION */}
       {/* ========================================================================= */}
-      <section id="standards" className="relative z-10 border-y border-stone-200/70 bg-white/50 py-16 sm:py-20 lg:py-28 backdrop-blur-sm scroll-mt-20">
+      <section id="standards" className="relative z-10 border-t border-b-0 lg:border-b border-stone-200/70 bg-white/50 pt-16 sm:pt-20 lg:py-28 pb-0 sm:pb-0 backdrop-blur-sm scroll-mt-20">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           
           {/* Top Middle: Heading (Max 4 Words) & Reduced Description */}
@@ -453,28 +453,36 @@ export default function AboutPage() {
             </p>
           </motion.div>
 
-          {/* 2-Column Grid: Point Form on Left, Stats on Right */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 xl:gap-20 items-center">
+          <div className="space-y-10 lg:space-y-12">
             
-            {/* Left Column: 6 Points Form + CTA Button */}
+            {/* Standards Cards */}
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, amount: 0.15 }}
               variants={fadeUp}
-              className="lg:col-span-6 flex flex-col justify-center"
+              className="space-y-8"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-7 mb-9">
-                {values.map((val) => (
-                  <div key={val.title} className="flex items-start gap-3.5">
-                    <div className="w-5 h-5 rounded-full bg-[#095F46] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                      <Check className="w-3 h-3 stroke-[3]" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+                {values.map((val, idx) => (
+                  <div
+                    key={val.title}
+                    className="relative min-h-[168px] overflow-hidden bg-[#05251f] p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10"
+                  >
+                    <div className="absolute bottom-5 left-0 h-3 w-3 -translate-x-1/2 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.12)]" />
+                    <div className="mb-6 flex items-center justify-between gap-4">
+                      <span className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200/80">
+                        0{idx + 1}
+                      </span>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-300/20">
+                        <Check className="h-3.5 w-3.5 stroke-[3]" />
+                      </span>
                     </div>
-                    <div>
-                      <div className="text-sm sm:text-[15px] font-bold text-stone-900 leading-snug">
+                    <div className="space-y-3">
+                      <h3 className="text-base font-black leading-tight tracking-tight text-white">
                         {val.title}
-                      </div>
-                      <p className="text-xs sm:text-sm text-stone-500 leading-relaxed mt-1.5">
+                      </h3>
+                      <p className="max-w-[260px] text-sm leading-relaxed text-emerald-50/72">
                         {val.desc}
                       </p>
                     </div>
@@ -482,7 +490,7 @@ export default function AboutPage() {
                 ))}
               </div>
 
-              <div>
+              <div className="flex justify-center lg:justify-start">
                 <Link
                   href="/about#waitlist"
                   className="brand-button brand-button-primary px-7 inline-flex"
@@ -498,20 +506,23 @@ export default function AboutPage() {
               whileInView="visible"
               viewport={{ once: true, amount: 0.15 }}
               variants={fadeUp}
-              className="lg:col-span-6"
+              className="-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)] lg:mx-0 lg:w-full"
             >
               <div
+                id="stats"
                 ref={statsRef}
-                className="grid w-full grid-cols-2 bg-[#eef7f3]"
+                className="grid w-full scroll-mt-32 grid-cols-2 bg-[#eef7f3] border-y border-[#d5e3dc] lg:grid-cols-4 lg:border-0"
               >
                 {platformStats.map((stat, idx) => (
                   <div
                     key={stat.label}
-                    className={`flex min-h-[112px] flex-col items-center justify-center px-5 py-7 text-center sm:min-h-[132px] sm:px-8 sm:py-9 ${
+                    className={`flex min-h-[120px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[140px] sm:px-8 sm:py-10 lg:min-h-[150px] lg:px-5 lg:py-8 ${
                       idx % 2 === 0 ? 'border-r border-[#d5e3dc]' : ''
-                    } ${idx < 2 ? 'border-b border-[#d5e3dc]' : ''}`}
+                    } ${idx < 2 ? 'border-b border-[#d5e3dc]' : ''} ${
+                      idx < platformStats.length - 1 ? 'lg:border-r lg:border-[#d5e3dc]' : 'lg:border-r-0'
+                    } lg:border-b-0`}
                   >
-                    <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl">
+                    <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl lg:text-[44px] xl:text-[48px]">
                       <AnimatedCounter
                         target={stat.target}
                         decimals={stat.decimals}
@@ -520,8 +531,14 @@ export default function AboutPage() {
                         start={statsActive}
                       />
                     </h3>
-                    <p className="text-xs font-bold leading-snug tracking-tight text-stone-600 sm:text-sm">
-                      {stat.label}
+                    <p className="stat-label mx-auto max-w-[150px] text-xs font-bold leading-snug tracking-tight text-stone-700 sm:text-sm lg:text-sm">
+                      {stat.label === 'Teaching Hours Completed' ? (
+                        <>
+                          Teaching Hours<br />Completed
+                        </>
+                      ) : (
+                        stat.label
+                      )}
                     </p>
                   </div>
                 ))}

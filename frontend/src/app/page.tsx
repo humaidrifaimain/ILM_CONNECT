@@ -67,7 +67,7 @@ function AnimatedCounter({
       : Math.floor(count).toLocaleString('en-US');
 
   return (
-    <span className="tabular-nums">
+    <span className="tabular-nums" suppressHydrationWarning>
       {formatted}{suffix}
     </span>
   );
@@ -325,18 +325,19 @@ export default function HomePage() {
         {/* ========================================================================= */}
         <section
           id="mission"
+          suppressHydrationWarning
           className="relative z-20 overflow-hidden border-b border-stone-200/60 py-14 select-none sm:py-18 lg:py-20"
         >
-          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_0.78fr] lg:items-center lg:gap-16 lg:px-8">
+          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:items-center lg:gap-12 lg:px-8">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={revealViewport}
               variants={sectionReveal}
-              className="flex flex-col justify-center"
+              className="flex flex-col justify-center lg:col-span-5"
             >
-              <h2 className="max-w-[610px] text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15]">
-                Grow In Sacred Knowledge So You Can{' '}
+              <h2 className="max-w-[610px] text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15]" suppressHydrationWarning>
+                <span>Grow In Sacred Knowledge So You Can </span>
                 <span className="block text-[#095F46]">Live With Purpose &amp; Iman</span>
               </h2>
 
@@ -371,21 +372,23 @@ export default function HomePage() {
               whileInView="visible"
               viewport={revealViewport}
               variants={sectionReveal}
-              className="flex items-center"
+              className="flex items-center -mx-4 sm:-mx-6 lg:col-span-7 lg:mx-0 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-full"
             >
               <div
                 id="stats"
                 ref={statsRef}
-                className="grid w-full grid-cols-2 bg-[#eef7f3]"
+                className="grid w-full scroll-mt-32 grid-cols-2 bg-[#eef7f3] border-y border-[#d5e3dc] lg:grid-cols-4 lg:border-0"
               >
                 {platformStats.map((stat, idx) => (
                   <div
                     key={stat.label}
-                    className={`flex min-h-[112px] flex-col items-center justify-center px-5 py-7 text-center sm:min-h-[132px] sm:px-8 sm:py-9 ${
+                    className={`flex min-h-[120px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[140px] sm:px-8 sm:py-10 lg:min-h-[148px] lg:px-4 lg:py-8 ${
                       idx % 2 === 0 ? 'border-r border-[#d5e3dc]' : ''
-                    } ${idx < 2 ? 'border-b border-[#d5e3dc]' : ''}`}
+                    } ${idx < 2 ? 'border-b border-[#d5e3dc]' : ''} ${
+                      idx < platformStats.length - 1 ? 'lg:border-r lg:border-[#d5e3dc]' : 'lg:border-r-0'
+                    } lg:border-b-0`}
                   >
-                    <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl">
+                    <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl lg:text-[34px] xl:text-4xl">
                       <AnimatedCounter
                         target={stat.target}
                         decimals={stat.decimals}
@@ -394,8 +397,14 @@ export default function HomePage() {
                         start={statsActive}
                       />
                     </h3>
-                    <p className="text-xs font-bold leading-snug tracking-tight text-stone-600 sm:text-sm">
-                      {stat.label}
+                    <p className="stat-label mx-auto max-w-[150px] text-xs font-bold leading-snug tracking-tight text-stone-700 sm:text-sm lg:text-xs xl:text-sm">
+                      {stat.label === 'Teaching Hours Completed' ? (
+                        <>
+                          Teaching Hours<br />Completed
+                        </>
+                      ) : (
+                        stat.label
+                      )}
                     </p>
                   </div>
                 ))}

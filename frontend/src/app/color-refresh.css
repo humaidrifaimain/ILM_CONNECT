@@ -110,13 +110,18 @@ main > section:has(.hero-brand-video) > div:first-child > div:last-child {
 }
 
 /* A quiet stats bridge, with the brand reserved for the figures. */
-.bg-sanctuary-light > #stats {
-  background: var(--site-tint);
-  border-color: var(--site-line);
+.bg-sanctuary-light #stats {
+  background: #eef7f3;
+  border-color: #d5e3dc;
 }
 
-.bg-sanctuary-light > #stats [class*="text-[#095F46]"] {
+.bg-sanctuary-light #stats [class*="text-[#095F46]"] {
   color: var(--site-green);
+}
+
+.bg-sanctuary-light #stats :is(p, .stat-label),
+.bg-sanctuary-light #standards #stats :is(p, .stat-label) {
+  color: #44403c !important;
 }
 
 /* The timeline is the solid-green chapter. */
@@ -162,7 +167,7 @@ main > section:has(.hero-brand-video) > div:first-child > div:last-child {
 }
 
 .bg-sanctuary-light > #testimonials > div:first-child > div:first-child :is(p, .text-stone-400),
-.bg-sanctuary-light > #standards :is(p.text-stone-600, p.text-stone-500) {
+.bg-sanctuary-light > #standards :is(p.text-stone-600, p.text-stone-500):not(#stats *) {
   color: var(--site-on-dark-muted);
 }
 
