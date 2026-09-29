@@ -476,8 +476,8 @@ export default function AboutPage() {
                     className="relative min-h-[178px] overflow-hidden rounded-2xl bg-[#05251f] bg-cover bg-center p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10"
                     style={{ backgroundImage: `url(${val.image})` }}
                   >
-                    <div className="absolute inset-0 bg-[#05251f]/72" />
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#095F46]/92 via-[#05251f]/82 to-[#031b17]/96" />
+                    <div className="absolute inset-0 bg-[#05251f]/86" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#095F46]/95 via-[#05251f]/88 to-[#031b17]/98" />
                     <div className="relative mb-6 flex items-center justify-between gap-4">
                       <span className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200/80">
                         0{idx + 1}
