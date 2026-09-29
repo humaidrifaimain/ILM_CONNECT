@@ -51,8 +51,8 @@ export class BookingService {
       throw new BadRequestException('Student does not have an active subscription');
     }
 
-    // Check student weekly allowance
-    await this.validateThreeDayGap(studentId, startsAt);
+    // Check student weekly/daily allowance
+    await this.validateBookingAllowance(studentId, startsAt, subscription.tier);
 
     // Check if student already has an overlapping session
     const studentOverlap = await this.prisma.session.findFirst({
@@ -190,22 +190,6 @@ export class BookingService {
           sessionDate: startsAt,
           sessionTimeFormatted,
         });
-
-        // In-app confirmation for Lecturer
-        await this.notificationService.createNotification(
-          lecturerId,
-          'BOOKING_CONFIRMED',
-          {
-            sessionId: session.id,
-            title: 'Session Scheduled',
-            message: `You scheduled a session with ${studentName} for ${startsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${sessionTimeFormatted}.`,
-            actorId: lecturerId,
-            actorName: lecturerName,
-            actorRole: 'LECTURER',
-            sessionDate: startsAt.toISOString(),
-          },
-          'IN_APP',
-        );
       } else {
         // Student booked session -> Lecturer is the recipient!
         if (lecturerUser) {
@@ -228,24 +212,6 @@ export class BookingService {
             sessionTimeFormatted,
           });
         }
-
-        // Also notify Student across In-App, Email, and WhatsApp
-        if (studentUser) {
-          await this.notificationService.createNotification(
-            studentId,
-            'BOOKING_CONFIRMED',
-            {
-              sessionId: session.id,
-              title: 'Session Confirmed',
-              message: `Your session with ${lecturerName} has been booked for ${startsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${sessionTimeFormatted}.`,
-              actorId: studentId,
-              actorName: studentName,
-              actorRole: 'STUDENT',
-              sessionDate: startsAt.toISOString(),
-            },
-            'IN_APP',
-          );
-        }
       }
     } catch (notifErr: any) {
       this.logger.error(`Error dispatching booking notifications: ${notifErr.message}`);
@@ -254,7 +220,12 @@ export class BookingService {
     return session;
   }
 
-  async validateThreeDayGap(studentId: string, bookingDate: Date) {
+  async validateBookingAllowance(studentId: string, bookingDate: Date, tier: string) {
+    // Determine limits based on tier
+    const isPremium = tier && tier.toUpperCase().includes('PREMIUM');
+    const weeklyLimit = isPremium ? 3 : 2;
+    const dailyLimit = 1;
+
     // Determine start and end of week (Monday to Sunday)
     const day = bookingDate.getDay();
     const diffToMonday = day === 0 ? -6 : 1 - day; // Adjust to Monday
@@ -266,6 +237,12 @@ export class BookingService {
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
+
+    const startOfDay = new Date(bookingDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(bookingDate);
+    endOfDay.setHours(23, 59, 59, 999);
 
     // Fetch existing sessions in this week
     const existingSessions = await this.prisma.session.findMany({
@@ -285,9 +262,17 @@ export class BookingService {
       },
     });
 
-    // Allow students to book multiple sessions per week (up to 7 sessions)
-    if (existingSessions.length >= 7) {
-      throw new BadRequestException('Maximum weekly session allowance reached (7 sessions per week)');
+    const bookedThisWeek = existingSessions.length;
+    const bookedThisDay = existingSessions.filter(
+      s => s.startsAt >= startOfDay && s.startsAt <= endOfDay
+    ).length;
+
+    if (bookedThisWeek >= weeklyLimit) {
+      throw new BadRequestException(`Maximum weekly session allowance reached (${weeklyLimit} sessions per week for ${isPremium ? 'Premium' : 'Standard'} plan)`);
+    }
+
+    if (bookedThisDay >= dailyLimit) {
+      throw new BadRequestException(`Maximum daily session allowance reached (${dailyLimit} session per day)`);
     }
   }
 
@@ -462,7 +447,12 @@ export class BookingService {
 
     return this.prisma.session.findMany({
       where: { studentId },
-      include: { lecturer: true },
+      include: {
+        lecturer: true,
+        lesson: { include: { module: { include: { learningPath: true } } } },
+        notes: true,
+        rating: true,
+      },
       orderBy: { startsAt: 'asc' },
     });
   }

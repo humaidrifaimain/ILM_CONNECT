@@ -200,7 +200,7 @@ export default function BookSessionPage() {
 
       {/* Assigned lecturer info */}
       <div className="flex items-center gap-3 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-        <div className="h-10 w-10 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-sm">{assignedLecturer.name.split(' ').map((n: any)=>n[0]).join('').slice(0,2)}</div>
+        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white font-bold text-sm">{assignedLecturer.name.split(' ').map((n: any)=>n[0]).join('').slice(0,2)}</div>
         <div>
           <div className="font-medium text-sm">{assignedLecturer.name}</div>
           <div className="text-xs text-[hsl(var(--muted-foreground))]">{assignedLecturer.title}</div>
@@ -352,7 +352,7 @@ export default function BookSessionPage() {
               ) && (
                 <Link
                   href={`/student/courses/${courseId}/sessions/${selectedBookedSession.id}/room`}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center justify-center gap-1.5 order-first sm:order-none"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center justify-center gap-1.5 order-first sm:order-none"
                 >
                   <Video className="h-3.5 w-3.5" /> Enter Classroom
                 </Link>
@@ -385,7 +385,7 @@ export default function BookSessionPage() {
             </div>
             <h3 className="text-lg font-bold mb-2">Sessions Booked!</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{confirmed} session confirmed with {assignedLecturer.name}. You&apos;ll be able to join the internal classroom 5 minutes before the session starts.</p>
-            <Link href="/student/dashboard" className="block w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] transition-colors shadow-sm">Return to Dashboard</Link>
+            <Link href="/student/dashboard" className="block w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)]">Return to Dashboard</Link>
           </div>
         </div>
       )}

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
 import {
   ParticipantTile,
   RoomAudioRenderer,
@@ -203,20 +202,14 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
       <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Luxury Minimal Header */}
         <header className="z-20 flex min-h-16 items-center justify-between gap-3 border-b border-white/[0.08] bg-[#070e0a]/90 px-4 backdrop-blur-xl sm:px-6">
-          {/* Top Left: Official Ilmbit Icon & Branding */}
+          {/* Top Left: Official IlmConnect Icon & Branding */}
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#095F46] p-2 shadow-md shadow-emerald-950/50 border border-emerald-400/25">
-              <Image
-                src="/images/ilmbit-icon-white.png"
-                alt="Ilmbit Logo"
-                width={30}
-                height={30}
-                className="object-contain"
-              />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] shadow-md shadow-emerald-950/50 border border-emerald-400/25">
+              <BookOpen className="h-5 w-5 text-white" strokeWidth={2.5} />
             </div>
             <div className="min-w-0 flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold tracking-tight text-white">Ilmbit</span>
+                <span className="text-sm font-bold tracking-tight text-white">IlmConnect</span>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
                 </span>
@@ -313,6 +306,9 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                 /* 2. Interactive Study Materials View */
                 <div className="flex h-full flex-col bg-[#fbf9f4] text-[#141e19]">
                   <div className="flex flex-1 flex-col items-center justify-center px-6 py-8 text-center sm:px-14 overflow-y-auto">
+                    <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-900/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-emerald-900">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-700" /> Lesson Slide {activeSlide.slideNumber}
+                    </span>
                     <h1 className="max-w-3xl text-2xl sm:text-4xl font-bold tracking-tight text-emerald-950 mb-4">
                       {activeSlide.title}
                     </h1>
@@ -376,9 +372,10 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                       </div>
                     </div>
 
-                    <p className="text-xs font-medium text-emerald-300/80 mb-2.5">
-                      Waiting for {counterpartRole} to join...
-                    </p>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-300 mb-3.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Waiting for {counterpartRole}
+                    </div>
 
                     <h2 className="text-2xl font-bold tracking-tight text-white mb-2">
                       {counterpart}

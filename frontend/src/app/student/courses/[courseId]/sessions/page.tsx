@@ -261,7 +261,7 @@ export default function StudentSessionsPage() {
                   {canJoin && (
                     <Link
                       href={`/student/courses/${courseId}/sessions/${s.id}/room`}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center gap-1.5"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5"
                     >
                       <Play className="h-3 w-3 fill-current" /> Join Class
                     </Link>
@@ -395,7 +395,7 @@ export default function StudentSessionsPage() {
                 </Link>
               )}
               {(selectedSession.status === 'scheduled' || selectedSession.status === 'in_progress') && !selectedSession.isPast && (
-                <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center justify-center gap-1.5">
+                <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all flex items-center justify-center gap-1.5">
                   <Play className="h-4 w-4 fill-current" /> Join Session
                 </Link>
               )}

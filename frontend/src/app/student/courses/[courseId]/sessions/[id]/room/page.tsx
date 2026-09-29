@@ -120,7 +120,7 @@ function PreJoinScreen({ onJoin, onBack, sessionInfo }: { onJoin: (mic: boolean,
         </button>
         <div className="flex items-center gap-2 text-sm font-semibold">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-300 text-[#10201c]"><Camera className="h-4 w-4" /></span>
-          Ilmbit Classroom
+          IlmConnect Classroom
         </div>
         <span className="hidden items-center gap-1.5 text-xs text-white/45 sm:flex"><Wifi className="h-3.5 w-3.5" /> Secure room</span>
       </header>
@@ -148,7 +148,8 @@ function PreJoinScreen({ onJoin, onBack, sessionInfo }: { onJoin: (mic: boolean,
         </div>
 
         <section className="rounded-2xl border border-white/10 bg-white/[0.055] p-6">
-          <h1 className="text-2xl font-semibold tracking-tight mb-2">Your lesson is ready</h1>
+          <span className="mb-5 inline-flex rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">Ready to join</span>
+          <h1 className="text-2xl font-semibold tracking-tight">Your lesson is ready</h1>
           {sessionInfo && (
             <div className="my-6 border-y border-white/10 py-5">
               <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/40">Lecturer</p>

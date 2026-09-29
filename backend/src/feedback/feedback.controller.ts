@@ -15,11 +15,10 @@ export class FeedbackController {
   submitFeedback(
     @Request() req: any,
     @Body('sessionId') sessionId: string,
-    @Body('lecturerId') lecturerId: string,
     @Body('score') score: number,
     @Body('comment') comment: string,
   ) {
-    return this.feedbackService.submitFeedback(req.user.id, sessionId, lecturerId, score, comment);
+    return this.feedbackService.submitFeedback(req.user.id, sessionId, score, comment);
   }
 
   @Get()

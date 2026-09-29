@@ -112,6 +112,7 @@ export default function SessionFeedbackPage({ searchParams }: {
         <div className="relative flex items-start gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]"><Sparkles className="h-6 w-6" /></span>
           <div>
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--primary))]">Session complete</p>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">How was your lesson?</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[hsl(var(--muted-foreground))]">Share a quick, private review. You can update it later if you need to.</p>
           </div>

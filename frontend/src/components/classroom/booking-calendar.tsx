@@ -377,7 +377,7 @@ export function BookingCalendar({
             if(mode === 'book') setSelectedSlots([]);
           }}
           disabled={selectedSlots.length < 1 || isSubmitting}
-          className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${selectedSlots.length >= 1 ? 'text-white bg-[#095F46] hover:bg-[#074c38] shadow-sm hover:shadow-md' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] cursor-not-allowed'}`}
+          className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${selectedSlots.length >= 1 ? 'text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] cursor-not-allowed'}`}
         >
           {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (mode === 'book' ? `Confirm Booking (${selectedSlots.length})` : 'Confirm New Time')}
         </button>
