@@ -435,7 +435,7 @@ export default function AboutPage() {
       {/* ========================================================================= */}
       {/* 3. PLATFORM STANDARDS & STATS SECTION */}
       {/* ========================================================================= */}
-      <section id="standards" className="relative z-10 border-t border-b-0 lg:border-b border-stone-200/70 bg-white/50 pt-16 sm:pt-20 lg:py-28 pb-0 sm:pb-0 backdrop-blur-sm scroll-mt-20">
+      <section id="standards" className="relative z-10 border-y border-stone-200/70 bg-white/50 py-16 sm:py-20 lg:py-28 backdrop-blur-sm scroll-mt-20">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           
           <div className="space-y-10 lg:space-y-12">
@@ -448,11 +448,8 @@ export default function AboutPage() {
               variants={fadeUp}
               className="space-y-8"
             >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-                <div className="flex min-h-[230px] flex-col items-start justify-center rounded-2xl border border-white/12 bg-white/[0.04] p-6 text-left sm:col-span-2 lg:col-span-1 lg:min-h-[220px] lg:p-7">
-                  <p className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-emerald-200/85">
-                    Our Standards
-                  </p>
+              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+                <div className="flex min-h-[230px] flex-col items-start justify-center p-1 text-left sm:col-span-2 lg:col-span-1 lg:min-h-[255px] lg:p-0">
                   <h2 className="max-w-[420px] text-3xl font-bold leading-[1.08] tracking-tight text-stone-950 sm:text-4xl lg:text-[38px]">
                     Elevating Islamic Education Standards
                   </h2>
@@ -469,9 +466,15 @@ export default function AboutPage() {
                 {values.map((val, idx) => (
                   <div
                     key={val.title}
-                    className="relative min-h-[230px] overflow-hidden rounded-2xl bg-stone-950 bg-cover bg-center p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10 lg:min-h-[220px] lg:p-7"
+                    className="relative h-[255px] overflow-hidden rounded-2xl bg-stone-950 bg-cover p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10 lg:p-7"
                     style={{
-                      backgroundImage: `linear-gradient(to bottom, rgb(0 0 0 / 38%), rgb(0 0 0 / 48%) 48%, rgb(0 0 0 / 72%)), url(${val.image})`,
+                      backgroundImage: `linear-gradient(to bottom, rgb(0 0 0 / 22%), rgb(0 0 0 / 34%) 48%, rgb(0 0 0 / 62%)), url(${val.image})`,
+                      backgroundPosition:
+                        val.title === 'Verified Scholars'
+                          ? 'center center'
+                          : val.title === 'Live 1:1 Sessions'
+                            ? 'center 58%'
+                            : 'center center',
                     }}
                   >
                     <div className="relative mb-8 flex items-center justify-between gap-4">
@@ -492,7 +495,8 @@ export default function AboutPage() {
               </div>
             </motion.div>
 
-            {/* Right Column: Platform Stats (2x2 Grid) */}
+            {/* Right Column: Platform Stats (2x2 Grid) (Hidden until launch) */}
+            {/*
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -536,6 +540,7 @@ export default function AboutPage() {
                 ))}
               </div>
             </motion.div>
+            */}
 
           </div>
         </div>

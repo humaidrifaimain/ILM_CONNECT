@@ -328,13 +328,13 @@ export default function HomePage() {
           suppressHydrationWarning
           className="relative z-20 overflow-hidden border-b border-stone-200/60 py-14 select-none sm:py-18 lg:py-20"
         >
-          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:items-center lg:gap-12 lg:px-8">
+          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 sm:px-6 lg:items-center lg:gap-12 lg:px-8">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={revealViewport}
               variants={sectionReveal}
-              className="flex flex-col justify-center lg:col-span-5"
+              className="flex flex-col justify-center max-w-3xl"
             >
               <h2 className="max-w-[610px] text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15]" suppressHydrationWarning>
                 <span>Grow In Sacred Knowledge So You Can </span>
@@ -365,8 +365,9 @@ export default function HomePage() {
             </motion.div>
 
             {/* --------------------------------------------------------------------- */}
-            {/* 3. PLATFORM STATS SECTION (Right Column) */}
+            {/* 3. PLATFORM STATS SECTION (Hidden until launch) */}
             {/* --------------------------------------------------------------------- */}
+            {/*
             <motion.div
               initial="hidden"
               whileInView="visible"
@@ -410,6 +411,7 @@ export default function HomePage() {
                 ))}
               </div>
             </motion.div>
+            */}
           </div>
         </section>
 
@@ -683,8 +685,9 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 6. TESTIMONIALS SECTION */}
+        {/* 6. TESTIMONIALS SECTION (Hidden until launch) */}
         {/* ========================================================================= */}
+        {/*
         <section id="testimonials" className="py-14 sm:py-18 lg:py-20 bg-transparent scroll-mt-16 text-stone-900 border-b border-stone-200/60 select-none">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <motion.div
@@ -791,7 +794,6 @@ export default function HomePage() {
             </motion.div>
           </div>
 
-          {/* Read Story Modal Dialog — No pictures */}
           <AnimatePresence>
             {selectedStory && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
@@ -831,6 +833,7 @@ export default function HomePage() {
             )}
           </AnimatePresence>
         </section>
+        */}
       </div>
 
       {/* ========================================================================= */}
