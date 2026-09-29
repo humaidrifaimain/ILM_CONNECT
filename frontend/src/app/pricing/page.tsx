@@ -259,10 +259,10 @@ export default function PricingPage() {
                     Includes complimentary 30-min trial session.
                   </div>
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="brand-button brand-button-primary w-full"
                   >
-                    Join Waitlist
+                    Free Trial
                   </Link>
                 </div>
               </motion.div>
@@ -355,7 +355,7 @@ export default function PricingPage() {
                     Direct monthly subscription. Cancel anytime.
                   </div>
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="brand-button brand-button-primary w-full"
                   >
                     Enroll in Fast Track

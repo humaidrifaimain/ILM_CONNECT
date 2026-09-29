@@ -125,7 +125,7 @@ export default function WaitlistModal({
                 />
                 <div>
                   <h3 className="text-xl sm:text-2xl font-black text-stone-950 tracking-tight">
-                    Join Priority Waitlist
+                    Start Free Trial
                   </h3>
                   <p className="text-xs text-stone-500 font-medium">
                     Reserve your spot for 1:1 online sessions
@@ -244,11 +244,11 @@ export default function WaitlistModal({
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Joining Priority Waitlist...</span>
+                        <span>Starting Free Trial...</span>
                       </>
                     ) : (
                       <>
-                        <span>Join Priority Waitlist</span>
+                        <span>Start Free Trial</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -270,7 +270,7 @@ export default function WaitlistModal({
                 <Check className="h-8 w-8 stroke-[3]" />
               </div>
               <h3 className="text-2xl font-black text-stone-950 mb-2">
-                Alhamdulillah, You&apos;re on the Waitlist!
+                Alhamdulillah, Your Free Trial Request Is In!
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 max-w-sm mx-auto leading-relaxed mb-6">
                 We have registered <span className="font-bold text-stone-900">{fullName}</span> for{' '}

@@ -457,10 +457,10 @@ export default function AboutPage() {
                     Held to the highest benchmarks of authentic Islamic guidance.
                   </p>
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="mt-7 inline-flex min-h-12 items-center justify-center rounded-full bg-white px-8 text-sm font-black text-[#095F46] shadow-[0_18px_34px_rgba(0,0,0,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
                   >
-                    Join Waitlist
+                    Free Trial
                   </Link>
                 </div>
                 {values.map((val, idx) => (
@@ -575,7 +575,7 @@ export default function AboutPage() {
               </p>
               <div className="mt-6">
                 <Link
-                  href="/about#waitlist"
+                  href="/auth/signup"
                   className="brand-button brand-button-inverse px-7"
                 >
                   Get Started <ChevronRight className="h-4 w-4" />
@@ -814,7 +814,7 @@ export default function AboutPage() {
                     disabled={isWaitlistSubmitting}
                     className="brand-button brand-button-primary justify-center w-full sm:w-auto px-8 py-3 text-base sm:text-sm font-bold shadow-md shadow-[#095F46]/15 hover:shadow-lg transition-all min-h-[46px]"
                   >
-                    <span>{isWaitlistSubmitting ? 'Joining Waitlist...' : 'Join the Priority Waitlist'}</span>
+                    <span>{isWaitlistSubmitting ? 'Starting Free Trial...' : 'Start Free Trial'}</span>
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -826,7 +826,7 @@ export default function AboutPage() {
                   <Check className="h-7 w-7 stroke-[3]" />
                 </div>
                 <h3 className="text-2xl font-bold text-stone-950">
-                  Alhamdulillah, You&apos;re on the Waitlist!
+                  Alhamdulillah, Your Free Trial Request Is In!
                 </h3>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-stone-600">
                   We have reserved your priority place for <span className="font-bold text-stone-900">{waitlistCourse}</span> ({waitlistPace === 'fast-track' ? 'Fast Track · 3 sessions/wk' : 'Standard · 2 sessions/wk'}). We will reach out to <span className="font-bold text-[#095F46]">{waitlistEmail}</span> as soon as your matching scholar schedule opens up.

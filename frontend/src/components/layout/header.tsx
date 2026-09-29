@@ -148,9 +148,19 @@ export default function Header() {
         </nav>
 
         {/* Right: Actions */}
-        <div className="col-start-3 row-start-1 hidden items-center justify-self-end md:flex">
+        <div className="col-start-3 row-start-1 hidden items-center gap-3 justify-self-end md:flex">
           <Link
-            href="/about#waitlist"
+            href="/auth/signin"
+            className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 text-[13px] font-bold transition-colors ${
+              showWhiteNav
+                ? 'text-white/85 hover:bg-white/10 hover:text-white'
+                : 'text-stone-700 hover:bg-stone-100 hover:text-stone-950'
+            }`}
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/auth/signup"
             className="brand-button brand-button-primary min-h-10 px-5 text-[13px]"
           >
             Get Started
@@ -222,7 +232,18 @@ export default function Header() {
               }`}
             >
               <Link
-                href="/about#waitlist"
+                href="/auth/signin"
+                onClick={() => setMobileOpen(false)}
+                className={`mb-2 flex min-h-11 w-full items-center justify-center rounded-full px-4 text-sm font-bold transition-colors ${
+                  showWhiteNav
+                    ? 'text-white hover:bg-white/10'
+                    : 'text-stone-700 hover:bg-stone-100'
+                }`}
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
                 onClick={() => setMobileOpen(false)}
                 className="brand-button brand-button-primary w-full"
               >

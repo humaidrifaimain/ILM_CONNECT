@@ -297,10 +297,10 @@ export default function HomePage() {
                 View Courses
               </Link>
               <Link
-                href="/about#waitlist"
+                href="/auth/signup"
                 className="brand-button brand-button-primary px-8"
               >
-                Join Waitlist
+                Free Trial
               </Link>
             </div>
           </div>
@@ -499,7 +499,7 @@ export default function HomePage() {
                   </div>
 
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="brand-button brand-button-primary mb-6 w-full"
                   >
                     Select Plan
@@ -565,7 +565,7 @@ export default function HomePage() {
                   </div>
 
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="brand-button brand-button-primary mb-6 w-full"
                   >
                     Select Plan
@@ -635,7 +635,7 @@ export default function HomePage() {
                   </div>
 
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="brand-button brand-button-primary mb-6 w-full"
                   >
                     Select Plan
@@ -879,10 +879,10 @@ export default function HomePage() {
 
             <div className="mt-8">
               <Link
-                href="/about#waitlist"
+                href="/auth/signup"
                 className="brand-button brand-button-primary px-8 text-base shadow-sm"
               >
-                <span>Join the Waitlist</span>
+                <span>Free Trial</span>
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>

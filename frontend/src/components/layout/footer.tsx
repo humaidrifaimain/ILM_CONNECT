@@ -10,7 +10,7 @@ const footerLinks = {
     { label: 'How It Works', href: '/#how-it-works' },
     { label: 'Courses', href: '/#courses' },
     { label: 'Pricing', href: '/pricing' },
-    { label: 'Free Trial', href: '/about#waitlist' },
+    { label: 'Free Trial', href: '/auth/signup' },
   ],
 
   Support: [
