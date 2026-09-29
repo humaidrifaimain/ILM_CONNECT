@@ -125,11 +125,6 @@ const values = [
     desc: 'Direct communication, consistent scheduling, and safe environment.',
     image: '/images/about-card-parent-confidence-generated.png',
   },
-  {
-    title: 'Rooted Curriculum',
-    desc: 'Classical Islamic disciplines with visible progress tracking.',
-    image: '/images/about-platform-standards-scholar.jpg',
-  },
 ];
 
 const journey = [
@@ -443,22 +438,6 @@ export default function AboutPage() {
       <section id="standards" className="relative z-10 border-t border-b-0 lg:border-b border-stone-200/70 bg-white/50 pt-16 sm:pt-20 lg:py-28 pb-0 sm:pb-0 backdrop-blur-sm scroll-mt-20">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           
-          {/* Top Middle: Heading (Max 4 Words) & Reduced Description */}
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.15 }}
-            variants={fadeUp}
-            className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 lg:mb-18"
-          >
-            <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15]">
-              Elevating Islamic Education Standards
-            </h2>
-            <p className="mt-4 text-sm sm:text-base text-stone-600 leading-relaxed max-w-lg mx-auto">
-              Held to the highest benchmarks of authentic Islamic guidance.
-            </p>
-          </motion.div>
-
           <div className="space-y-10 lg:space-y-12">
             
             {/* Standards Cards */}
@@ -470,15 +449,32 @@ export default function AboutPage() {
               className="space-y-8"
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+                <div className="flex min-h-[230px] flex-col items-start justify-center rounded-2xl border border-white/12 bg-white/[0.04] p-6 text-left sm:col-span-2 lg:col-span-1 lg:min-h-[220px] lg:p-7">
+                  <p className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-emerald-200/85">
+                    Our Standards
+                  </p>
+                  <h2 className="max-w-[420px] text-3xl font-bold leading-[1.08] tracking-tight text-stone-950 sm:text-4xl lg:text-[38px]">
+                    Elevating Islamic Education Standards
+                  </h2>
+                  <p className="mt-4 max-w-[340px] text-sm leading-relaxed text-stone-600 sm:text-base">
+                    Held to the highest benchmarks of authentic Islamic guidance.
+                  </p>
+                  <Link
+                    href="/about#waitlist"
+                    className="mt-7 inline-flex min-h-12 items-center justify-center rounded-full bg-white px-8 text-sm font-black text-[#095F46] shadow-[0_18px_34px_rgba(0,0,0,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
+                  >
+                    Join Waitlist
+                  </Link>
+                </div>
                 {values.map((val, idx) => (
                   <div
                     key={val.title}
-                    className="relative min-h-[178px] overflow-hidden rounded-2xl bg-[#05251f] bg-cover bg-center p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10"
+                    className="relative min-h-[230px] overflow-hidden rounded-2xl bg-stone-950 bg-cover bg-center p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10 lg:min-h-[220px] lg:p-7"
                     style={{
-                      backgroundImage: `linear-gradient(to bottom, rgb(5 45 35 / 70%), rgb(5 45 35 / 80%) 55%, rgb(3 30 24 / 95%)), url(${val.image})`,
+                      backgroundImage: `linear-gradient(to bottom, rgb(0 0 0 / 38%), rgb(0 0 0 / 48%) 48%, rgb(0 0 0 / 72%)), url(${val.image})`,
                     }}
                   >
-                    <div className="relative mb-6 flex items-center justify-between gap-4">
+                    <div className="relative mb-8 flex items-center justify-between gap-4">
                       <span className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200/80">
                         0{idx + 1}
                       </span>
@@ -493,15 +489,6 @@ export default function AboutPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-
-              <div className="flex justify-center lg:justify-start">
-                <Link
-                  href="/about#waitlist"
-                  className="brand-button brand-button-primary px-7 inline-flex"
-                >
-                  Join Waitlist
-                </Link>
               </div>
             </motion.div>
 
