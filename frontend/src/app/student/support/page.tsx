@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
@@ -13,20 +12,12 @@ import {
   Send,
   CheckCircle2,
   Clock,
-  AlertCircle,
   Phone,
   ExternalLink,
   ShieldCheck,
   UserCheck,
-  FileText,
-  Sparkles,
-  ChevronRight,
-  Info,
-  ArrowRight,
   Loader2,
   Headphones,
-  Calendar,
-  AlertTriangle,
   X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -53,6 +44,8 @@ interface SupportTicket {
   messages?: TicketMessage[];
 }
 
+type SupportTab = 'change-lecturer' | 'contact' | 'tickets';
+
 const LECTURER_CHANGE_REASONS = [
   'Scheduling / Timing mismatch with my routine',
   'Prefer a different teaching pace (slower / faster)',
@@ -77,7 +70,7 @@ function StudentSupportContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'change-lecturer';
 
-  const [activeTab, setActiveTab] = useState<'change-lecturer' | 'contact' | 'tickets'>(
+  const [activeTab, setActiveTab] = useState<SupportTab>(
     initialTab === 'change-lecturer' || initialTab === 'contact' || initialTab === 'tickets'
       ? initialTab
       : 'change-lecturer'
@@ -129,7 +122,7 @@ function StudentSupportContent() {
       });
       setStudentReply('');
       await queryClient.invalidateQueries({ queryKey: ['mySupportTickets'] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
     } finally {
       setSendingStudentReply(false);
@@ -191,7 +184,7 @@ function StudentSupportContent() {
       </div>
 
       {/* ─── Tabs Navigation Bar ─── */}
-      <div className="flex border-b border-[hsl(var(--border))] overflow-x-auto gap-2">
+      <div className="grid gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.35)] p-1.5 sm:grid-cols-3">
         {[
           { id: 'change-lecturer', label: 'Change Lecturer Request', icon: RefreshCw },
           { id: 'contact', label: 'Contact Support & Help Desk', icon: MessageSquare },
@@ -202,11 +195,11 @@ function StudentSupportContent() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 py-3 px-4 border-b-2 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all ${
+              onClick={() => setActiveTab(tab.id as SupportTab)}
+              className={`flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-center text-xs font-semibold transition-colors sm:text-sm ${
                 isActive
-                  ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]'
-                  : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+                  ? 'border-[#095F46] bg-white text-[#095F46] shadow-sm'
+                  : 'border-transparent text-[hsl(var(--muted-foreground))] hover:bg-white/70 hover:text-[hsl(var(--foreground))]'
               }`}
             >
               <Icon className="h-4 w-4" />

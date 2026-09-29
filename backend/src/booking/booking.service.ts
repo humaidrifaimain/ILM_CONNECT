@@ -30,6 +30,21 @@ export class BookingService {
       throw new BadRequestException('Lecturer ID is required to book a session');
     }
 
+    if (isStudent) {
+      const studentProfile = await this.prisma.studentProfile.findUnique({
+        where: { userId: studentId },
+        select: { assignedLecturerId: true },
+      });
+
+      if (!studentProfile?.assignedLecturerId) {
+        throw new BadRequestException('Lecturer is not assigned yet. Please contact support.');
+      }
+
+      if (studentProfile.assignedLecturerId !== lecturerId) {
+        throw new BadRequestException('You can only book sessions with the lecturer assigned by admin.');
+      }
+    }
+
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(startsAt.getTime() + 40 * 60 * 1000); // 40 minutes session
 
