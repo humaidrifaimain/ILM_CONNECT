@@ -124,6 +124,20 @@ main > section:has(.hero-brand-video) > div:first-child > div:last-child {
   color: #44403c !important;
 }
 
+.bg-sanctuary-light #standards #stats {
+  background: var(--site-green);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.bg-sanctuary-light #standards #stats :is(p, .stat-label),
+.bg-sanctuary-light #standards #stats h3 {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.bg-sanctuary-light #standards #stats h3 {
+  color: #ffffff !important;
+}
+
 /* The timeline is the solid-green chapter. */
 .bg-sanctuary-light > #how-it-works {
   background: var(--site-forest);

@@ -103,26 +103,32 @@ const values = [
   {
     title: 'Verified Scholars',
     desc: 'Personally vetted for authentic Sanad lineage and teaching adab.',
+    image: '/images/about-verified-scholar.jpg',
   },
   {
     title: 'Live 1:1 Sessions',
     desc: 'Private recitation correction focused and gently paced.',
+    image: '/images/about-personal-attention-online.jpg',
   },
   {
     title: 'Built for Diaspora',
     desc: 'Flexible scheduling adapted for UK, US, Europe & Australia.',
+    image: '/images/about-built-around-you.png',
   },
   {
     title: 'Structured Progress',
     desc: 'Milestone reports from foundational Qaida to advanced Tajweed.',
+    image: '/images/about-standards-quran.jpg',
   },
   {
     title: 'Parent Confidence',
     desc: 'Direct communication, consistent scheduling, and safe environment.',
+    image: '/images/about-home-learning.jpg',
   },
   {
     title: 'Rooted Curriculum',
     desc: 'Classical Islamic disciplines with visible progress tracking.',
+    image: '/images/about-platform-standards-scholar.jpg',
   },
 ];
 
@@ -467,18 +473,17 @@ export default function AboutPage() {
                 {values.map((val, idx) => (
                   <div
                     key={val.title}
-                    className="relative min-h-[168px] overflow-hidden bg-[#05251f] p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10"
+                    className="relative min-h-[178px] overflow-hidden rounded-2xl bg-[#05251f] bg-cover bg-center p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10"
+                    style={{ backgroundImage: `url(${val.image})` }}
                   >
-                    <div className="absolute bottom-5 left-0 h-3 w-3 -translate-x-1/2 rounded-full bg-emerald-400 shadow-[0_0_0_6px_rgba(52,211,153,0.12)]" />
-                    <div className="mb-6 flex items-center justify-between gap-4">
+                    <div className="absolute inset-0 bg-[#05251f]/72" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#095F46]/92 via-[#05251f]/82 to-[#031b17]/96" />
+                    <div className="relative mb-6 flex items-center justify-between gap-4">
                       <span className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200/80">
                         0{idx + 1}
                       </span>
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-300/20">
-                        <Check className="h-3.5 w-3.5 stroke-[3]" />
-                      </span>
                     </div>
-                    <div className="space-y-3">
+                    <div className="relative space-y-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
                       <h3 className="text-base font-black leading-tight tracking-tight text-white">
                         {val.title}
                       </h3>
@@ -511,18 +516,18 @@ export default function AboutPage() {
               <div
                 id="stats"
                 ref={statsRef}
-                className="grid w-full scroll-mt-32 grid-cols-2 bg-[#eef7f3] border-y border-[#d5e3dc] lg:grid-cols-4 lg:border-0"
+                className="grid w-full scroll-mt-32 grid-cols-2 bg-[#095F46] border-y border-white/15 lg:grid-cols-4 lg:border-0"
               >
                 {platformStats.map((stat, idx) => (
                   <div
                     key={stat.label}
                     className={`flex min-h-[120px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[140px] sm:px-8 sm:py-10 lg:min-h-[150px] lg:px-5 lg:py-8 ${
-                      idx % 2 === 0 ? 'border-r border-[#d5e3dc]' : ''
-                    } ${idx < 2 ? 'border-b border-[#d5e3dc]' : ''} ${
-                      idx < platformStats.length - 1 ? 'lg:border-r lg:border-[#d5e3dc]' : 'lg:border-r-0'
+                      idx % 2 === 0 ? 'border-r border-white/15' : ''
+                    } ${idx < 2 ? 'border-b border-white/15' : ''} ${
+                      idx < platformStats.length - 1 ? 'lg:border-r lg:border-white/15' : 'lg:border-r-0'
                     } lg:border-b-0`}
                   >
-                    <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl lg:text-[44px] xl:text-[48px]">
+                    <h3 className="mb-2 text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-[44px] xl:text-[48px]">
                       <AnimatedCounter
                         target={stat.target}
                         decimals={stat.decimals}
@@ -531,7 +536,7 @@ export default function AboutPage() {
                         start={statsActive}
                       />
                     </h3>
-                    <p className="stat-label mx-auto max-w-[150px] text-xs font-bold leading-snug tracking-tight text-stone-700 sm:text-sm lg:text-sm">
+                    <p className="stat-label mx-auto max-w-[150px] text-xs font-bold leading-snug tracking-tight text-white/90 sm:text-sm lg:text-sm">
                       {stat.label === 'Teaching Hours Completed' ? (
                         <>
                           Teaching Hours<br />Completed
