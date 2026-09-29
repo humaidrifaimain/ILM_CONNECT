@@ -125,7 +125,7 @@ main > section:has(.hero-brand-video) > div:first-child > div:last-child {
 }
 
 .bg-sanctuary-light #standards #stats {
-  background: var(--site-green);
+  background: transparent;
   border-color: rgba(255, 255, 255, 0.15);
 }
 

@@ -103,12 +103,12 @@ const values = [
   {
     title: 'Verified Scholars',
     desc: 'Personally vetted for authentic Sanad lineage and teaching adab.',
-    image: '/images/about-verified-scholar.jpg',
+    image: '/images/about-scholar-teaching-main.jpg',
   },
   {
     title: 'Live 1:1 Sessions',
     desc: 'Private recitation correction focused and gently paced.',
-    image: '/images/about-personal-attention-online.jpg',
+    image: '/images/about-personal-quran.jpg',
   },
   {
     title: 'Built for Diaspora',
@@ -123,7 +123,7 @@ const values = [
   {
     title: 'Parent Confidence',
     desc: 'Direct communication, consistent scheduling, and safe environment.',
-    image: '/images/about-home-learning.jpg',
+    image: '/images/about-student-learning-inset.jpg',
   },
   {
     title: 'Rooted Curriculum',
@@ -474,10 +474,10 @@ export default function AboutPage() {
                   <div
                     key={val.title}
                     className="relative min-h-[178px] overflow-hidden rounded-2xl bg-[#05251f] bg-cover bg-center p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10"
-                    style={{ backgroundImage: `url(${val.image})` }}
+                    style={{
+                      backgroundImage: `linear-gradient(to bottom, rgb(5 45 35 / 70%), rgb(5 45 35 / 80%) 55%, rgb(3 30 24 / 95%)), url(${val.image})`,
+                    }}
                   >
-                    <div className="absolute inset-0 bg-[#05251f]/86" />
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#095F46]/95 via-[#05251f]/88 to-[#031b17]/98" />
                     <div className="relative mb-6 flex items-center justify-between gap-4">
                       <span className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200/80">
                         0{idx + 1}
@@ -516,7 +516,7 @@ export default function AboutPage() {
               <div
                 id="stats"
                 ref={statsRef}
-                className="grid w-full scroll-mt-32 grid-cols-2 bg-[#095F46] border-y border-white/15 lg:grid-cols-4 lg:border-0"
+                className="grid w-full scroll-mt-32 grid-cols-2 bg-transparent border-y border-white/15 lg:grid-cols-4 lg:border-0"
               >
                 {platformStats.map((stat, idx) => (
                   <div
