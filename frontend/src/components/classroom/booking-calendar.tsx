@@ -1,19 +1,24 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Check, Loader2, Info } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
+import { ScheduleCalendar, localDateKey, type ScheduleEvent } from './schedule-calendar';
 import { toast } from '@/components/ui/toast';
+
+interface CalendarLecturer { name?: string; fullName?: string; }
+export interface CalendarSlot { id?: string; startsAt: string; endsAt?: string; status: string; }
+export interface CalendarBooking { id: string; startsAt: string; endsAt: string; status: string; }
 
 export interface BookingCalendarProps {
   mode: 'book' | 'reschedule';
-  assignedLecturer: any;
+  assignedLecturer: CalendarLecturer | null;
   lecturerTimeshift: number[];
-  availabilitySlots: any[];
-  studentBookings: any[];
+  availabilitySlots: CalendarSlot[];
+  studentBookings: CalendarBooking[];
   studentTier: string;
   onConfirm: (selectedSlots: string[]) => void;
   isSubmitting: boolean;
-  onSlotClick?: (bookedSession: any) => void;
+  onSlotClick?: (bookedSession: CalendarBooking) => void;
 }
 
 function getWeekDates(weekOffset: number) {
@@ -31,20 +36,6 @@ function getWeekDates(weekOffset: number) {
   });
 }
 
-const timeSlots = [
-  '10:00', '11:00', '12:00', '13:00', // 10 to 2 (Morning Shift)
-  '14:00', '15:00', '16:00', '17:00', // 2 to 6 (Afternoon Shift)
-  '18:00', '19:00', '20:00', '21:00', // 6 to 10 (Evening Shift)
-];
-
-function formatSlotRange(time: string) {
-  const [hourStr] = time.split(':');
-  const h = Number(hourStr);
-  const start = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  return `${start}:00 – ${start}:40 ${ampm}`;
-}
-
 export function BookingCalendar({
   mode,
   assignedLecturer,
@@ -59,17 +50,16 @@ export function BookingCalendar({
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
 
-  const isPremium = studentTier.toUpperCase().includes('PREMIUM');
+  const isPremium = /PREMIUM|FAST[\s_-]*TRACK/i.test(studentTier);
   const weeklyLimit = isPremium ? 3 : 2;
   const dailyLimit = 1;
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
-  const weekLabel = `${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   const today = new Date();
 
   // Filter active booked sessions that fall within the currently viewed week
   const bookedSessionsInWeek = useMemo(() => {
-    return studentBookings.filter((b: any) => {
+    return studentBookings.filter((b) => {
       if (b.status === 'CANCELED' || b.status === 'canceled') return false;
       const bStart = new Date(b.startsAt);
       return weekDates.some(
@@ -87,7 +77,7 @@ export function BookingCalendar({
     const [hour, min] = time.split(':');
     const targetDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
 
-    return studentBookings.find((b: any) => {
+    return studentBookings.find((b) => {
       if (b.status === 'CANCELED' || b.status === 'canceled') return false;
       const bStart = new Date(b.startsAt);
       return (
@@ -121,6 +111,16 @@ export function BookingCalendar({
     });
   };
 
+  const weekCountFor = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const monday = new Date(year, month - 1, day);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const nextMonday = new Date(monday); nextMonday.setDate(monday.getDate() + 7);
+    const inWeek = (date: Date) => date >= monday && date < nextMonday;
+    return studentBookings.filter(booking => booking.status.toUpperCase() !== 'CANCELED' && inWeek(new Date(booking.startsAt))).length
+      + selectedSlots.filter(key => { const [y, m, d] = key.split('|')[0].split('-').map(Number); return inWeek(new Date(y, m - 1, d)); }).length;
+  };
+
   const toggleSlot = (key: string) => {
     const [dateStr, time] = key.split('|');
     if (getBookedSessionForSlot(dateStr, time)) return;
@@ -133,13 +133,13 @@ export function BookingCalendar({
         return;
       }
 
-      if (bookedSessionsInWeek.length + selectedSlots.length >= weeklyLimit) {
+      if (weekCountFor(dateStr) >= weeklyLimit) {
         toast.info('Weekly Limit', `You can select up to ${weeklyLimit} sessions in a single week.`);
         return;
       }
       
-      const targetDate = new Date(dateStr);
-      const bookedOnThisDay = studentBookings.filter((b: any) => {
+      const targetDate = new Date(...(dateStr.split('-').map(Number).map((value, index) => index === 1 ? value - 1 : value) as [number, number, number]));
+      const bookedOnThisDay = studentBookings.filter((b) => {
          if (b.status === 'CANCELED' || b.status === 'canceled') return false;
          const bStart = new Date(b.startsAt);
          return bStart.getFullYear() === targetDate.getFullYear() && bStart.getMonth() === targetDate.getMonth() && bStart.getDate() === targetDate.getDate();
@@ -164,10 +164,10 @@ export function BookingCalendar({
        return 'available';
     }
 
-    if (bookedSessionsInWeek.length + selectedSlots.length >= weeklyLimit) return 'disabled';
+    if (weekCountFor(dateStr) >= weeklyLimit) return 'disabled';
     
-    const targetDate = new Date(dateStr);
-    const bookedOnThisDay = studentBookings.filter((b: any) => {
+    const targetDate = new Date(...(dateStr.split('-').map(Number).map((value, index) => index === 1 ? value - 1 : value) as [number, number, number]));
+    const bookedOnThisDay = studentBookings.filter((b) => {
        if (b.status === 'CANCELED' || b.status === 'canceled') return false;
        const bStart = new Date(b.startsAt);
        return bStart.getFullYear() === targetDate.getFullYear() && bStart.getMonth() === targetDate.getMonth() && bStart.getDate() === targetDate.getDate();
@@ -179,8 +179,34 @@ export function BookingCalendar({
     return 'available';
   };
 
+  const calendarEvents: ScheduleEvent[] = [];
+  for (const slot of availabilitySlots) {
+    const startsAt = new Date(slot.startsAt);
+    const dateStr = localDateKey(startsAt);
+    const time = `${String(startsAt.getHours()).padStart(2, '0')}:00`;
+    const key = `${dateStr}|${time}`;
+    if (!isInTimeshift(time) || !isAvailable(dateStr, time) || getBookedSessionForSlot(dateStr, time) || startsAt.getTime() < today.getTime() + 12 * 3600000) continue;
+    const status = getSlotStatus(key);
+    calendarEvents.push({
+      id: key, startsAt: slot.startsAt, endsAt: slot.endsAt || new Date(startsAt.getTime() + 40 * 60000).toISOString(),
+      title: status === 'selected' ? 'Selected session' : 'Available session',
+      subtitle: assignedLecturer?.name || assignedLecturer?.fullName || '40-minute session',
+      tone: status === 'selected' ? 'purple' : 'green', selected: status === 'selected',
+      disabled: status === 'disabled' || isSubmitting,
+      onClick: () => toggleSlot(key),
+    });
+  }
+  for (const booking of studentBookings) {
+    if (booking.status?.toUpperCase() === 'CANCELED') continue;
+    calendarEvents.push({
+      id: booking.id, startsAt: booking.startsAt, endsAt: booking.endsAt,
+      title: 'Booked session', subtitle: assignedLecturer?.name || assignedLecturer?.fullName,
+      tone: 'blue', disabled: mode === 'reschedule', onClick: () => onSlotClick?.(booking),
+    });
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Weekly sessions notice if any already booked */}
       {bookedSessionsInWeek.length > 0 && mode === 'book' && (
         <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-800 dark:text-emerald-200">
@@ -196,157 +222,28 @@ export function BookingCalendar({
         </div>
       )}
 
-      {/* Week navigation */}
-      <div className="flex items-center justify-between">
-        <button onClick={() => setWeekOffset(weekOffset - 1)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">
-          <ChevronLeft className="h-4 w-4" /> Previous
-        </button>
-        <span className="font-semibold text-sm">{weekLabel}</span>
-        <button onClick={() => setWeekOffset(weekOffset + 1)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]">
-          Next <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* Calendar Legend */}
-      <div className="flex flex-wrap items-center gap-4 text-xs px-1">
-        <div className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded bg-[hsl(var(--success)/0.15)] border border-[hsl(var(--success)/0.4)]" />
-          <span className="text-[hsl(var(--muted-foreground))]">Available Slot</span>
-        </div>
-        {mode === 'book' && (
-          <div className="flex items-center gap-1.5">
-            <span className="h-3.5 w-3.5 rounded bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-[9px] font-bold">
-              ✓
-            </span>
-            <span className="text-[hsl(var(--foreground))] font-semibold">Already Booked (Click to view)</span>
-          </div>
-        )}
-        <div className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded bg-[hsl(var(--primary))] text-white flex items-center justify-center text-[9px]">
-            ✓
-          </span>
-          <span className="text-[hsl(var(--muted-foreground))]">Selected</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded bg-[hsl(var(--muted)/0.4)]" />
-          <span className="text-[hsl(var(--muted-foreground))]">Unavailable</span>
-        </div>
-      </div>
-
-      {/* Time slot grid */}
-      <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-x-auto">
-        <table className="w-full min-w-[700px]">
-          <thead>
-            <tr className="border-b border-[hsl(var(--border))]">
-              <th className="py-3 px-4 text-left text-xs font-semibold text-[hsl(var(--muted-foreground))]">Time</th>
-              {weekDates.map((d, i) => {
-                const isToday = d.toDateString() === today.toDateString();
-                const isPast = d < today && !isToday;
-                return (
-                  <th key={i} className={`py-3 px-2 text-center text-xs font-semibold ${isPast ? 'text-[hsl(var(--muted-foreground)/0.4)]' : isToday ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
-                    <div>{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]}</div>
-                    <div className={`font-normal ${isToday ? 'font-medium' : ''}`}>{d.getDate()}/{d.getMonth()+1}</div>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {timeSlots.map((time) => {
-              const inTimeshift = isInTimeshift(time);
-              return (
-              <tr key={time} className={`border-b border-[hsl(var(--border))] last:border-0 ${!inTimeshift ? 'opacity-40' : ''}`}>
-                <td className="py-2 px-3 text-xs text-[hsl(var(--muted-foreground))]">
-                  <div className="flex items-center gap-1.5">
-                    {!inTimeshift && <span title="Outside lecturer's timeshift" className="text-xs">🔒</span>}
-                    <div>
-                      <div className="font-bold text-[hsl(var(--foreground))] whitespace-nowrap text-xs">
-                        {formatSlotRange(time)}
-                      </div>
-                      <div className="text-[10px] text-[hsl(var(--primary))] font-medium whitespace-nowrap">
-                        40 mins session
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                {weekDates.map((d, di) => {
-                  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                  const key = `${dateStr}|${time}`;
-                  const [year, month, day] = dateStr.split('-');
-                  const [hour, min] = time.split(':');
-                  const targetDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
-                  
-                  // Rescheduling allows moving to dates >= 12 hours away
-                  const twelveHoursFromNow = new Date(today.getTime() + 12 * 60 * 60 * 1000);
-                  const isPast = targetDate < twelveHoursFromNow;
-                  
-                  const bookedSession = getBookedSessionForSlot(dateStr, time);
-                  const avail = isAvailable(dateStr, time);
-                  const status = getSlotStatus(key);
-
-                  // Outside lecturer's timeshift — locked
-                  if (!inTimeshift) {
-                    return (
-                      <td key={di} className="py-1 px-2">
-                        <div
-                          className="h-8 w-full rounded-lg bg-[hsl(var(--muted)/0.2)] border border-[hsl(var(--border)/0.5)] flex items-center justify-center"
-                          title="Outside lecturer's working timeshift"
-                        >
-                          <span className="text-[10px] text-[hsl(var(--muted-foreground)/0.4)]">—</span>
-                        </div>
-                      </td>
-                    );
-                  }
-
-                  // 1st: Check if this slot is already booked by the student
-                  if (bookedSession) {
-                    return (
-                      <td key={di} className="py-1 px-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                             if (mode === 'reschedule') {
-                               toast.info('Already booked', 'You already have a session booked at this time.');
-                             } else if (onSlotClick) {
-                               onSlotClick(bookedSession);
-                             }
-                          }}
-                          className={`h-8 w-full rounded-lg border text-xs font-semibold flex items-center justify-center gap-1 shadow-xs px-1 ${mode === 'book' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25 cursor-pointer group hover:border-emerald-500/60 transition-all' : 'bg-[hsl(var(--muted)/0.2)] border-transparent text-[hsl(var(--muted-foreground))] cursor-not-allowed'}`}
-                        >
-                          {mode === 'book' && <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 group-hover:scale-110 transition-transform" />}
-                          <span className="truncate text-[10px] font-bold uppercase tracking-tight">Booked</span>
-                        </button>
-                      </td>
-                    );
-                  }
-
-                  if (isPast || !avail) {
-                    return <td key={di} className="py-1 px-2"><div className="h-8 w-full rounded-lg bg-[hsl(var(--muted)/0.3)]" /></td>;
-                  }
-
-                  return (
-                    <td key={di} className="py-1 px-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleSlot(key)}
-                        disabled={status === 'disabled'}
-                        className={`h-8 w-full rounded-lg transition-all text-xs font-medium ${
-                          status === 'selected' ? 'bg-[hsl(var(--primary))] text-white shadow-md' :
-                          status === 'disabled' ? 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground)/0.3)] cursor-not-allowed' :
-                          'bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.3)] hover:bg-[hsl(var(--success)/0.2)]'
-                        }`}
-                      >
-                        {status === 'selected' ? '✓' : ''}
-                      </button>
-                    </td>
-                  );
-                })}
-              </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <ScheduleCalendar
+        events={calendarEvents}
+        startHour={10}
+        visibleHours={lecturerTimeshift}
+        onDateChange={(date) => {
+          const monday = getWeekDates(0)[0];
+          const nextMonday = new Date(date);
+          nextMonday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+          nextMonday.setHours(0, 0, 0, 0);
+          setWeekOffset(Math.round((nextMonday.getTime() - monday.getTime()) / (7 * 86400000)));
+        }}
+        isCellDisabled={(date) => !isInTimeshift(`${String(date.getHours()).padStart(2, '0')}:00`) || date.getTime() < today.getTime() + 12 * 3600000 || !isAvailable(localDateKey(date), `${String(date.getHours()).padStart(2, '0')}:00`)}
+        getCellDisabledReason={(date) => {
+          const time = `${String(date.getHours()).padStart(2, '0')}:00`;
+          if (!isInTimeshift(time)) return 'Outside lecturer shift';
+          if (date.getTime() < today.getTime()) return 'Past slot';
+          if (date.getTime() < today.getTime() + 12 * 3600000) return '12-hour notice';
+          if (!isAvailable(localDateKey(date), time)) return 'Unavailable';
+          return undefined;
+        }}
+        ariaLabel="Book or reschedule a session"
+      />
 
       {/* Selected slots summary */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] gap-4">
@@ -377,7 +274,7 @@ export function BookingCalendar({
             if(mode === 'book') setSelectedSlots([]);
           }}
           disabled={selectedSlots.length < 1 || isSubmitting}
-          className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${selectedSlots.length >= 1 ? 'text-white bg-[#095F46] hover:bg-[#074c38] shadow-sm hover:shadow-md' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] cursor-not-allowed'}`}
+          className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${selectedSlots.length >= 1 ? 'text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] cursor-not-allowed'}`}
         >
           {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (mode === 'book' ? `Confirm Booking (${selectedSlots.length})` : 'Confirm New Time')}
         </button>

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { AccessToken } from 'livekit-server-sdk';
 
 export interface LivekitTokenResult {
@@ -42,8 +42,8 @@ export class LivekitService {
 
   /**
    * Generate a LiveKit access token for a participant.
-   * If credentials are not configured or contain masked bullets, returns
-   * an interactive simulation session so video meetings always work smoothly.
+   * Production must fail clearly when credentials are invalid. A local-only
+   * classroom cannot connect participants in different browsers.
    */
   async generateToken(identity: string, name: string, roomName: string): Promise<LivekitTokenResult> {
     const apiKey = process.env.LIVEKIT_API_KEY || this.apiKey;
@@ -54,7 +54,12 @@ export class LivekitService {
       const reason = this.isSecretMasked()
         ? 'LIVEKIT_API_SECRET in backend/.env contains masked bullet characters (•).'
         : 'LiveKit credentials are not fully configured in backend/.env.';
-      this.logger.warn(`${reason} Entering interactive virtual classroom mode.`);
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error(reason);
+        throw new ServiceUnavailableException('Live video service is not configured. Please contact the administrator.');
+      }
+
+      this.logger.warn(`${reason} Entering local interactive classroom mode.`);
       return {
         token: `sim_${identity}_${Date.now()}`,
         wsUrl: '',
@@ -81,7 +86,11 @@ export class LivekitService {
       const token = await at.toJwt();
       return { token, wsUrl: wsUrl!, isSimulation: false };
     } catch (err: any) {
-      this.logger.error(`LiveKit token generation failed: ${err.message}. Falling back to simulation mode.`);
+      this.logger.error(`LiveKit token generation failed: ${err.message}.`);
+      if (process.env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableException('Unable to connect to the live video service. Please try again.');
+      }
+
       return {
         token: `sim_${identity}_${Date.now()}`,
         wsUrl: '',
@@ -91,4 +100,3 @@ export class LivekitService {
     }
   }
 }
-

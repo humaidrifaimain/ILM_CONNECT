@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import {
   ParticipantTile,
   RoomAudioRenderer,
@@ -30,9 +29,9 @@ import {
   Maximize2,
   Minimize2,
   Sparkles,
-  Volume2,
 } from 'lucide-react';
 
+import { toast } from '@/components/ui/toast';
 import { apiFetch } from '@/lib/api';
 
 interface SessionInfo {
@@ -81,16 +80,7 @@ interface StudentProfile {
   progress?: { currentLessonId?: string; currentLearningPathId?: string };
 }
 
-const fallbackSlides = [
-  { id: 'qaida-1', title: 'Introduction to Noorani Qaida', objectives: 'Recognise single Arabic letters from Alif to Khaa with correct Makharij.', example: 'ا  ب  ت  ث  ج  ح  خ' },
-  { id: 'qaida-2', title: 'Single Letters: Daal to Yaa', objectives: 'Differentiate similar letter shapes and their dots clearly.', example: 'د  ذ  ر  ز  س  ش' },
-  { id: 'qaida-3', title: 'Compound Letters', objectives: 'Identify letters at the beginning, middle and end of Quranic words.', example: 'بـ  ـبـ  ـب' },
-  { id: 'qaida-4', title: 'The Harakat (Short Vowels)', objectives: 'Pronounce short vowel sounds (Fathah, Kasrah, Dammah) without stretching.', example: 'بَ  بِ  بُ' },
-  { id: 'qaida-5', title: 'Tanween (Double Vowels)', objectives: 'Practise the implicit noon sound in double vowels correctly.', example: 'بً  بٍ  بٌ' },
-  { id: 'qaida-6', title: 'Maddah and Leen Rules', objectives: 'Elongate the correct sounds for two counts with measured breath.', example: 'بَا  بِي  بُو' },
-  { id: 'qaida-7', title: 'Sukoon and Qalqalah Echo', objectives: 'Apply a clear resting sound and controlled echo bounce on Qaf, Taa, Baa, Jeem, Daal.', example: 'أَبْ  أَتْ  أَجْ' },
-  { id: 'qaida-8', title: 'Tashdeed and Final Fluency', objectives: 'Emphasise doubled consonants with appropriate emphasis and Ghunnah.', example: 'إِنَّ  ثُمَّ' },
-];
+
 
 function formatElapsed(startsAt: string, now: number) {
   const elapsed = Math.max(0, now - new Date(startsAt).getTime());
@@ -101,6 +91,14 @@ function formatElapsed(startsAt: string, now: number) {
 }
 
 export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: LiveClassroomProps) {
+  const endDialog = useRef<HTMLDialogElement>(null);
+  const [ending, setEnding] = useState(false);
+  const { data: sessionStatus } = useQuery<string>({ queryKey: ['roomSessionStatus', sessionInfo.id], queryFn: async () => { const sessions = await apiFetch(`/bookings/${userRole}`); return sessions.find((session: { id: string; status: string }) => session.id === sessionInfo.id)?.status || sessionInfo.status; }, refetchInterval: 5000 });
+  useEffect(() => { if (userRole === 'student' && sessionStatus === 'COMPLETED') onLeave(); }, [sessionStatus, userRole, onLeave]);
+  const completeLesson = async () => {
+    setEnding(true);
+    try { await apiFetch(`/bookings/${sessionInfo.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'COMPLETED' }) }); endDialog.current?.close(); onLeave(); } catch (error) { toast.error('Unable to end lesson', error instanceof Error ? error.message : 'Please try again'); } finally { setEnding(false); }
+  };
   const participants = useParticipants();
   const cameraTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   const screenTracks = useTracks([Track.Source.ScreenShare]);
@@ -140,9 +138,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
       .flatMap((module) =>
         (module.lessons || []).slice().sort((a, b) => a.orderIndex - b.orderIndex),
       );
-    const source: Array<Omit<ClassroomSlide, 'slideNumber' | 'unlocked'>> = curriculumLessons.length
-      ? curriculumLessons
-      : fallbackSlides;
+    const source: Array<Omit<ClassroomSlide, 'slideNumber' | 'unlocked'>> = curriculumLessons;
     const currentLessonId = studentProfile?.progress?.currentLessonId;
     const hasPathAccess = currentPath?.id && studentProfile?.progress?.currentLearningPathId === currentPath.id;
     const permissionIndex = hasPathAccess && currentLessonId
@@ -203,20 +199,14 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
       <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Luxury Minimal Header */}
         <header className="z-20 flex min-h-16 items-center justify-between gap-3 border-b border-white/[0.08] bg-[#070e0a]/90 px-4 backdrop-blur-xl sm:px-6">
-          {/* Top Left: Official Ilmbit Icon & Branding */}
+          {/* Top Left: Official IlmConnect Icon & Branding */}
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#095F46] p-2 shadow-md shadow-emerald-950/50 border border-emerald-400/25">
-              <Image
-                src="/images/ilmbit-icon-white.png"
-                alt="Ilmbit Logo"
-                width={30}
-                height={30}
-                className="object-contain"
-              />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] shadow-md shadow-emerald-950/50 border border-emerald-400/25">
+              <BookOpen className="h-5 w-5 text-white" strokeWidth={2.5} />
             </div>
             <div className="min-w-0 flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold tracking-tight text-white">Ilmbit</span>
+                <span className="text-sm font-bold tracking-tight text-white">IlmConnect</span>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
                 </span>
@@ -313,6 +303,9 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                 /* 2. Interactive Study Materials View */
                 <div className="flex h-full flex-col bg-[#fbf9f4] text-[#141e19]">
                   <div className="flex flex-1 flex-col items-center justify-center px-6 py-8 text-center sm:px-14 overflow-y-auto">
+                    <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-900/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-emerald-900">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-700" /> Lesson Slide {activeSlide.slideNumber}
+                    </span>
                     <h1 className="max-w-3xl text-2xl sm:text-4xl font-bold tracking-tight text-emerald-950 mb-4">
                       {activeSlide.title}
                     </h1>
@@ -376,9 +369,10 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                       </div>
                     </div>
 
-                    <p className="text-xs font-medium text-emerald-300/80 mb-2.5">
-                      Waiting for {counterpartRole} to join...
-                    </p>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-300 mb-3.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Waiting for {counterpartRole}
+                    </div>
 
                     <h2 className="text-2xl font-bold tracking-tight text-white mb-2">
                       {counterpart}
@@ -619,6 +613,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
 
             <div className="mx-1 h-6 w-px bg-white/10" />
 
+            {userRole === 'lecturer' && <button type="button" onClick={() => endDialog.current?.showModal()} className="flex h-12 items-center rounded-full border border-emerald-400/40 bg-emerald-500/20 px-4 text-xs font-semibold text-emerald-100">End lesson</button>}
             {/* Leave Session Button */}
             <button
               type="button"
@@ -632,6 +627,8 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
           </div>
         </footer>
       </div>
+
+      <dialog ref={endDialog} aria-labelledby="end-lesson-title" className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-[#d6e0db] bg-white p-6 text-[#202823] backdrop:bg-black/60"><h2 id="end-lesson-title" className="text-xl font-semibold">End this lesson?</h2><p className="mt-3 text-sm text-[#56635c]">This marks the session as completed. The student will be taken to their feedback form.</p><div className="mt-6 flex justify-end gap-3"><button type="button" disabled={ending} onClick={() => endDialog.current?.close()} className="rounded-lg border border-[#d6e0db] px-4 py-2 text-sm">Keep teaching</button><button type="button" disabled={ending} onClick={completeLesson} className="rounded-lg bg-[#095F46] px-4 py-2 text-sm font-semibold text-white">{ending ? 'Ending…' : 'Complete & leave'}</button></div></dialog>
 
       {/* Side Drawers (Materials and Participants) */}
       {panel && (

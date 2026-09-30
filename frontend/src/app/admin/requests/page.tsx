@@ -1,5 +1,6 @@
 'use client';
 
+import { AdminWaitlist } from '@/components/layout/admin-waitlist';
 import { useState } from 'react';
 import {
   Search,
@@ -157,10 +158,10 @@ export default function AdminRequestsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      <AdminWaitlist />
       {/* ─── Header ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Operational Requests & Support</h1>
           <p className="text-[hsl(var(--muted-foreground))] text-sm">
             Manage student and lecturer inquiries, reassignment requests, and send direct replies.
           </p>

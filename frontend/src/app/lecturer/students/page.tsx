@@ -79,7 +79,6 @@ export default function LecturerStudentsPage() {
     const upcoming = s.allBookings
       .filter((b: any) => b.status === 'SCHEDULED' && new Date(b.startsAt) > new Date())
       .sort((a: any, b: any) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())[0];
-    
     if (upcoming) {
       s.nextSession = `${new Date(upcoming.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Date(upcoming.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
     } else {
@@ -98,7 +97,6 @@ export default function LecturerStudentsPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">My Students</h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
             Track student performance, attendance, quizzes, and learning milestones
           </p>
@@ -107,7 +105,6 @@ export default function LecturerStudentsPage() {
           Total Assigned: <span className="font-bold text-[hsl(var(--foreground))]">{myStudents.length}</span>
         </div>
       </div>
-      
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
         <input

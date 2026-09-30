@@ -361,7 +361,6 @@ function LecturerMessagesContent() {
         <div className="px-4 py-4 border-b border-[hsl(var(--border))]">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold">Messages</h1>
               <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Chat with your students</p>
             </div>
             <div className="flex items-center gap-2">

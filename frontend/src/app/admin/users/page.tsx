@@ -1,22 +1,25 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Search, Shield, UserX, UserCheck, Key, Eye, UserPlus, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Search, UserX, UserCheck, UserPlus, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { TableSkeleton } from '@/components/ui/loading-screen';
 
+interface UserRecord { id: string; email: string; role: string; status: string; studentProfile?: { fullName: string; assignedLecturer?: { fullName: string } | null }; lecturerProfile?: { fullName: string; specializations: string[]; hourlyAvailabilityJson: number[] }; }
+interface DisplayUser extends UserRecord { name: string; roleLower: string; statusLower: string; assignedScholar?: string; specializations?: string[]; timeshift: number[]; }
+interface LecturerRecord { userId: string; fullName: string; specializations: string[]; user?: { email: string }; }
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<any>(null);
+  const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<DisplayUser | null>(null);
   const [assignmentSuccess, setAssignmentSuccess] = useState(false);
   const [showAddLecturerModal, setShowAddLecturerModal] = useState(false);
   const [addLecturerSuccess, setAddLecturerSuccess] = useState(false);
 
-  const [selectedLecturerForEdit, setSelectedLecturerForEdit] = useState<any>(null);
+  const [selectedLecturerForEdit, setSelectedLecturerForEdit] = useState<DisplayUser | null>(null);
   const [editShiftsSuccess, setEditShiftsSuccess] = useState(false);
   const [editLecturerShifts, setEditLecturerShifts] = useState<string[]>([]);
 
@@ -26,8 +29,6 @@ export default function AdminUsersPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [specializations, setSpecializations] = useState('Tajweed, Hifz, Fiqh');
-  const [hourlyRate, setHourlyRate] = useState('1250');
-  const [sendInviteEmail, setSendInviteEmail] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -98,13 +99,13 @@ export default function AdminUsersPage() {
   };
 
   // Fetch real users from database
-  const { data: dbUsers = [], isLoading, error } = useQuery({
+  const { data: dbUsers = [], isLoading, error } = useQuery<UserRecord[]>({
     queryKey: ['adminUsers'],
     queryFn: () => apiFetch('/admin/users'),
   });
 
   // Fetch real lecturers from database for assignment
-  const { data: dbLecturers = [] } = useQuery({
+  const { data: dbLecturers = [] } = useQuery<LecturerRecord[]>({
     queryKey: ['profileLecturers'],
     queryFn: () => apiFetch('/profile/lecturers'),
   });
@@ -157,8 +158,6 @@ export default function AdminUsersPage() {
           email: email.trim(),
           password: password.trim() || undefined,
           specializations: specs.length ? specs : ['Quran Recitation'],
-          hourlyRate: Number(hourlyRate) || 1250,
-          sendInvitationEmail: sendInviteEmail,
           hourlyAvailabilityJson: calculatedHours,
         }),
       });
@@ -179,8 +178,8 @@ export default function AdminUsersPage() {
       setPassword('');
       setSpecializations('Tajweed, Hifz, Fiqh');
       setSelectedShifts(['10-2']);
-    } catch (err: any) {
-      const msg = err.message || 'Failed to create lecturer account';
+    } catch (err: unknown) {
+      const msg = (err instanceof Error ? err.message : '') || 'Failed to create lecturer account';
       setErrorMessage(msg);
       toast.error('Creation Failed', msg);
     } finally {
@@ -201,13 +200,14 @@ export default function AdminUsersPage() {
       toast.success('Lecturer Assigned', 'Student has been assigned to the selected lecturer.');
       closeModal();
       setTimeout(() => setAssignmentSuccess(false), 3000);
-    } catch (err: any) {
-      toast.error('Assignment Failed', err.message || 'Failed to assign lecturer');
+    } catch (err: unknown) {
+      toast.error('Assignment Failed', (err instanceof Error ? err.message : '') || 'Failed to assign lecturer');
     }
   };
 
   const handleEditLecturerShifts = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedLecturerForEdit) return;
     setIsSubmitting(true);
     try {
       const calculatedHours = Array.from(
@@ -230,15 +230,15 @@ export default function AdminUsersPage() {
       toast.success('Shifts Updated', 'Lecturer working shifts have been updated.');
       closeEditModal();
       setTimeout(() => setEditShiftsSuccess(false), 3000);
-    } catch (err: any) {
-      toast.error('Update Failed', err.message || 'Failed to update shifts');
+    } catch (err: unknown) {
+      toast.error('Update Failed', (err instanceof Error ? err.message : '') || 'Failed to update shifts');
     } finally {
       setIsSubmitting(false);
     }
   };
 
 
-  const handleToggleUserStatus = async (user: any) => {
+  const handleToggleUserStatus = async (user: UserRecord) => {
     const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     try {
       await apiFetch(`/admin/users/${user.id}/status`, {
@@ -250,13 +250,13 @@ export default function AdminUsersPage() {
         newStatus === 'ACTIVE' ? 'User Activated' : 'User Suspended',
         `Account status updated to ${newStatus.toLowerCase()}.`
       );
-    } catch (err: any) {
-      toast.error('Update Failed', err.message || 'Failed to update user status');
+    } catch (err: unknown) {
+      toast.error('Update Failed', (err instanceof Error ? err.message : '') || 'Failed to update user status');
     }
   };
 
   // Transform and filter real users
-  const transformedUsers = dbUsers.map((u: any) => {
+  const transformedUsers = dbUsers.map((u) => {
     const name =
       u.studentProfile?.fullName ||
       u.lecturerProfile?.fullName ||
@@ -275,7 +275,7 @@ export default function AdminUsersPage() {
     };
   });
 
-  const filtered = transformedUsers.filter((u: any) => {
+  const filtered = transformedUsers.filter((u) => {
     const matchSearch =
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
@@ -290,7 +290,6 @@ export default function AdminUsersPage() {
       <div className="space-y-6 animate-fade-in p-6 lg:p-8">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">User Management</h1>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
               Live records from PostgreSQL database ({transformedUsers.length} total users)
             </p>
@@ -360,7 +359,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((u: any) => (
+                {filtered.map((u) => (
                   <tr key={u.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.4)] transition-colors">
                     <td className="py-3 px-5">
                       <div className="flex items-center gap-3">
@@ -439,7 +438,6 @@ export default function AdminUsersPage() {
                           <button
                             onClick={() => {
                               setSelectedLecturerForEdit(u);
-                              
                               // Determine active shifts for lecturer
                               const shifts = [];
                               const hours = u.timeshift || [];
@@ -501,7 +499,7 @@ export default function AdminUsersPage() {
                   No lecturers registered yet. Click &quot;Add Lecturer&quot; first.
                 </div>
               ) : (
-                dbLecturers.map((l: any) => (
+                dbLecturers.map((l) => (
                   <button
                     key={l.userId}
                     onClick={() => handleAssignLecturer(l.userId)}
@@ -603,14 +601,14 @@ export default function AdminUsersPage() {
 
               <div>
                 <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">
-                  Initial Password <span className="text-[hsl(var(--muted-foreground))] font-normal">(Optional, defaults to ilmbit123)</span>
+                  Initial Password <span className="text-[hsl(var(--muted-foreground))] font-normal">(At least 8 characters)</span>
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                  placeholder="ilmbit123"
+                  required minLength={8} maxLength={128} autoComplete="new-password"
                 />
               </div>
 
@@ -623,17 +621,6 @@ export default function AdminUsersPage() {
                   onChange={(e) => setSpecializations(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
                   placeholder="e.g. Tajweed, Hifz, Fiqh"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Base Hourly Rate (LKR)</label>
-                <input
-                  required
-                  type="number"
-                  value={hourlyRate}
-                  onChange={(e) => setHourlyRate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
                 />
               </div>
 
@@ -723,23 +710,6 @@ export default function AdminUsersPage() {
                     {selectedShifts.length === 3 ? 'Reset to Single Shift' : 'Select All 3 Shifts'}
                   </button>
                 </div>
-              </div>
-
-              <div className="pt-1">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sendInviteEmail}
-                    onChange={(e) => setSendInviteEmail(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-[hsl(var(--border))]"
-                  />
-                  <div>
-                    <div className="text-xs font-semibold text-[hsl(var(--foreground))]">Account Activation Notice</div>
-                    <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                      Mark account as active and ready for immediate login.
-                    </div>
-                  </div>
-                </label>
               </div>
 
               <div className="pt-3 flex gap-3">

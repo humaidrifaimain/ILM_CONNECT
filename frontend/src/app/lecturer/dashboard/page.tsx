@@ -1,7 +1,8 @@
 'use client';
 
-import { Clock, Users, DollarSign, Star, Video, Calendar, TrendingUp, Play, Wallet } from 'lucide-react';
+import { Clock, Users, DollarSign, Star, Calendar, Play, Wallet } from 'lucide-react';
 import Link from 'next/link';
+import { DashboardStatCard } from '@/components/layout/dashboard-stat-card';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
@@ -9,28 +10,33 @@ import { useAuth } from '@/lib/auth-context';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 
+interface LecturerBooking { id: string; studentId: string; startsAt: string; status: string; student?: { fullName: string }; }
+interface LecturerPayout { status: string; amountLkr: number; }
+interface LecturerProfile { fullName: string; ratingAvg?: number; ratingCount?: number; payoutMethod?: string; }
+
 export default function LecturerDashboard() {
   const { user } = useAuth();
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState(0);
 
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: profileLoading, isError: profileError } = useQuery<LecturerProfile>({
     queryKey: ['lecturerProfile'],
     queryFn: () => apiFetch('/profile/lecturer'),
   });
 
-  const { data: bookings, refetch: refetchBookings } = useQuery({
+  const { data: bookings, isLoading: bookingsLoading, isError: bookingsError } = useQuery<LecturerBooking[]>({
     queryKey: ['lecturerBookings'],
     queryFn: () => apiFetch('/bookings/lecturer'),
   });
 
-  const { data: payouts, refetch: refetchPayouts } = useQuery({
+  const { data: payouts, isLoading: payoutsLoading, isError: payoutsError, refetch: refetchPayouts } = useQuery<LecturerPayout[]>({
     queryKey: ['lecturerPayouts'],
     queryFn: () => apiFetch('/payouts/me'),
   });
 
-  const todaySessions = bookings?.filter((b: any) => {
+  const { data: balance, isLoading: balanceLoading, isError: balanceError, refetch: refetchBalance } = useQuery<{ availableLkr: number }>({ queryKey: ['lecturerBalance'], queryFn: () => apiFetch('/payouts/balance') });
+
+  const todaySessions = bookings?.filter((b) => {
     const status = (b.status || '').toUpperCase();
     const isCanceled = status === 'CANCELED' || status === 'NO_SHOW_STUDENT';
     if (isCanceled) return false;
@@ -40,97 +46,99 @@ export default function LecturerDashboard() {
   }) || [];
 
   // Derived stats
-  const totalEarnings = payouts?.filter((p: any) => p.status === 'SUCCESSFUL').reduce((sum: number, p: any) => sum + p.amountLkr, 0) ?? 0;
-  // Note: Pending earnings calculation depends on completed un-paid blocks. Assuming some dummy calculation for UI logic if blocks API is missing.
-  const pendingEarnings = payouts?.filter((p: any) => p.status === 'PENDING').reduce((sum: number, p: any) => sum + p.amountLkr, 0) ?? 0;
-  const totalSessionsCompleted = bookings?.filter((b: any) => b.status === 'COMPLETED').length ?? 0;
-  const activeStudents = new Set(bookings?.map((b: any) => b.studentId)).size ?? 0;
+  const totalEarnings = payouts?.filter((p) => p.status === 'SUCCESSFUL').reduce((sum, p) => sum + p.amountLkr, 0) ?? 0;
+  const availableEarnings = balance?.availableLkr || 0;
+  const pendingEarnings = payouts?.filter((p) => p.status === 'PENDING').reduce((sum, p) => sum + p.amountLkr, 0) ?? 0;
+  const totalSessionsCompleted = bookings?.filter((b) => b.status === 'COMPLETED').length ?? 0;
+  const activeStudents = new Set(bookings?.map((b) => b.studentId)).size ?? 0;
+
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - (weekStart.getDay() + 6) % 7);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const sessionsThisWeek = bookings?.filter(booking => booking.status !== 'CANCELED' && new Date(booking.startsAt) >= weekStart && new Date(booking.startsAt) < weekEnd).length ?? 0;
 
   const handleWithdraw = async () => {
     setIsWithdrawing(true);
     try {
       await apiFetch('/payouts/request', {
         method: 'POST',
-        body: JSON.stringify({ amountLkr: pendingEarnings, method: 'bank_transfer' }),
+        body: JSON.stringify({ amountLkr: availableEarnings, method: profile?.payoutMethod || 'bank_transfer' }),
       });
       setShowWithdrawModal(false);
-      await refetchPayouts();
+      await Promise.all([refetchPayouts(), refetchBalance()]);
       toast.success('Payout Requested', 'Your payout request has been submitted for review.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Withdrawal failed', err);
-      toast.error('Withdrawal Failed', err?.message || 'Failed to submit withdrawal request.');
+      toast.error('Withdrawal Failed', err instanceof Error ? err.message : 'Failed to submit withdrawal request.');
     } finally {
       setIsWithdrawing(false);
     }
   };
 
-  if (!user || !profile) {
+  if (profileError || bookingsError || payoutsError || balanceError) {
+    return <div role="alert" className="rounded-xl border border-[#d6e0db] bg-white p-6">Unable to load your dashboard data. Please refresh to try again.</div>;
+  }
+
+  if (!user || profileLoading || bookingsLoading || payoutsLoading || balanceLoading || !profile) {
     return <LoadingScreen message="Loading Lecturer Portal..." subtitle="Preparing your classes, earnings, and student activity" fullScreen />;
   }
 
   return (
-    <div className="space-y-6 animate-fade-in p-6 lg:p-8">
+    <div className="mx-auto w-full space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Assalamu Alaikum, {profile.fullName.split(' ')[0]}!</h1>
           <p className="text-[hsl(var(--muted-foreground))]">You have {todaySessions.length} sessions today</p>
         </div>
-        <Link href="/lecturer/availability" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all">
+        <Link href="/lecturer/availability" className="inline-flex items-center gap-2 min-h-10 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all">
           <Calendar className="h-4 w-4" /> Manage Availability
         </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] relative overflow-hidden">
-          <div className="absolute top-0 right-0 h-20 w-20 bg-gradient-to-bl from-[hsl(var(--primary)/0.1)] to-transparent rounded-bl-[80px]" />
+        <div className="p-5 rounded-xl border border-[#d6e0db] bg-white shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 h-20 w-20 bg-[#e8f0ed] rounded-bl-[80px]" />
           <DollarSign className="h-5 w-5 text-[hsl(var(--accent))] mb-2" />
-          <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Pending Earnings (This Cycle)</div>
-          <div className="text-2xl font-bold text-gradient-primary">Rs. {pendingEarnings.toLocaleString()}</div>
-          <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Available for withdrawal</div>
-          <button onClick={() => setShowWithdrawModal(true)} className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-sm transition-all">
+          <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Available earnings</div>
+          <div className="text-2xl font-bold text-[#0b3027]">Rs. {availableEarnings.toLocaleString()}</div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Pending requests: Rs. {pendingEarnings.toLocaleString()}</div>
+          <button disabled={availableEarnings <= 0} onClick={() => setShowWithdrawModal(true)} className="mt-3 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-sm transition-all">
             <Wallet className="h-3.5 w-3.5" /> Withdraw
           </button>
         </div>
-        <div className="p-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+        <div className="p-5 rounded-xl border border-[#d6e0db] bg-white shadow-sm">
           <DollarSign className="h-5 w-5 text-[hsl(var(--success))] mb-2" />
           <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Total Earnings (Lifetime)</div>
           <div className="text-2xl font-bold">Rs. {totalEarnings.toLocaleString()}</div>
-          <div className="flex items-center gap-1 text-xs text-[hsl(var(--success))] mt-1"><TrendingUp className="h-3 w-3" /> +15% from last cycle</div>
         </div>
-        <div className="p-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+        <div className="p-5 rounded-xl border border-[#d6e0db] bg-white shadow-sm">
           <Clock className="h-5 w-5 text-[hsl(var(--primary))] mb-2" />
-          <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Sessions Completed (This Cycle)</div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Sessions Completed (Lifetime)</div>
           <div className="text-2xl font-bold">{totalSessionsCompleted}</div>
-          <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Bi-weekly payout cycle</div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Completed sessions to date</div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Sessions This Week', value: bookings?.length || 0, icon: Clock, color: 'text-[hsl(var(--primary))]' },
-          { label: 'Active Students', value: activeStudents, icon: Users, color: 'text-blue-500' },
-          { label: 'Avg Rating', value: profile.ratingAvg?.toFixed(1) || '0.0', icon: Star, color: 'text-amber-500' },
-          { label: 'Payout Cycle', value: 'Bi-weekly', icon: Calendar, color: 'text-purple-500' },
-        ].map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-              <Icon className={`h-5 w-5 ${stat.color} mb-2`} />
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{stat.label}</div>
-            </div>
-          );
-        })}
+          { label: 'Sessions This Week', value: sessionsThisWeek, icon: Clock },
+          { label: 'Active Students', value: activeStudents, icon: Users },
+          { label: 'Avg Rating', value: profile.ratingCount ? (profile.ratingAvg?.toFixed(1) || '—') : 'No ratings', icon: Star },
+          { label: 'Payout Requests', value: payouts?.length ?? 0, icon: Wallet },
+        ].map((stat) => (
+          <DashboardStatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} />
+        ))}
       </div>
 
-      <div>
+      <section className="rounded-xl border border-[#d6e0db] bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-lg">Today&apos;s Sessions</h2>
           <Link href="/lecturer/sessions" className="text-sm text-[hsl(var(--primary))] hover:underline">View all</Link>
         </div>
         <div className="space-y-3">
-          {todaySessions.map((s: any) => (
-            <div key={s.id} className="flex items-center gap-4 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+          {todaySessions.map((s) => (
+            <div key={s.id} className="flex items-center gap-4 p-3.5 rounded-xl border border-[#d6e0db] bg-white shadow-sm">
               <div className="h-11 w-11 rounded-full bg-[hsl(var(--primary-light))] flex items-center justify-center flex-shrink-0 text-sm font-bold text-[hsl(var(--primary))] uppercase">
                 {s.student?.fullName.split(' ').map((n: string)=>n[0]).join('').slice(0,2)}
               </div>
@@ -146,22 +154,21 @@ export default function LecturerDashboard() {
             </div>
           ))}
           {todaySessions.length === 0 && (
-            <div className="p-8 rounded-xl border border-dashed border-[hsl(var(--border))] text-center">
+            <div className="p-8 rounded-xl border border-dashed border-[#d6e0db] bg-white text-center shadow-sm">
               <p className="font-medium mb-1">No sessions today</p>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Enjoy your day off!</p>
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       {showWithdrawModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-xl max-w-sm w-full p-6 animate-fade-in">
             <h3 className="text-lg font-bold mb-2">Withdraw Earnings</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Withdraw your pending earnings of Rs. {pendingEarnings.toLocaleString()}.</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Withdraw your available earnings of Rs. {availableEarnings.toLocaleString()}.</p>
             <div className="p-3 rounded-lg bg-[hsl(var(--muted))] text-xs text-[hsl(var(--muted-foreground))] mb-4">
-              <strong>Rate:</strong> Rs. 1,250 per 45-min session<br />
-              <strong>Payout method:</strong> {profile.payoutMethod || 'Bank transfer'}
+              <strong>Payout method:</strong> {profile.payoutMethod || 'Not configured'}
             </div>
             <div className="flex gap-3">
               <button disabled={isWithdrawing} onClick={() => setShowWithdrawModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] disabled:opacity-50">Cancel</button>

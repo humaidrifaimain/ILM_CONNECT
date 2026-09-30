@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 import { usePresenceHeartbeat, useUserPresence, formatLastSeen } from '@/lib/use-presence';
 import { Send, MessageSquare, Loader2, ArrowLeft, Info, CheckCheck, Clock, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { StudentPageHeader, studentUi } from '@/components/student/student-dashboard-ui';
 
 interface Thread {
   threadId: string;
@@ -297,7 +298,7 @@ function StudentMessagesContent() {
   if (user.role !== 'STUDENT') {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] p-6 text-center animate-fade-in">
-        <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/30 max-w-md shadow-lg">
+        <div className="p-6 rounded-xl bg-amber-500/10 border border-amber-500/30 max-w-md shadow-lg">
           <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
           <h2 className="text-lg font-bold mb-1">Lecturer Account Active</h2>
           <p className="text-xs text-[hsl(var(--muted-foreground))] mb-4 leading-relaxed">
@@ -326,18 +327,24 @@ function StudentMessagesContent() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] -m-4 lg:-m-6 overflow-hidden">
+    <div className={`${studentUi.page} h-[calc(100vh-7rem)]`}>
+      <StudentPageHeader
+        eyebrow="Messages"
+        title="Messages"
+        description="Chat with your assigned lecturer and keep class updates in one place."
+      />
+      <div className="flex h-[calc(100%-5.5rem)] overflow-hidden rounded-xl border border-[#d6e0db] bg-white shadow-sm">
       {/* Thread List Sidebar */}
       <div
-        className={`w-full lg:w-80 xl:w-96 border-r border-[hsl(var(--border))] flex flex-col bg-[hsl(var(--card))] flex-shrink-0 ${
+        className={`w-full flex-shrink-0 flex-col border-r border-[#d6e0db] bg-white lg:w-80 xl:w-96 ${
           mobileView === 'chat' ? 'hidden lg:flex' : 'flex'
         }`}
       >
-        <div className="px-4 py-4 border-b border-[hsl(var(--border))]">
+        <div className="border-b border-[#d6e0db] px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold">Messages</h1>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">Chat with your Maulavi</p>
+              <h2 className="text-lg font-bold text-[#202823]">Inbox</h2>
+              <p className="mt-0.5 text-xs text-[#56635c]">Chat with your Maulavi</p>
             </div>
             <AnimatePresence>
               {threads.some((t) => t.unreadCount > 0) && (
@@ -345,7 +352,7 @@ function StudentMessagesContent() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  className="px-2.5 py-1 rounded-full bg-red-500 text-white text-xs font-bold shadow-sm animate-pulse"
+                  className="animate-pulse rounded-full bg-rose-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm"
                 >
                   {threads.reduce((s, t) => s + t.unreadCount, 0)} unread
                 </motion.span>
@@ -364,17 +371,17 @@ function StudentMessagesContent() {
             </div>
           ) : threads.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-              <div className="w-16 h-16 rounded-full bg-[hsl(var(--primary)/0.1)] flex items-center justify-center mb-4">
-                <MessageSquare className="h-8 w-8 text-[hsl(var(--primary))]" />
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#e8f0ed]">
+                <MessageSquare className="h-8 w-8 text-[#095F46]" />
               </div>
-              <p className="font-semibold text-sm mb-1">No conversations yet</p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mb-4">
+              <p className="mb-1 text-sm font-bold text-[#202823]">No conversations yet</p>
+              <p className="mb-4 text-xs text-[#56635c]">
                 Start a conversation with your assigned Maulavi
               </p>
               {assignedLecturerId && (
                 <button
                   onClick={handleStartFirstConversation}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all"
+                  className="rounded-full bg-[#095F46] px-4 py-2 text-sm font-bold text-white transition-all hover:bg-[#074c38] hover:shadow-md"
                 >
                   Message {assignedLecturerName}
                 </button>
@@ -391,15 +398,15 @@ function StudentMessagesContent() {
                     onClick={() => handleSelectThread(thread)}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${
                       isSelected
-                        ? 'bg-[hsl(var(--primary)/0.1)] border-r-2 border-[hsl(var(--primary))]'
+                        ? 'border-r-2 border-[#095F46] bg-[#e8f0ed]'
                         : hasUnread
-                        ? 'bg-red-500/[0.05] border-l-4 border-red-500 hover:bg-red-500/[0.08]'
-                        : 'hover:bg-[hsl(var(--muted))]'
+                        ? 'border-l-4 border-rose-500 bg-rose-50 hover:bg-rose-100'
+                        : 'hover:bg-[#f5f7f6]'
                     }`}
                   >
                     {/* Avatar with Presence Indicator */}
                     <div className="relative flex-shrink-0">
-                      <div className="h-11 w-11 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-sm">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#095F46] text-sm font-bold text-white">
                         {thread.otherUser.initials}
                       </div>
 
@@ -424,7 +431,7 @@ function StudentMessagesContent() {
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3 } }}
-                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[hsl(var(--card))] shadow-sm"
+                            className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-[10px] font-bold text-white shadow-sm ring-2 ring-white"
                           >
                             {thread.unreadCount > 9 ? '9+' : thread.unreadCount}
                           </motion.span>
@@ -438,7 +445,7 @@ function StudentMessagesContent() {
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
                             className={`text-sm truncate transition-colors duration-300 ${
-                              hasUnread ? 'font-bold text-[hsl(var(--foreground))]' : 'font-semibold text-[hsl(var(--foreground)/0.8)]'
+                              hasUnread ? 'font-bold text-[#202823]' : 'font-semibold text-[#56635c]'
                             }`}
                           >
                             {thread.otherUser.name}
@@ -449,7 +456,7 @@ function StudentMessagesContent() {
                         </div>
                         <span
                           className={`text-[10px] flex-shrink-0 ml-2 transition-colors duration-300 ${
-                            hasUnread ? 'font-semibold text-red-500' : 'text-[hsl(var(--muted-foreground))]'
+                            hasUnread ? 'font-semibold text-rose-600' : 'text-[#56635c]'
                           }`}
                         >
                           {formatTime(thread.lastMessage.createdAt)}
@@ -457,7 +464,7 @@ function StudentMessagesContent() {
                       </div>
                       <p
                         className={`text-xs truncate transition-colors duration-300 ${
-                          hasUnread ? 'font-semibold text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'
+                          hasUnread ? 'font-semibold text-[#202823]' : 'text-[#56635c]'
                         }`}
                       >
                         {thread.lastMessage.senderId === user.id ? 'You: ' : ''}
@@ -685,7 +692,7 @@ function StudentMessagesContent() {
                           <div className="max-w-[75%] sm:max-w-[65%]">
                             {/* Message Bubble with smooth border/ring highlight transition */}
                             <div
-                              className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words transition-all duration-700 ${
+                              className={`px-4 py-2.5 rounded-xl text-sm leading-relaxed whitespace-pre-wrap break-words transition-all duration-700 ${
                                 isMine
                                   ? 'bg-[#095F46] text-white rounded-br-sm'
                                   : isUnread
@@ -781,6 +788,7 @@ function StudentMessagesContent() {
           </>
         )}
       </div>
+    </div>
     </div>
   );
 }

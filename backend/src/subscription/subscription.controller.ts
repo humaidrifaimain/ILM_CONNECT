@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Request, Headers } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -8,6 +8,38 @@ import { Role } from '@prisma/client';
 @Controller('subscriptions')
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
+
+  @Get('currencies')
+  getCurrencies() { return this.subscriptionService.getCurrencies(); }
+
+  @Patch('currencies')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  updateCurrencies(@Request() req: any, @Body('rates') rates: unknown) {
+    return this.subscriptionService.updateCurrencies(rates, req.user.id);
+  }
+
+  @Get('plans')
+  getPlans() { return this.subscriptionService.getPlans(); }
+
+  @Patch('plans')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  updatePlans(@Request() req: any, @Body('prices') prices: unknown) {
+    return this.subscriptionService.updatePlans(prices, req.user.id);
+  }
+
+  @Get('payments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  getPaymentHistory(@Request() req: any) { return this.subscriptionService.getPaymentHistory(req.user.id); }
+
+  @Get('access')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.STUDENT)
+  getAccess(@Request() req: any) {
+    return this.subscriptionService.getAccess(req.user.id);
+  }
 
   @Get('me')
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -7,6 +7,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 const defaultCorsOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
   'https://ilm-connect-nine.vercel.app',
   'https://ilm-connect-frontend.vercel.app',
 ];

@@ -3,53 +3,50 @@
 import { DollarSign, TrendingUp, Clock, Download, FileX } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import { toast } from '@/components/ui/toast';
+import { downloadCsv } from '@/lib/download';
 import { TableSkeleton } from '@/components/ui/loading-screen';
 
+interface Payout { id: string; status: string; amountLkr: number; initiatedAt: string; sessionBlocksIncluded: unknown; }
 export default function EarningsPage() {
-  const { data: payouts = [], isLoading } = useQuery({
+  const { data: payouts = [], isLoading, isError } = useQuery<Payout[]>({
     queryKey: ['lecturerPayouts'],
     queryFn: () => apiFetch('/payouts/me'),
   });
 
   // Calculate stats
   const totalEarned = payouts
-    .filter((p: any) => p.status === 'SUCCESSFUL')
-    .reduce((sum: number, p: any) => sum + p.amountLkr, 0);
+    .filter((p) => p.status === 'SUCCESSFUL')
+    .reduce((sum, p) => sum + p.amountLkr, 0);
 
   const pendingPayout = payouts
-    .filter((p: any) => p.status === 'PENDING')
-    .reduce((sum: number, p: any) => sum + p.amountLkr, 0);
+    .filter((p) => p.status === 'PENDING')
+    .reduce((sum, p) => sum + p.amountLkr, 0);
 
   // Group by month for chart
-  const monthlyData = new Map();
-  payouts.forEach((p: any) => {
+  const monthlyData = new Map<string, number>();
+  payouts.forEach((p) => {
     if (p.status !== 'SUCCESSFUL') return;
     const date = new Date(p.initiatedAt);
-    const month = date.toLocaleString('default', { month: 'short' });
+    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     monthlyData.set(month, (monthlyData.get(month) || 0) + p.amountLkr);
   });
 
   // Convert to array and take last 6 months
-  const allMonths = Array.from(monthlyData.entries())
-    .map(([month, amount]) => ({ month, amount }))
-    .reverse()
-    .slice(0, 6)
-    .reverse();
+  const allMonths = Array.from(monthlyData.entries()).sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([key, amount]) => ({ month: new Date(`${key}-01T00:00:00`).toLocaleString('default', { month: 'short', year: 'numeric' }), amount }));
 
   // If no successful payouts, provide empty state for chart
   const chartData = allMonths.length > 0 ? allMonths : [
     { month: 'No Data', amount: 0 }
   ];
-  
-  const maxAmount = Math.max(...chartData.map(m => m.amount), 35000); // Default scale to 35k
+  const maxAmount = Math.max(1, ...chartData.map(m => m.amount));
+
+  if (isError) return <p role="alert">Unable to load earnings. Please refresh to try again.</p>;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold">Earnings</h1>
         <button
-          onClick={() => toast.info('Export Started', 'Preparing payout statements CSV download...')}
+          disabled={isLoading || payouts.length === 0} onClick={() => downloadCsv([['Date', 'Payout ID', 'Blocks', 'Amount LKR', 'Status'], ...payouts.map((p: { id: string; initiatedAt: string; sessionBlocksIncluded: unknown; amountLkr: number; status: string }) => [p.initiatedAt, p.id, Array.isArray(p.sessionBlocksIncluded) ? p.sessionBlocksIncluded.length : 0, p.amountLkr, p.status])], 'lecturer-payouts.csv')}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]"
         >
           <Download className="h-4 w-4" /> Export
@@ -61,7 +58,7 @@ export default function EarningsPage() {
         <div className="p-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
           <DollarSign className="h-5 w-5 text-[hsl(var(--primary))] mb-2" />
           <div className="text-2xl font-bold">Rs. {chartData[chartData.length - 1]?.amount.toLocaleString() || '0'}</div>
-          <div className="text-xs text-[hsl(var(--muted-foreground))]">Recent month's earnings</div>
+          <div className="text-xs text-[hsl(var(--muted-foreground))]">Recent month&apos;s earnings</div>
           <div className="flex items-center gap-1 text-xs text-[hsl(var(--success))] mt-1"><TrendingUp className="h-3 w-3" /> Updated dynamically</div>
         </div>
         <div className="p-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
@@ -84,7 +81,7 @@ export default function EarningsPage() {
           {chartData.map((m, i) => (
             <div key={i} className="flex-1 flex flex-col items-center gap-2">
               <div className="text-xs font-medium">{m.amount > 0 ? `Rs. ${(m.amount / 1000).toFixed(0)}K` : '-'}</div>
-              <div className="w-full rounded-t-lg bg-gradient-to-t from-[hsl(168,80%,26%)] to-[hsl(168,60%,40%)] transition-all" style={{ height: `${(m.amount / maxAmount) * 100}%`, minHeight: '4px' }} />
+              <div className="w-full rounded-t-lg bg-gradient-to-t from-[hsl(168,80%,26%)] to-[hsl(168,60%,40%)] transition-all" style={{ height: `${(m.amount / maxAmount) * 140}px`, minHeight: m.amount > 0 ? '4px' : 0 }} />
               <div className="text-xs text-[hsl(var(--muted-foreground))]">{m.month}</div>
             </div>
           ))}
@@ -113,11 +110,11 @@ export default function EarningsPage() {
                   <td colSpan={4} className="py-8 text-center">
                     <FileX className="h-10 w-10 mx-auto text-[hsl(var(--muted-foreground))] mb-3 opacity-20" />
                     <p className="font-medium">No payouts found</p>
-                    <p className="text-sm text-[hsl(var(--muted-foreground))]">You haven't requested any payouts yet.</p>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))]">You haven&apos;t requested any payouts yet.</p>
                   </td>
                 </tr>
               ) : (
-                payouts.map((p: any) => {
+                payouts.map((p) => {
                   const blocksCount = Array.isArray(p.sessionBlocksIncluded) ? p.sessionBlocksIncluded.length : 0;
                   return (
                     <tr key={p.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.5)]">

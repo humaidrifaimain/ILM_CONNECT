@@ -1,12 +1,21 @@
 import { Controller, Post, Body, Res, Get, UseGuards, Req } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, ForgotPasswordDto, ResetPasswordDto, WaitlistDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('waitlist')
+  joinWaitlist(@Body() dto: WaitlistDto) { return this.authService.joinWaitlist(dto); }
+
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) { return this.authService.requestPasswordReset(dto.email); }
+
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) { return this.authService.resetPassword(dto.token, dto.password); }
 
   @Post('register')
   async register(@Body() dto: RegisterDto) {

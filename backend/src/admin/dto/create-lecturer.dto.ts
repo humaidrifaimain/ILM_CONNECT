@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsArray, IsNumber } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsArray, IsNumber, Length } from 'class-validator';
 
 export class CreateLecturerDto {
   @IsString()
@@ -9,8 +9,8 @@ export class CreateLecturerDto {
   email: string;
 
   @IsString()
-  @IsOptional()
-  password?: string;
+  @Length(8, 128)
+  password: string;
 
   @IsOptional()
   specializations?: string[] | string;

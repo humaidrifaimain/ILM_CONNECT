@@ -82,6 +82,9 @@ model User {
   createdAt         DateTime          @default(now()) @map("created_at")
   deletedAt         DateTime?         @map("deleted_at")
 
+  tokenVersion Int @default(0) @map("token_version")
+  passwordResets PasswordReset[]
+
   // Relations
   studentProfile    StudentProfile?
   lecturerProfile   LecturerProfile?
@@ -536,3 +539,49 @@ model SupportTicketMessage {
   @@map("support_ticket_messages")
 }
 
+
+model SubscriptionPlan {
+  id         String   @id
+  courseId   String   @map("course_id")
+  course     String
+  tier       String
+  monthlyUsd Float    @map("monthly_usd")
+  sessions   Int
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("subscription_plans")
+}
+
+model PricingCurrency {
+  code String @id
+  region String
+  lkrPerUnit Float @map("lkr_per_unit")
+  rateDate String @map("rate_date")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("pricing_currencies")
+}
+
+model PasswordReset {
+  id String @id @default(uuid())
+  userId String @map("user_id")
+  tokenHash String @unique @map("token_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+  @@map("password_resets")
+}
+
+model WaitlistEntry {
+  id String @id @default(uuid())
+  fullName String @map("full_name")
+  email String
+  phone String
+  country String
+  course String
+  pace String
+  notes String
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([email, course])
+  @@map("waitlist_entries")
+}

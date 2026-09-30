@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
-import { PrismaService } from '../prisma/prisma.service';
 
 export interface EmailDispatchPayload {
   toEmail: string;
@@ -9,7 +9,12 @@ export interface EmailDispatchPayload {
   subject: string;
   htmlContent: string;
   textContent: string;
-  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW' | 'GENERAL';
+  eventType:
+    | 'BOOKING_CONFIRMED'
+    | 'BOOKING_CANCELLED'
+    | 'BOOKING_RESCHEDULED'
+    | 'SESSION_STUDENT_NO_SHOW'
+    | 'GENERAL';
   metadata?: Record<string, any>;
 }
 
@@ -17,76 +22,76 @@ export interface EmailDispatchPayload {
 export class EmailNotificationService {
   private readonly logger = new Logger(EmailNotificationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
-
   /**
    * Dispatches an email notification.
-   * Sends through Resend when RESEND_API_KEY is configured. In local development,
-   * a missing key keeps the existing simulated-email behavior.
+   * Sends through Resend when RESEND_API_KEY is configured.
+   * In local environments without credentials, delivery is simulated.
    */
   async sendEmail(payload: EmailDispatchPayload): Promise<boolean> {
-    const { toEmail, recipientName, subject, textContent, htmlContent, eventType } = payload;
+    const {
+      toEmail,
+      recipientName,
+      subject,
+      textContent,
+      htmlContent,
+      eventType,
+      metadata,
+    } = payload;
 
     this.logger.log(
-      `[EmailNotification] Preparing email for ${recipientName} <${toEmail}> | Subject: "${subject}" | Event: ${eventType}`
+      `[EmailNotification] Preparing email for ${recipientName} <${toEmail}> | Subject: "${subject}" | Event: ${eventType}`,
     );
 
     const apiKey = process.env.RESEND_API_KEY;
-    const fromAddress =
-      process.env.RESEND_FROM_EMAIL || 'Ilmbit <onboarding@resend.dev>';
 
     if (!apiKey) {
-      if (process.env.NODE_ENV === 'production') {
-        this.logger.error(
-          '[EmailNotification] RESEND_API_KEY is missing; email was not sent.',
-        );
-        return false;
-      }
-
       this.logger.log(
         `[EmailNotification] (Simulated Mode - credentials pending) Email to ${toEmail}:\n` +
-        `Subject: ${subject}\nBody: ${textContent}`
+          `Subject: ${subject}\nBody: ${textContent}`,
       );
+
       return true;
     }
 
-    try {
-      const resend = new Resend(apiKey);
-      const { data, error } = await resend.emails.send({
-        from: fromAddress,
-        to: [toEmail],
-        subject,
-        html: htmlContent,
-        text: textContent,
-        ...(process.env.RESEND_REPLY_TO
-          ? { replyTo: process.env.RESEND_REPLY_TO }
-          : {}),
-      });
+    const resend = new Resend(apiKey);
+    const fromAddress =
+      process.env.RESEND_FROM_EMAIL || 'IlmConnect <onboarding@resend.dev>';
+    
+    this.logger.log(`[EmailNotification] Dispatching via Resend API from ${fromAddress} to ${toEmail}`);
 
-      if (error) {
-        this.logger.error(
-          `[EmailNotification] Resend rejected email to ${toEmail}: ${error.message}`,
-        );
-        return false;
-      }
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [toEmail],
+      subject,
+      html: htmlContent,
+      text: textContent,
+    });
 
-      this.logger.log(
-        `[EmailNotification] Sent email to ${toEmail} via Resend (id: ${data?.id ?? 'unknown'})`,
-      );
-      return true;
-    } catch (err: any) {
+    if (error) {
       this.logger.error(
-        `[EmailNotification] Failed to send email to ${toEmail}: ${err.message}`,
+        `[EmailNotification] Resend rejected email to ${toEmail}. Error: ${error.name} - ${error.message}`,
       );
+      // We don't throw an error here, so we don't break the booking cancellation flow
+      // But we log it as an error
       return false;
     }
+
+    this.logger.log(
+      `[EmailNotification] Resend accepted email to ${toEmail} with id ${data?.id}`,
+    );
+
+    return true;
   }
 
   /**
    * Generates email template for session events
    */
   buildBookingEmail(params: {
-    eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW';
+    eventType:
+      | 'BOOKING_CONFIRMED'
+      | 'BOOKING_CANCELLED'
+      | 'BOOKING_RESCHEDULED'
+      | 'SESSION_STUDENT_NO_SHOW';
     recipientName: string;
     actorName: string;
     actorRole: string;
@@ -110,7 +115,8 @@ export class EmailNotificationService {
       actionUrl = 'http://localhost:3000',
     } = params;
 
-    const roleLabel = actorRole.toLowerCase() === 'lecturer' ? 'Ustad / Lecturer' : 'Student';
+    const roleLabel =
+      actorRole.toLowerCase() === 'lecturer' ? 'Ustad / Lecturer' : 'Student';
 
     let subject = '';
     let headline = '';
@@ -118,22 +124,22 @@ export class EmailNotificationService {
     let mainDescription = '';
 
     if (eventType === 'BOOKING_CONFIRMED') {
-      subject = `[Ilmbit] Session Confirmed with ${actorName} for ${sessionDateFormatted}`;
+      subject = `[IlmConnect] Session Confirmed with ${actorName} for ${sessionDateFormatted}`;
       headline = 'New Session Scheduled';
       statusColor = '#059669';
       mainDescription = `A new session has been confirmed between you and ${actorName} (${roleLabel}).`;
     } else if (eventType === 'BOOKING_CANCELLED') {
-      subject = `[Ilmbit] Notice: Session on ${sessionDateFormatted} has been Cancelled`;
+      subject = `[IlmConnect] Notice: Session on ${sessionDateFormatted} has been Cancelled`;
       headline = 'Session Cancelled';
       statusColor = '#dc2626'; // Red
       mainDescription = `The scheduled session with ${actorName} (${roleLabel}) has been cancelled.`;
     } else if (eventType === 'BOOKING_RESCHEDULED') {
-      subject = `[Ilmbit] Session Rescheduled with ${actorName} to ${sessionDateFormatted}`;
+      subject = `[IlmConnect] Session Rescheduled with ${actorName} to ${sessionDateFormatted}`;
       headline = 'Session Rescheduled';
       statusColor = '#d97706'; // Amber
       mainDescription = `The session with ${actorName} (${roleLabel}) has been rescheduled to a new time.`;
     } else if (eventType === 'SESSION_STUDENT_NO_SHOW') {
-      subject = `[Ilmbit] Attendance Notice: Session Marked Absent on ${sessionDateFormatted}`;
+      subject = `[IlmConnect] Attendance Notice: Session Marked Absent on ${sessionDateFormatted}`;
       headline = 'Session Attendance: Marked Absent';
       statusColor = '#ea580c'; // Orange
       mainDescription = `You were marked absent by ${actorName} (${roleLabel}) for the scheduled session.`;
@@ -154,7 +160,7 @@ You can review your updated schedule on your dashboard:
 ${actionUrl}
 
 Barakallahu Feekum,
-The Ilmbit Team
+The IlmConnect Team
     `.trim();
 
     const htmlContent = `
@@ -167,7 +173,7 @@ The Ilmbit Team
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b;">
   <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
     <div style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 24px 32px; text-align: left;">
-      <h2 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">Ilmbit</h2>
+      <h2 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">IlmConnect</h2>
       <p style="margin: 4px 0 0; color: #a7f3d0; font-size: 13px;">Online Islamic Education Platform</p>
     </div>
     <div style="padding: 32px;">
@@ -197,27 +203,35 @@ The Ilmbit Team
             <td style="padding: 6px 0; color: #64748b;">Time:</td>
             <td style="padding: 6px 0; color: ${statusColor}; font-weight: 700;">${sessionTimeFormatted}</td>
           </tr>
-          ${previousTimeFormatted ? `
+          ${
+            previousTimeFormatted
+              ? `
           <tr>
             <td style="padding: 6px 0; color: #64748b;">Previous Time:</td>
             <td style="padding: 6px 0; color: #94a3b8; text-decoration: line-through;">${previousTimeFormatted}</td>
-          </tr>` : ''}
-          ${reason ? `
+          </tr>`
+              : ''
+          }
+          ${
+            reason
+              ? `
           <tr>
             <td style="padding: 6px 0; color: #64748b;">Note:</td>
             <td style="padding: 6px 0; color: #0f172a;">${reason}</td>
-          </tr>` : ''}
+          </tr>`
+              : ''
+          }
         </table>
       </div>
 
       <div style="text-align: center; margin-top: 32px;">
         <a href="${actionUrl}" style="display: inline-block; background: linear-gradient(135deg, #065f46 0%, #047857 100%); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 2px 4px rgba(6, 95, 70, 0.2);">
-          Open Ilmbit Dashboard
+          Open IlmConnect Dashboard
         </a>
       </div>
     </div>
     <div style="background-color: #f1f5f9; padding: 16px 32px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-      © ${new Date().getFullYear()} Ilmbit. All rights reserved.
+      © ${new Date().getFullYear()} IlmConnect. All rights reserved.
     </div>
   </div>
 </body>

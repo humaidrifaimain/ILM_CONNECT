@@ -1,168 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { useSubscriptionPlans } from '@/lib/subscription-plans';
+import { CurrencySelector, usePricingCurrency } from '@/lib/pricing-currency';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   ChevronRight,
   Check,
-  Quote,
-  ArrowLeft,
-  ArrowRight,
-  X,
 } from 'lucide-react';
-import { motion, useInView, AnimatePresence, type Variants } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import WaitlistModal from '@/components/waitlist-modal';
 import HowItWorks from '@/components/how-it-works';
-
-function AnimatedCounter({
-  target,
-  duration = 2000,
-  decimals = 0,
-  suffix = '',
-  start = false,
-}: {
-  target: number;
-  duration?: number;
-  decimals?: number;
-  suffix?: string;
-  start?: boolean;
-}) {
-  const [count, setCount] = useState(0);
-  const hasAnimatedRef = useRef(false);
-
-  useEffect(() => {
-    if (!start || hasAnimatedRef.current) return;
-
-    hasAnimatedRef.current = true;
-    let animationStart: number | null = null;
-    let animationFrameId: number;
-
-    const easeOutExpo = (x: number): number => {
-      return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
-    };
-
-    const step = (timestamp: number) => {
-      if (animationStart === null) animationStart = timestamp;
-      const elapsed = timestamp - animationStart;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = easeOutExpo(progress);
-
-      setCount(eased * target);
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(step);
-      } else {
-        setCount(target);
-      }
-    };
-
-    animationFrameId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [start, target, duration]);
-
-  const formatted =
-    decimals > 0
-      ? count.toFixed(decimals)
-      : Math.floor(count).toLocaleString('en-US');
-
-  return (
-    <span className="tabular-nums" suppressHydrationWarning>
-      {formatted}{suffix}
-    </span>
-  );
-}
-
-const platformStats = [
-  {
-    target: 12,
-    suffix: '+',
-    decimals: 0,
-    label: 'Qualified Scholars',
-  },
-  {
-    target: 150,
-    suffix: '+',
-    decimals: 0,
-    label: 'Active Students',
-  },
-  {
-    target: 4.85,
-    suffix: '',
-    decimals: 2,
-    label: 'Average Rating',
-  },
-  {
-    target: 10000,
-    suffix: '+',
-    decimals: 0,
-    label: 'Teaching Hours Completed',
-  },
-];
-
-interface TestimonialStory {
-  name: string;
-  role: string;
-  location: string;
-  quote: string;
-  fullStory: string;
-  course: string;
-}
-
-const diasporaTestimonials: TestimonialStory[] = [
-  {
-    name: 'Sarah Ahmed',
-    role: 'Parent of 2',
-    location: 'London, UK',
-    quote: 'Ilmbit has boosted our children’s Quran fluency astronomically, transforming how they engage with the Holy Quran.',
-    fullStory: 'Ilmbit has boosted our children’s Quran fluency astronomically, transforming how they engage with the Holy Quran. Finding punctual, gentle teachers in London with high Tajweed standards was always a challenge. Now my 8-year-old and 11-year-old look forward to their classes with Maulavi Ismail.',
-    course: '1:1 Tajweed Recitation',
-  },
-  {
-    name: 'Dr. Tariq Mansoor',
-    role: 'Father & Physician',
-    location: 'Toronto, Canada',
-    quote: 'Ilmbit is more essential to our family routine than our local weekend school. It’s a powerful solution to diaspora education.',
-    fullStory: 'Ilmbit is more essential to our family routine than our local weekend school. It’s a powerful solution to diaspora education. With my unpredictable hospital shifts, being able to reschedule and get reliable 1:1 attention for my sons has been an absolute game changer.',
-    course: 'Hifz Memorization',
-  },
-  {
-    name: 'Muhammad Rashid',
-    role: 'Adult Revert Student',
-    location: 'Sydney, Australia',
-    quote: 'Finding patient, authentic Sri Lankan scholars was nearly impossible until Ilmbit. My recitation confidence has reached a whole new level.',
-    fullStory: 'Finding patient, authentic Sri Lankan scholars was nearly impossible until Ilmbit. As a revert learning Arabic phonetics from scratch, Sheikh Ahmed’s patience and encouragement gave me the confidence to recite accurately in daily prayers without hesitation.',
-    course: 'Noorani Qaida & Tajweed',
-  },
-  {
-    name: 'Amina Diallo',
-    role: 'Mother of 9yo student',
-    location: 'Paris, France',
-    quote: 'The 1:1 Tajweed coaching from Maulavi Ismail is exceptional. My daughter eagerly prepares for her live sessions twice every week.',
-    fullStory: 'The 1:1 Tajweed coaching from Maulavi Ismail is exceptional. My daughter eagerly prepares for her live sessions twice every week. Her pronunciation and rhythm have blossomed in just three months, and the progress feedback keeps our whole family motivated.',
-    course: 'Tajweed Recitation',
-  },
-  {
-    name: 'Fatima Zahra',
-    role: 'Parent & Educator',
-    location: 'Dallas, USA',
-    quote: 'The structured progress reports and authentic scholar discipline gave our home the exact spiritual grounding we were searching for.',
-    fullStory: 'The structured progress reports and authentic scholar discipline gave our home the exact spiritual grounding and recitation excellence we were searching for. You get traditional madrasa quality with modern LMS scheduling and recording.',
-    course: '1:1 Tajweed Recitation',
-  },
-  {
-    name: 'Zayd Al-Husseini',
-    role: 'Hifz Student',
-    location: 'Dubai, UAE',
-    quote: 'Completed my Hifz revision with Sheikh Ahmed. His gentle correction and deep mastery of Hafs recitation is something you rarely find online.',
-    fullStory: 'Completed my Hifz revision with Sheikh Ahmed. His gentle correction and deep mastery of Hafs recitation is something you rarely find online. The virtual classroom tools and audio clarity made reviewing five Juz a week seamless.',
-    course: 'Advanced Hifz Revision',
-  },
-];
-
-const TESTIMONIAL_ROTATION_MS = 6500;
-
-
 
 const sectionReveal: Variants = {
   hidden: { opacity: 0, y: 32 },
@@ -200,42 +49,10 @@ const revealViewport = {
 } as const;
 
 export default function HomePage() {
+  const { data: plans = [] } = useSubscriptionPlans();
+  const { format } = usePricingCurrency();
+  const price = (id: string) => { const plan = plans.find(item => item.id === id); return plan ? format(plan.monthlyUsd) : '—'; };
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
-  const [testimonialIndex, setTestimonialIndex] = useState(0);
-  const [selectedStory, setSelectedStory] = useState<TestimonialStory | null>(null);
-  const testimonialRef = useRef<HTMLDivElement>(null);
-  const testimonialsInView = useInView(testimonialRef, { once: true, amount: 0.2 });
-
-  const statsRef = useRef<HTMLDivElement>(null);
-  const statsActive = useInView(statsRef, {
-    once: true,
-    amount: 0.35,
-    margin: '0px 0px -10% 0px',
-  });
-
-  const changeTestimonial = (direction: 'previous' | 'next') => {
-    setTestimonialIndex((current) => {
-      if (direction === 'previous') {
-        return (current - 1 + diasporaTestimonials.length) % diasporaTestimonials.length;
-      }
-      return (current + 1) % diasporaTestimonials.length;
-    });
-  };
-
-  useEffect(() => {
-    if (!testimonialsInView || selectedStory) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setTestimonialIndex((current) => (current + 1) % diasporaTestimonials.length);
-    }, TESTIMONIAL_ROTATION_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [testimonialIndex, testimonialsInView, selectedStory]);
-
-  const activeTestimonial = diasporaTestimonials[testimonialIndex];
-
 
   return (
     <>
@@ -297,10 +114,10 @@ export default function HomePage() {
                 View Courses
               </Link>
               <Link
-                href="/about#waitlist"
+                href="/auth/signup"
                 className="brand-button brand-button-primary px-8"
               >
-                Join Waitlist
+                Free Trial
               </Link>
             </div>
           </div>
@@ -328,13 +145,13 @@ export default function HomePage() {
           suppressHydrationWarning
           className="relative z-20 overflow-hidden border-b border-stone-200/60 py-14 select-none sm:py-18 lg:py-20"
         >
-          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:items-center lg:gap-12 lg:px-8">
+          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 sm:px-6 lg:items-center lg:gap-12 lg:px-8">
             <motion.div
               initial="hidden"
               whileInView="visible"
               viewport={revealViewport}
               variants={sectionReveal}
-              className="flex flex-col justify-center lg:col-span-5"
+              className="flex flex-col justify-center max-w-3xl"
             >
               <h2 className="max-w-[610px] text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15]" suppressHydrationWarning>
                 <span>Grow In Sacred Knowledge So You Can </span>
@@ -365,51 +182,9 @@ export default function HomePage() {
             </motion.div>
 
             {/* --------------------------------------------------------------------- */}
-            {/* 3. PLATFORM STATS SECTION (Right Column) */}
+            {/* 3. PLATFORM STATS SECTION (Hidden until launch) */}
             {/* --------------------------------------------------------------------- */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={revealViewport}
-              variants={sectionReveal}
-              className="flex items-center -mx-4 sm:-mx-6 lg:col-span-7 lg:mx-0 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-full"
-            >
-              <div
-                id="stats"
-                ref={statsRef}
-                className="grid w-full scroll-mt-32 grid-cols-2 bg-[#eef7f3] border-y border-[#d5e3dc] lg:grid-cols-4 lg:border-0"
-              >
-                {platformStats.map((stat, idx) => (
-                  <div
-                    key={stat.label}
-                    className={`flex min-h-[120px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[140px] sm:px-8 sm:py-10 lg:min-h-[148px] lg:px-4 lg:py-8 ${
-                      idx % 2 === 0 ? 'border-r border-[#d5e3dc]' : ''
-                    } ${idx < 2 ? 'border-b border-[#d5e3dc]' : ''} ${
-                      idx < platformStats.length - 1 ? 'lg:border-r lg:border-[#d5e3dc]' : 'lg:border-r-0'
-                    } lg:border-b-0`}
-                  >
-                    <h3 className="mb-2 text-4xl font-black tracking-tight text-[#095F46] sm:text-5xl lg:text-[34px] xl:text-4xl">
-                      <AnimatedCounter
-                        target={stat.target}
-                        decimals={stat.decimals}
-                        suffix={stat.suffix}
-                        duration={2000}
-                        start={statsActive}
-                      />
-                    </h3>
-                    <p className="stat-label mx-auto max-w-[150px] text-xs font-bold leading-snug tracking-tight text-stone-700 sm:text-sm lg:text-xs xl:text-sm">
-                      {stat.label === 'Teaching Hours Completed' ? (
-                        <>
-                          Teaching Hours<br />Completed
-                        </>
-                      ) : (
-                        stat.label
-                      )}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+
           </div>
         </section>
 
@@ -465,6 +240,7 @@ export default function HomePage() {
               </p>
             </motion.div>
 
+            <div className="mb-6 text-center"><CurrencySelector /></div>
             {/* 3 Pricing & Course Cards Grid matching Reference Image */}
             <motion.div
               initial="hidden"
@@ -489,7 +265,7 @@ export default function HomePage() {
                   {/* Price Tag */}
                   <div className="flex items-baseline gap-1 mb-6 pb-5 border-b border-stone-100">
                     <span className="text-3xl sm:text-4xl font-black tracking-tight text-stone-950">
-                      $49
+                      {price('beginner-qaida-standard')}
                     </span>
                     <span className="text-xs font-semibold text-stone-400">
                       / month
@@ -497,7 +273,7 @@ export default function HomePage() {
                   </div>
 
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="brand-button brand-button-primary mb-6 w-full"
                   >
                     Select Plan
@@ -555,7 +331,7 @@ export default function HomePage() {
                   {/* Price Tag */}
                   <div className="flex items-baseline gap-1 mb-6 pb-5 border-b border-stone-100">
                     <span className="text-3xl sm:text-4xl font-black tracking-tight text-stone-950">
-                      $59
+                      {price('intermediate-tajweed-standard')}
                     </span>
                     <span className="text-xs font-semibold text-stone-400">
                       / month
@@ -563,7 +339,7 @@ export default function HomePage() {
                   </div>
 
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="brand-button brand-button-primary mb-6 w-full"
                   >
                     Select Plan
@@ -625,7 +401,7 @@ export default function HomePage() {
                   {/* Price Tag */}
                   <div className="flex items-baseline gap-1 mb-6 pb-5 border-b border-stone-100">
                     <span className="text-3xl sm:text-4xl font-black tracking-tight text-stone-950">
-                      $79
+                      {price('advanced-hifz-standard')}
                     </span>
                     <span className="text-xs font-semibold text-stone-400">
                       / month
@@ -633,7 +409,7 @@ export default function HomePage() {
                   </div>
 
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="brand-button brand-button-primary mb-6 w-full"
                   >
                     Select Plan
@@ -683,154 +459,9 @@ export default function HomePage() {
         </section>
 
         {/* ========================================================================= */}
-        {/* 6. TESTIMONIALS SECTION */}
+        {/* 6. TESTIMONIALS SECTION (Hidden until launch) */}
         {/* ========================================================================= */}
-        <section id="testimonials" className="py-14 sm:py-18 lg:py-20 bg-transparent scroll-mt-16 text-stone-900 border-b border-stone-200/60 select-none">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={revealViewport}
-              variants={sectionReveal}
-              className="mx-auto mb-9 max-w-2xl text-center sm:mb-11"
-            >
-              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight text-stone-950 leading-[1.15] mb-3">
-                What Our Community Says
-              </h2>
-              <p className="mx-auto max-w-xl text-sm leading-relaxed text-stone-500 sm:text-base">
-                From families and students learning with Ilmbit around the world.
-              </p>
-              <div className="mt-4 flex items-center justify-center gap-2 text-xs sm:text-sm">
-                <span className="tracking-[0.12em] text-[#a66b13]" aria-label="Five out of five stars">★★★★★</span>
-                <span className="font-bold text-stone-800">4.8</span>
-                <span className="text-stone-400">from 500+ family reviews</span>
-              </div>
-            </motion.div>
 
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={revealViewport}
-              variants={sectionReveal}
-              ref={testimonialRef}
-              className="relative mx-auto max-w-3xl"
-            >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={testimonialIndex}
-                  initial={{ opacity: 0, y: 14, scale: 0.985 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -12, scale: 0.985 }}
-                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                  className="overflow-hidden rounded-[28px] border border-stone-200/90 bg-white/95 backdrop-blur-sm text-stone-950 shadow-[0_20px_50px_rgba(9,95,70,0.06)] sm:rounded-[32px] p-6 sm:p-9 lg:p-10"
-                  aria-live="polite"
-                >
-                  <div className="flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <Quote className="h-9 w-9 fill-[#095f46]/10 text-[#095f46]" aria-hidden="true" />
-                        <span className="inline-flex items-center rounded-full bg-[#095f46]/10 px-3 py-1 text-xs font-bold text-[#095f46]">
-                          {activeTestimonial.course}
-                        </span>
-                      </div>
-                      <p className="text-xl font-semibold leading-[1.4] tracking-tight text-stone-950 sm:text-2xl lg:text-[26px]">
-                        &ldquo;{activeTestimonial.quote}&rdquo;
-                      </p>
-                    </div>
-
-                    <div className="mt-8 pt-6 border-t border-stone-200/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div>
-                        <p className="text-base font-black text-stone-950 sm:text-lg">{activeTestimonial.name}</p>
-                        <p className="mt-0.5 text-xs font-medium text-stone-500 sm:text-sm">
-                          {activeTestimonial.role} · {activeTestimonial.location}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedStory(activeTestimonial)}
-                        className="inline-flex items-center gap-2 rounded-full bg-[#095f46] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#074c38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2 self-start sm:self-auto cursor-pointer"
-                      >
-                        Read full story
-                        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-
-              <div className="mt-7 flex items-center justify-center gap-4 sm:gap-5">
-                <button
-                  type="button"
-                  onClick={() => changeTestimonial('previous')}
-                  aria-label="Previous testimonial"
-                  className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2 cursor-pointer"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <div className="flex items-center gap-1.5" aria-label={`Testimonial ${testimonialIndex + 1} of ${diasporaTestimonials.length}`}>
-                  {diasporaTestimonials.map((testimonial, index) => (
-                    <button
-                      key={testimonial.name}
-                      type="button"
-                      onClick={() => setTestimonialIndex(index)}
-                      aria-label={`Show ${testimonial.name}'s testimonial`}
-                      aria-current={index === testimonialIndex ? 'true' : undefined}
-                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${index === testimonialIndex ? 'w-8 bg-[#095f46]' : 'w-2.5 bg-stone-300 hover:bg-stone-400'}`}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => changeTestimonial('next')}
-                  aria-label="Next testimonial"
-                  className="brand-icon-button h-10 w-10 flex-none border border-stone-200 bg-white text-stone-700 shadow-sm hover:border-[#095f46] hover:bg-[#095f46] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095f46] focus-visible:ring-offset-2 cursor-pointer"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Read Story Modal Dialog — No pictures */}
-          <AnimatePresence>
-            {selectedStory && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
-                <motion.div
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="testimonial-dialog-title"
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  className="relative w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-stone-100"
-                >
-                  <button
-                    onClick={() => setSelectedStory(null)}
-                    aria-label="Close story"
-                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-
-                  <div className="mb-6 border-b border-stone-200 pb-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#095f46]">Community story</p>
-                    <h3 id="testimonial-dialog-title" className="mt-3 text-xl font-bold tracking-tight text-stone-950">{selectedStory.name}</h3>
-                    <p className="mt-1 text-sm text-stone-500">{selectedStory.role} · {selectedStory.location}</p>
-                  </div>
-
-                  <p className="text-stone-800 text-sm sm:text-base leading-relaxed mb-6 font-medium">
-                    &ldquo;{selectedStory.fullStory}&rdquo;
-                  </p>
-
-                  <div className="p-3.5 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-between text-xs text-stone-600">
-                    <span className="font-semibold text-stone-900">Enrolled In: {selectedStory.course}</span>
-                    <span className="text-emerald-700 font-bold">Verified Diaspora Family</span>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
-        </section>
       </div>
 
       {/* ========================================================================= */}
@@ -876,10 +507,10 @@ export default function HomePage() {
 
             <div className="mt-8">
               <Link
-                href="/about#waitlist"
+                href="/auth/signup"
                 className="brand-button brand-button-primary px-8 text-base shadow-sm"
               >
-                <span>Join the Waitlist</span>
+                <span>Free Trial</span>
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>

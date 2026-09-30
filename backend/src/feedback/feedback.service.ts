@@ -1,33 +1,57 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class FeedbackService {
   constructor(private prisma: PrismaService) {}
 
-  async submitFeedback(studentId: string, sessionId: string, lecturerId: string, score: number, comment: string) {
-    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
-    if (!session) throw new NotFoundException('Session not found');
+  async submitFeedback(studentId: string, sessionId: string, score: number, comment = '') {
+    if (!Number.isInteger(score) || score < 1 || score > 5) {
+      throw new BadRequestException('Rating must be a whole number between 1 and 5');
+    }
 
-    const rating = await this.prisma.rating.create({
-      data: {
+    const cleanComment = typeof comment === 'string' ? comment.trim() : '';
+    if (cleanComment.length > 2000) {
+      throw new BadRequestException('Feedback must be 2000 characters or fewer');
+    }
+
+    const session = await this.prisma.session.findFirst({
+      where: { id: sessionId, studentId },
+      select: { id: true, lecturerId: true, livekitRoomName: true, status: true, startsAt: true },
+    });
+    if (!session) throw new NotFoundException('Session not found for this student');
+    if (!session.livekitRoomName || session.status === 'CANCELED') {
+      throw new BadRequestException('Feedback is available after joining a session');
+    }
+
+    if (session.startsAt > new Date()) {
+      throw new BadRequestException('Feedback is available after the session starts');
+    }
+
+    const rating = await this.prisma.rating.upsert({
+      where: { sessionId },
+      create: {
         studentId,
         sessionId,
-        lecturerId,
+        lecturerId: session.lecturerId,
         score,
-        comment,
+        comment: cleanComment,
+      },
+      update: {
+        score,
+        comment: cleanComment,
       },
     });
 
     // Optionally update lecturer's aggregate rating here
     const allRatings = await this.prisma.rating.aggregate({
-      where: { lecturerId },
+      where: { lecturerId: session.lecturerId },
       _avg: { score: true },
       _count: { score: true },
     });
 
     await this.prisma.lecturerProfile.update({
-      where: { userId: lecturerId },
+      where: { userId: session.lecturerId },
       data: {
         ratingAvg: allRatings._avg.score || 0,
         ratingCount: allRatings._count.score || 0,

@@ -1,8 +1,10 @@
-import { ConflictException, Injectable, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ServiceUnavailableException, ConflictException, Injectable, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { createHash, randomBytes } from 'node:crypto';
+import { Resend } from 'resend';
 import * as bcrypt from 'bcrypt';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, WaitlistDto } from './dto/auth.dto';
 import { Role, UserStatus } from '@prisma/client';
 
 @Injectable()
@@ -11,6 +13,48 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
+
+  async joinWaitlist(dto: WaitlistDto) {
+    await this.prisma.waitlistEntry.createMany({ data: [{ fullName: dto.fullName.trim(), email: dto.email.trim().toLowerCase(), phone: dto.phone, country: dto.country, course: dto.course, pace: dto.pace, notes: dto.notes }], skipDuplicates: true });
+    return { message: 'Your interest has been registered. Our team will contact you when a suitable schedule is available.' };
+  }
+
+  async requestPasswordReset(email: string) {
+    if (!process.env.RESEND_API_KEY) throw new ServiceUnavailableException('Password reset email is not configured. Please contact support.');
+    const message = 'If an active account matches this email, a password reset link will arrive shortly.';
+    const user = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (!user || user.status !== UserStatus.ACTIVE || user.deletedAt) return { message };
+    const recent = await this.prisma.passwordReset.findFirst({ where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 60000) } } });
+    if (recent) return { message };
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const reset = await this.prisma.passwordReset.create({ data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 30 * 60000) } });
+    const url = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/reset-password?token=${token}`;
+    try {
+      const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.RESEND_FROM_EMAIL || 'IlmConnect <onboarding@resend.dev>', to: user.email, subject: 'Reset your IlmConnect password', text: `Reset your password: ${url}\nThis link expires in 30 minutes. If you did not request this, ignore this email.` });
+      if (result.error) throw new Error('Delivery failed');
+    } catch {
+      await this.prisma.passwordReset.delete({ where: { id: reset.id } });
+      throw new ServiceUnavailableException('Unable to send password recovery email. Please contact support.');
+    }
+    return { message };
+  }
+
+  async resetPassword(token: string, password: string) {
+    if (!/^[a-f0-9]{64}$/.test(token)) throw new BadRequestException('Invalid or expired reset link');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const reset = await this.prisma.passwordReset.findUnique({ where: { tokenHash }, include: { user: true } });
+    if (!reset || reset.expiresAt <= new Date() || reset.user.status !== UserStatus.ACTIVE || reset.user.deletedAt) throw new BadRequestException('Invalid or expired reset link');
+    const passwordHash = await bcrypt.hash(password, 10);
+    await this.prisma.$transaction(async tx => {
+      const consumed = await tx.passwordReset.deleteMany({ where: { id: reset.id, expiresAt: { gt: new Date() } } });
+      if (consumed.count !== 1) throw new BadRequestException('Invalid or expired reset link');
+      await tx.user.update({ where: { id: reset.userId }, data: { passwordHash, tokenVersion: { increment: 1 } } });
+      await tx.passwordReset.deleteMany({ where: { userId: reset.userId } });
+      await tx.auditLog.create({ data: { actorId: reset.userId, action: 'PASSWORD_RESET', entity: 'USER', entityId: reset.userId, details: {} } });
+    });
+    return { message: 'Password updated. Sign in with your new password.' };
+  }
 
   async register(dto: RegisterDto) {
     try {
@@ -26,9 +70,11 @@ export class AuthService {
       const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
       const role = dto.role || Role.STUDENT;
+      if (role !== Role.STUDENT && role !== Role.LECTURER) throw new BadRequestException('Only student and lecturer accounts can register');
       const status = role === Role.LECTURER ? UserStatus.PENDING : UserStatus.ACTIVE;
 
-      const user = await this.prisma.user.create({
+      const user = await this.prisma.$transaction(async tx => {
+        const user = await tx.user.create({
         data: {
           email: dto.email.toLowerCase(),
           passwordHash,
@@ -39,7 +85,7 @@ export class AuthService {
       });
 
       if (role === Role.LECTURER) {
-        await this.prisma.lecturerProfile.create({
+        await tx.lecturerProfile.create({
           data: {
             userId: user.id,
             fullName: dto.fullName,
@@ -47,21 +93,14 @@ export class AuthService {
             qualifications: dto.qualifications || 'Pending evaluation',
             specializations: dto.specializations || ['Quran Recitation'],
             languages: dto.languages || ['English'],
-            hourlyAvailabilityJson: {
-              monday: ['09:00-12:00', '14:00-18:00'],
-              tuesday: ['09:00-12:00', '14:00-18:00'],
-              wednesday: ['09:00-12:00', '14:00-18:00'],
-              thursday: ['09:00-12:00', '14:00-18:00'],
-              friday: ['09:00-12:00'],
-              saturday: ['10:00-15:00'],
-            },
+            hourlyAvailabilityJson: [],
             payoutMethod: dto.payoutMethod || 'wise',
-            payoutDetails: dto.payoutDetails || 'wise:default@example.com',
+            payoutDetails: dto.payoutDetails || '',
             status: UserStatus.PENDING,
           },
         });
       } else {
-        await this.prisma.studentProfile.create({
+        await tx.studentProfile.create({
           data: {
             userId: user.id,
             fullName: dto.fullName,
@@ -75,19 +114,22 @@ export class AuthService {
       }
 
       // Write audit log
-      await this.prisma.auditLog.create({
+      await tx.auditLog.create({
         data: {
           actorId: user.id,
           action: 'USER_REGISTER',
           entity: 'USER',
           entityId: user.id,
-          details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client' },
+          details: {},
         },
+      });
+
+        return user;
       });
 
       return this.sanitizeUser(user);
     } catch (e: any) {
-      if (e instanceof ConflictException) throw e;
+      if (e instanceof ConflictException || e instanceof BadRequestException) throw e;
       throw new InternalServerErrorException(e.message || String(e));
     }
   }
@@ -122,11 +164,11 @@ export class AuthService {
           action: 'USER_LOGIN',
           entity: 'USER',
           entityId: user.id,
-          details: { ip: '127.0.0.1', userAgent: 'ilmconnect-client' },
+          details: {},
         },
       });
 
-      const token = this.generateJwtToken(user.id, user.email, user.role);
+      const token = this.generateJwtToken(user.id, user.email, user.role, user.tokenVersion);
 
       return {
         user: this.sanitizeUser(user),
@@ -141,8 +183,8 @@ export class AuthService {
     }
   }
 
-  generateJwtToken(userId: string, email: string, role: Role) {
-    const payload = { email, sub: userId, role };
+  generateJwtToken(userId: string, email: string, role: Role, version = 0) {
+    const payload = { email, sub: userId, role, version };
     return this.jwtService.sign(payload);
   }
 
