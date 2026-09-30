@@ -66,6 +66,6 @@ export class BookingController {
     @Param('id') id: string,
     @Body() body: { notes?: string; status?: string },
   ) {
-    return this.bookingService.updateBooking(id, body);
+    return this.bookingService.updateBooking(id, body, req.user);
   }
 }

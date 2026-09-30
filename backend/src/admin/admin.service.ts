@@ -8,6 +8,8 @@ import { CreateLecturerDto } from './dto/create-lecturer.dto';
 export class AdminService {
   constructor(private prisma: PrismaService) {}
 
+  async getWaitlist() { return this.prisma.waitlistEntry.findMany({ orderBy: { createdAt: 'desc' } }); }
+
   async getStats() {
     const totalStudents = await this.prisma.user.count({ where: { role: 'STUDENT' } });
     const activeStudents = await this.prisma.user.count({ where: { role: 'STUDENT', status: 'ACTIVE' } });
@@ -35,10 +37,10 @@ export class AdminService {
 
     const mrrRes = await this.prisma.subscription.aggregate({
       _sum: { lkrAmount: true },
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', currentPeriodEnd: { gt: new Date() } },
     });
     const mrrLKR = mrrRes._sum.lkrAmount || 0;
-    const mrrUSD = mrrLKR * 0.0033; // Mock FX rate
+    const mrrUSD = null; // No verified currency conversion is configured.
 
     const revenueRes = await this.prisma.payment.aggregate({
       _sum: { amountLkr: true },
@@ -73,10 +75,10 @@ export class AdminService {
       sessionsThisWeek,
       payoutsThisMonth,
       profitThisMonth: revenueThisMonth - payoutsThisMonth,
-      unassignedStudents: 0,
+      unassignedStudents: await this.prisma.studentProfile.count({ where: { assignedLecturerId: null } }),
       lecturerChangeRequests: await this.prisma.supportTicket.count({ where: { type: 'LECTURER_CHANGE', status: 'PENDING' } }),
       paymentFailures,
-      churnRate: 2.1,
+      churnRate: null,
       avgRating,
     };
   }
@@ -132,7 +134,7 @@ export class AdminService {
     }
 
     const saltRounds = 10;
-    const defaultPassword = dto.password || 'ilmconnect123';
+    const defaultPassword = dto.password;
     const passwordHash = await bcrypt.hash(defaultPassword, saltRounds);
 
     const specializations = Array.isArray(dto.specializations)
@@ -152,15 +154,15 @@ export class AdminService {
           create: {
             fullName: dto.fullName.trim(),
             bio: dto.bio || `Islamic Scholar & Lecturer in ${specializations.join(', ')}`,
-            qualifications: dto.qualifications || 'Certified Islamic Scholar',
+            qualifications: dto.qualifications || '',
             specializations,
             languages: dto.languages || ['English', 'Arabic'],
             hourlyAvailabilityJson: Array.isArray(dto.hourlyAvailabilityJson) && dto.hourlyAvailabilityJson.length >= 4
               ? dto.hourlyAvailabilityJson
               : [10, 11, 12, 13],
             payoutMethod: 'bank_transfer',
-            payoutDetails: 'default',
-            ratingAvg: 5.0,
+            payoutDetails: '',
+            ratingAvg: 0,
             ratingCount: 0,
             status: UserStatus.ACTIVE,
           },
@@ -318,7 +320,28 @@ export class AdminService {
       take: 50,
     });
 
-    return { payments, payouts };
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const monthlyPayments = await this.prisma.payment.findMany({
+      where: { status: 'SUCCESSFUL', processedAt: { gte: monthStart } },
+      select: { amountLkr: true, subscription: { select: { tier: true, studentId: true } } },
+    });
+    const grouped = new Map<string, { revenue: number; students: Set<string> }>();
+    for (const payment of monthlyPayments) {
+      const tier = payment.subscription.tier;
+      const row = grouped.get(tier) || { revenue: 0, students: new Set<string>() };
+      row.revenue += payment.amountLkr;
+      row.students.add(payment.subscription.studentId);
+      grouped.set(tier, row);
+    }
+    const revenueByPlan = Array.from(grouped, ([tier, row]) => ({ tier, revenue: row.revenue, students: row.students.size }));
+    return { payments, payouts, revenueByPlan };
+  }
+
+  async getFeedback() {
+    return this.prisma.rating.findMany({
+      select: { id: true, score: true, comment: true, createdAt: true, student: { select: { fullName: true } }, lecturer: { select: { fullName: true } } },
+      orderBy: { createdAt: 'desc' }, take: 200,
+    });
   }
 
   async getAuditLogs() {
@@ -330,15 +353,16 @@ export class AdminService {
   }
 
   async updatePayoutStatus(id: string, status: string) {
-    const payout = await this.prisma.payout.findUnique({ where: { id } });
-    if (!payout) throw new NotFoundException('Payout not found');
-
-    return this.prisma.payout.update({
-      where: { id },
-      data: {
-        status: status as any,
-        completedAt: status === 'SUCCESSFUL' ? new Date() : undefined,
-      },
+    if (!['SUCCESSFUL', 'FAILED'].includes(status)) throw new BadRequestException('Choose SUCCESSFUL or FAILED');
+    return this.prisma.$transaction(async tx => {
+      const payout = await tx.payout.findUnique({ where: { id } });
+      if (!payout) throw new NotFoundException('Payout not found');
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${payout.lecturerId}))`;
+      const updated = await tx.payout.updateMany({ where: { id, status: 'PENDING' }, data: { status: status as any, completedAt: status === 'SUCCESSFUL' ? new Date() : null } });
+      if (updated.count !== 1) throw new BadRequestException('Only pending payouts can be processed');
+      const blockIds = Array.isArray(payout.sessionBlocksIncluded) ? payout.sessionBlocksIncluded.filter((value): value is string => typeof value === 'string') : [];
+      await tx.sessionBlock.updateMany({ where: { id: { in: blockIds }, lecturerId: payout.lecturerId }, data: { status: status === 'SUCCESSFUL' ? 'PAID_OUT' : 'COMPLETED' } });
+      return tx.payout.findUnique({ where: { id } });
     });
   }
 }

@@ -1,0 +1,207 @@
+{
+  "result": "PASS",
+  "logins": 4,
+  "reads": 40,
+  "statuses": [
+    {
+      "role": "student",
+      "path": "/auth/me",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/profile/student",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/bookings/student",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/subscriptions/access",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/subscriptions/me",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/subscriptions/payments",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/progress/student",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/progress/certificates",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/progress/assessments",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/materials",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/curriculum/paths",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/messages/threads",
+      "status": 200
+    },
+    {
+      "role": "student",
+      "path": "/notifications",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/auth/me",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/profile/lecturer",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/bookings/lecturer",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/availability",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/payouts/me",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/payouts/balance",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/profile/lecturer/students",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/profile/lecturer/students/progress",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/materials",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/curriculum/paths",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/messages/threads",
+      "status": 200
+    },
+    {
+      "role": "lecturer",
+      "path": "/notifications",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/auth/me",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/admin/stats",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/admin/users",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/admin/sessions",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/admin/finance",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/admin/audit-logs",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/admin/feedback",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/admin/waitlist",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "path": "/support/tickets",
+      "status": 200
+    },
+    {
+      "role": "superadmin",
+      "path": "/auth/me",
+      "status": 200
+    },
+    {
+      "role": "superadmin",
+      "path": "/admin/stats",
+      "status": 200
+    },
+    {
+      "role": "superadmin",
+      "path": "/admin/finance",
+      "status": 200
+    },
+    {
+      "role": "superadmin",
+      "path": "/admin/users",
+      "status": 200
+    },
+    {
+      "role": "superadmin",
+      "path": "/admin/feedback",
+      "status": 200
+    },
+    {
+      "role": "superadmin",
+      "path": "/admin/waitlist",
+      "status": 200
+    }
+  ]
+}

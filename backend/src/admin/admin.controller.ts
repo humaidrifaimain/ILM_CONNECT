@@ -12,6 +12,9 @@ import { CreateLecturerDto, AssignLecturerDto } from './dto/create-lecturer.dto'
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  @Get('waitlist')
+  getWaitlist() { return this.adminService.getWaitlist(); }
+
   @Get('stats')
   getStats() {
     return this.adminService.getStats();
@@ -56,6 +59,9 @@ export class AdminController {
   getFinanceOverview() {
     return this.adminService.getFinanceOverview();
   }
+
+  @Get('feedback')
+  getFeedback() { return this.adminService.getFeedback(); }
 
   @Get('audit-logs')
   getAuditLogs() {

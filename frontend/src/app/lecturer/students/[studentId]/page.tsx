@@ -1,5 +1,6 @@
 'use client';
 
+import { RecordAssessment } from '@/components/classroom/record-assessment';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
@@ -198,7 +199,7 @@ export default function StudentDetailPage() {
     : (progressReports || []).flatMap((r: any) => r.contentJson?.assessments || []);
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl">
+    <div className="space-y-6 animate-fade-in w-full">
       <Link href="/lecturer/students" className="inline-flex items-center gap-1.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Students
       </Link>
@@ -211,7 +212,7 @@ export default function StudentDetailPage() {
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-1">{profile.fullName}</h1>
+            <h2 className="text-2xl font-bold mb-1">{profile.fullName}</h2>
             <div className="flex flex-wrap gap-3 text-sm text-[hsl(var(--muted-foreground))]">
               {profile.user?.email && <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{profile.user.email}</span>}
               {profile.country && <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" />{profile.country}</span>}
@@ -326,6 +327,7 @@ export default function StudentDetailPage() {
       {/* Quizzes & Assessments */}
       <div>
         <SectionHeader icon={ClipboardList} title="Quizzes & Assessments" count={assessments.length} />
+        <RecordAssessment studentId={studentId} enabled={!!progress} />
         {assessments.length === 0 ? (
           <div className="p-8 rounded-2xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card)/0.5)] text-center">
             <div className="h-12 w-12 rounded-2xl bg-[hsl(var(--primary)/0.1)] flex items-center justify-center mx-auto mb-3">

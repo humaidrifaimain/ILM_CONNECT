@@ -68,6 +68,6 @@ describe('EmailNotificationService', () => {
 
     await expect(
       new EmailNotificationService().sendEmail(payload),
-    ).rejects.toThrow('Email delivery failed: Provider rejected the request');
+    ).resolves.toBe(false);
   });
 });

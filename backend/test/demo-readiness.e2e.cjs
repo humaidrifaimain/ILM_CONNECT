@@ -1,0 +1,102 @@
+const path = require('node:path'), fs = require('node:fs/promises'), os = require('node:os'), crypto = require('node:crypto');
+const root = path.resolve(__dirname, '..');
+const pkg = name => require(require.resolve(name, { paths: [root] }));
+pkg('dotenv').config({ path: path.join(root, '.env'), quiet: true });
+process.env.NODE_ENV = 'test';
+const { Test } = pkg('@nestjs/testing'); const { ValidationPipe } = pkg('@nestjs/common');
+const { AppModule } = require(root + '/dist/src/app.module.js');
+const { PrismaService } = require(root + '/dist/src/prisma/prisma.service.js');
+const { NotificationService } = require(root + '/dist/src/notification/notification.service.js');
+const bcrypt = pkg('bcrypt');
+let app, db, directory; const userIds = [], emails = []; const checks = [];
+function assert(value, message) { if (!value) throw new Error(message); }
+async function run() {
+ directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ilm-demo-api-')); process.env.MATERIAL_UPLOAD_DIR = directory;
+ const module = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(NotificationService).useValue({ dispatchBookingNotification: async () => {}, createNotification: async () => ({}) }).compile();
+ app = module.createNestApplication({ logger: false }); app.setGlobalPrefix('api/v1'); app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true })); await app.listen(0, '127.0.0.1'); db = app.get(PrismaService);
+ const base = (await app.getUrl()) + '/api/v1';
+ async function api(name, method, endpoint, token, body, expected = 200) {
+  const form = body instanceof FormData; const response = await fetch(base + endpoint, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(!form && body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? (form ? body : JSON.stringify(body)) : undefined });
+  const data = response.status === 204 ? null : response.headers.get('content-type')?.includes('application/json') ? await response.json() : await response.arrayBuffer();
+  assert(response.status === expected, `${name}: expected ${expected}, got ${response.status}: ${JSON.stringify(data)}`); checks.push(name); return data;
+ }
+ const password = crypto.randomBytes(18).toString('hex'); const hash = await bcrypt.hash(password, 10); const prefix = 'qa-' + crypto.randomUUID();
+ async function account(role, suffix) {
+  const email = `${prefix}-${suffix}@example.test`; emails.push(email);
+  const user = await db.user.create({ data: { email, passwordHash: hash, role, status: 'ACTIVE', ...(role === 'LECTURER' ? { lecturerProfile: { create: { fullName: 'QA Lecturer', bio: '', qualifications: '', specializations: [], languages: ['English'], hourlyAvailabilityJson: [10,11,12,13], payoutMethod: 'bank_transfer', payoutDetails: '', status: 'ACTIVE' } } } : role === 'STUDENT' ? { studentProfile: { create: { fullName: 'QA Student', phone: '', country: 'United States', timezone: 'Asia/Colombo', preferredLanguage: 'English', learningGoals: '' } } } : {}) } });
+  userIds.push(user.id); const login = await api(`${suffix} login`, 'POST', '/auth/login', null, { email, password }, 201); return { ...user, token: login.token };
+ }
+ const lecturer = await account('LECTURER', 'lecturer'), student = await account('STUDENT', 'student'), outsider = await account('STUDENT', 'outsider'), admin = await account('ADMIN', 'admin'), superadmin = await account('SUPER_ADMIN', 'superadmin');
+ await api('Assign lecturer', 'POST', `/admin/students/${student.id}/assign-lecturer`, admin.token, { lecturerId: lecturer.id }, 201);
+ const trial = await api('Claim trial', 'POST', '/subscriptions/trial', student.token, {}, 201);
+ await api('Duplicate trial rejected', 'POST', '/subscriptions/trial', student.token, {}, 400);
+ await api('Profile settings persist', 'PUT', '/profile/student', student.token, { fullName: 'QA Student Updated', country: 'United Kingdom', timezone: 'Europe/London' });
+ const profile = await api('Student profile read', 'GET', '/profile/student', student.token); assert(profile.country === 'United Kingdom' && !profile.user.passwordHash, 'Profile persistence or field filtering failed');
+ await api('Protected profile assignment', 'PUT', '/profile/student', student.token, { assignedLecturerId: outsider.id }, 400);
+ const future = new Date(Date.now() + 3*86400000); future.setHours(10,0,0,0); const future2 = new Date(future.getTime()+3600000);
+ for (const date of [future, future2]) await api('Availability save', 'POST', '/availability', lecturer.token, { startsAt: date.toISOString(), endsAt: new Date(date.getTime()+40*60000).toISOString() }, 201);
+ const booking = await api('Student booking', 'POST', '/bookings', student.token, { lecturerId: lecturer.id, startsAt: future.toISOString() }, 201);
+ await api('Reschedule booking', 'POST', `/bookings/${booking.id}/reschedule`, student.token, { startsAt: future2.toISOString(), reason: 'QA flow' }, 201);
+ await api('Unauthorized session edit rejected', 'PATCH', `/bookings/${booking.id}`, outsider.token, { notes: 'blocked' }, 403);
+ await api('Cancel booking', 'DELETE', `/bookings/${booking.id}`, student.token, { reason: 'QA cleanup flow' });
+ const learningPath = await db.learningPath.findFirst({ include: { modules: { include: { lessons: true } } } }); assert(learningPath?.modules[0]?.lessons[0], 'No existing curriculum to verify');
+ const lesson = learningPath.modules[0].lessons[0];
+ await api('Grant course access', 'PUT', `/profile/lecturer/students/${student.id}/lesson-access`, lecturer.token, { lessonId: lesson.id });
+ const session = await db.session.create({ data: { studentId: student.id, lecturerId: lecturer.id, startsAt: new Date(Date.now()-3600000), endsAt: new Date(Date.now()-1200000), status: 'IN_PROGRESS', lessonId: lesson.id, livekitRoomName: `qa-room-${prefix}` } });
+ await api('Save session notes and complete', 'PATCH', `/bookings/${session.id}`, lecturer.token, { notes: 'QA lesson notes', status: 'COMPLETED' });
+ await api('Student feedback', 'POST', '/feedbacks', student.token, { sessionId: session.id, score: 4, comment: 'QA verification feedback' }, 201);
+ await api('Update student feedback', 'POST', '/feedbacks', student.token, { sessionId: session.id, score: 5, comment: 'QA updated feedback' }, 201);
+ await api('Record assessment', 'POST', '/progress/assessments', lecturer.token, { studentId: student.id, title: 'QA Recitation', score: 82, feedback: 'QA result' }, 201);
+ const assessments = await api('Student assessment read', 'GET', '/progress/assessments', student.token); assert(assessments.some(item=>item.score===82), 'Assessment not visible');
+ const pdf = Buffer.from('%PDF-1.4\nQA lesson resource'); const form = new FormData(); form.append('title','QA PDF'); form.append('sessionId',session.id); form.append('file',new Blob([pdf],{type:'application/pdf'}),'qa.pdf');
+ const material = await api('Lecturer uploads real material', 'POST', '/materials/upload', lecturer.token, form, 201);
+ const downloaded = await api('Student downloads shared file', 'GET', `/materials/${material.id}/file`, student.token); assert(Buffer.from(downloaded).equals(pdf), 'Downloaded file bytes differ');
+ await api('Unrelated student download rejected', 'GET', `/materials/${material.id}/file`, outsider.token, null, 403);
+ const ticket = await api('Student support request', 'POST', '/support/request', student.token, { type: 'GENERAL_SUPPORT', reason: 'QA support flow' }, 201);
+ await api('Admin support reply', 'POST', `/support/tickets/${ticket.id}/messages`, admin.token, { message: 'QA resolved', newStatus: 'RESOLVED' }, 201);
+ const tickets = await api('Student support read', 'GET', '/support/my-tickets', student.token); assert(tickets.some(item => item.id === ticket.id && item.status === 'RESOLVED'), 'Support reply not reflected');
+ const message = await api('Student sends fixture-only message', 'POST', '/messages', student.token, { recipientId: lecturer.id, content: 'QA message' }, 201);
+ await api('Lecturer reads fixture thread', 'GET', `/messages/${message.threadId}`, lecturer.token);
+ await api('Lecturer marks thread read', 'PATCH', `/messages/${message.threadId}/read`, lecturer.token, null, 204);
+ await db.sessionBlock.create({ data: { studentId: student.id, lecturerId: lecturer.id, status: 'COMPLETED', payoutAmountLkr: 2500, completedAt: new Date() } });
+ const balance = await api('Lecturer available balance', 'GET', '/payouts/balance', lecturer.token); assert(balance.availableLkr===2500,'Wrong payout balance');
+ const payout = await api('Request available payout', 'POST', '/payouts/request', lecturer.token, { amountLkr: 2500, method:'bank_transfer' }, 201);
+ await api('Duplicate payout prevented', 'POST', '/payouts/request', lecturer.token, { amountLkr: 2500, method:'bank_transfer' }, 400);
+ await api('Admin marks payout failed', 'PATCH', `/admin/payouts/${payout.id}/status`, admin.token, { status:'FAILED' });
+ const retry = await api('Released balance can be requested again', 'POST', '/payouts/request', lecturer.token, { amountLkr: 2500, method:'bank_transfer' }, 201);
+ await api('Admin records completed external payout', 'PATCH', `/admin/payouts/${retry.id}/status`, admin.token, { status:'SUCCESSFUL' });
+ await api('Repeated payout processing rejected', 'PATCH', `/admin/payouts/${retry.id}/status`, admin.token, { status:'SUCCESSFUL' }, 400);
+ const rates = await api('Public country currencies', 'GET', '/subscriptions/currencies'); assert(rates.length===5, 'Missing supported country');
+ await api('Admin currency save', 'PATCH', '/subscriptions/currencies', admin.token, { rates: rates.map(({code,lkrPerUnit,rateDate})=>({code,lkrPerUnit,rateDate})) });
+ await api('Student cannot edit currencies', 'PATCH', '/subscriptions/currencies', student.token, { rates }, 403);
+ const plans = await api('Public plans', 'GET', '/subscriptions/plans');
+ await api('Super admin saves connected prices', 'PATCH', '/subscriptions/plans', superadmin.token, { prices: plans.map(({id,monthlyUsd})=>({id,monthlyUsd})) });
+ await api('Payment intentionally disabled', 'POST', '/subscriptions', student.token, {tier:'Standard',lkrAmount:1},501);
+ await api('Payment history', 'GET', '/subscriptions/payments', student.token);
+ const enquiry={fullName:'QA enquiry',email:`${prefix}-waitlist@example.test`,phone:'',country:'United Kingdom',course:'Noorani Qaida',pace:'standard',notes:'QA flow'}; emails.push(enquiry.email);
+ await api('Public enquiry persistence', 'POST', '/auth/waitlist', null, enquiry,201); await api('Duplicate enquiry is idempotent', 'POST', '/auth/waitlist',null,enquiry,201);
+ const enquiries=await api('Admin sees enquiries','GET','/admin/waitlist',admin.token); assert(enquiries.filter(item=>item.email===enquiry.email).length===1,'Duplicate enquiries stored');
+ await db.subscription.update({where:{id:trial.id},data:{currentPeriodEnd:new Date(Date.now()-1000)}});
+ const access=await api('Expired trial blocks dashboard','GET','/subscriptions/access',student.token); assert(access.requiresSubscription,'Trial gate did not block');
+ const pendingSubscription=await db.subscription.create({data:{studentId:student.id,tier:'Standard',status:'PAST_DUE',currentPeriodStart:new Date(),currentPeriodEnd:new Date(Date.now()+30*86400000),lkrAmount:20000,fxRateApplied:330.793}});
+ const pendingPayment=await db.payment.create({data:{subscriptionId:pendingSubscription.id,amountLkr:20000,fxRate:330.793,gateway:'qa-provider',gatewayChargeId:prefix,status:'PENDING',processedAt:new Date()}});
+ const subscriptionService=app.get(require(root+'/dist/src/subscription/subscription.service.js').SubscriptionService);
+ const confirmation={paymentId:pendingPayment.id,gateway:'qa-provider',gatewayChargeId:prefix,currency:'LKR',amountLkr:20000,status:'SUCCESSFUL'};
+ await subscriptionService.recordVerifiedGatewayPayment(confirmation);
+ await subscriptionService.recordVerifiedGatewayPayment(confirmation);
+ const paidAccess=await api('Verified gateway success automatically unlocks access','GET','/subscriptions/access',student.token); assert(!paidAccess.requiresSubscription,'Payment did not automatically unlock access');
+ const paidHistory=await api('Verified gateway payment appears in billing','GET','/subscriptions/payments',student.token); assert(paidHistory.some(item=>item.id===pendingPayment.id && item.status==='SUCCESSFUL'),'Confirmed payment missing from history');
+ const resetToken=crypto.randomBytes(32).toString('hex'); await db.passwordReset.create({data:{userId:student.id,tokenHash:crypto.createHash('sha256').update(resetToken).digest('hex'),expiresAt:new Date(Date.now()+60000)}});
+ const newPassword=crypto.randomBytes(18).toString('hex');
+ await api('Single-use password reset','POST','/auth/reset-password',null,{token:resetToken,password:newPassword},201);
+ await api('Old login token revoked','GET','/auth/me',student.token,null,401);
+ await api('Reset token cannot be reused','POST','/auth/reset-password',null,{token:resetToken,password:newPassword},400);
+ await api('Login with updated password','POST','/auth/login',null,{email:student.email,password:newPassword},201);
+ await api('Public admin registration rejected','POST','/auth/register',null,{email:`${prefix}-forbidden@example.test`,password,role:'ADMIN',fullName:'QA',phone:'',country:'US',timezone:'UTC'},400);
+ const registered=await api('Student registration creates profile atomically','POST','/auth/register',null,{email:`${prefix}-registration@example.test`,password,role:'STUDENT',fullName:'QA New Student',phone:'0000',country:'United States',timezone:'America/New_York'},201); userIds.push(registered.id);
+ console.log(JSON.stringify({result:'PASS',checks:checks.length,workflows:checks,externalMessagesSent:0,realPayments:0},null,2));
+}
+run().catch(error=>{console.error(error.message);process.exitCode=1}).finally(async()=>{
+ if(db){ await db.message.deleteMany({where:{OR:[{senderId:{in:userIds}},{recipientId:{in:userIds}}]}}); await db.supportTicketMessage.deleteMany({where:{senderId:{in:userIds}}}); await db.user.deleteMany({where:{id:{in:userIds}}}); await db.waitlistEntry.deleteMany({where:{email:{in:emails}}}); }
+ if(app) await app.close(); if(directory) await fs.rm(directory,{recursive:true,force:true});
+});

@@ -1,15 +1,28 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ProfileService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private editableFields(data: unknown, allowed: string[]) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new BadRequestException('Invalid profile');
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (!allowed.includes(key)) throw new BadRequestException(`Field ${key} cannot be edited here`);
+      if (['languages', 'specializations'].includes(key)) {
+        if (!Array.isArray(value) || value.length > 20 || value.some(item => typeof item !== 'string' || item.length > 100)) throw new BadRequestException('Invalid language or specialization list');
+      } else if (typeof value !== 'string' || value.length > 5000 || (key === 'fullName' && !value.trim())) throw new BadRequestException(`Invalid ${key}`);
+      result[key] = value;
+    }
+    return result;
+  }
+
   async getStudentProfile(userId: string) {
     const profile = await this.prisma.studentProfile.findUnique({
       where: { userId },
       include: { 
-        user: true,
+        user: { select: { id: true, email: true, role: true, status: true } },
         assignedLecturer: true,
         progress: {
           include: {
@@ -25,6 +38,8 @@ export class ProfileService {
   }
 
   async updateStudentProfile(userId: string, data: any) {
+    data = this.editableFields(data, ['fullName', 'phone', 'country', 'timezone', 'preferredLanguage', 'learningGoals']);
+    if (data.timezone) { try { new Intl.DateTimeFormat('en', { timeZone: data.timezone }); } catch { throw new BadRequestException('Choose a valid timezone, such as Asia/Colombo'); } }
     return this.prisma.studentProfile.update({
       where: { userId },
       data,
@@ -34,13 +49,14 @@ export class ProfileService {
   async getLecturerProfile(userId: string) {
     const profile = await this.prisma.lecturerProfile.findUnique({
       where: { userId },
-      include: { user: true },
+      include: { user: { select: { id: true, email: true, role: true, status: true } } },
     });
     if (!profile) throw new NotFoundException('Lecturer profile not found');
     return profile;
   }
 
   async updateLecturerProfile(userId: string, data: any) {
+    data = this.editableFields(data, ['fullName', 'bio', 'qualifications', 'languages', 'specializations']);
     return this.prisma.lecturerProfile.update({
       where: { userId },
       data,

@@ -5,13 +5,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 import { toast } from '@/components/ui/toast';
+import { ScheduleCalendar } from '@/components/classroom/schedule-calendar';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import {
-  Video,
   Search,
-  CheckCircle,
-  XCircle,
-  Calendar,
   Clock,
   AlertTriangle,
   FileText,
@@ -19,7 +16,6 @@ import {
   CalendarX,
   Play,
   X,
-  ChevronRight,
   UserX,
   Lock,
 } from 'lucide-react';
@@ -62,9 +58,17 @@ export default function LecturerSessionsPage() {
     queryFn: () => apiFetch('/bookings/lecturer'),
   });
 
+  const { data: shiftProfile } = useQuery<{ hourlyAvailabilityJson?: number[] }>({
+    queryKey: ['lecturerProfile'],
+    queryFn: () => apiFetch('/profile/lecturer'),
+  });
+  const shiftHours = Array.isArray(shiftProfile?.hourlyAvailabilityJson)
+    ? shiftProfile.hourlyAvailabilityJson.map(Number)
+    : [];
+
+  const [view, setView] = useState<'calendar' | 'list'>('calendar');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  
   // Notes Modal State
   const [notesModal, setNotesModal] = useState<any>(null);
   const [noteText, setNoteText] = useState('');
@@ -222,7 +226,6 @@ export default function LecturerSessionsPage() {
     <div className="space-y-6 animate-fade-in p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Sessions Management</h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
             Manage your schedule, conduct live classes, and update student sessions.
           </p>
@@ -258,12 +261,25 @@ export default function LecturerSessionsPage() {
         </div>
       </div>
 
+      <div className="flex gap-1 rounded-lg bg-stone-100 p-1 w-fit">
+        {(['calendar', 'list'] as const).map(item => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-md px-4 py-2 text-sm capitalize ${view === item ? 'bg-white font-bold shadow-sm' : 'text-stone-500'}`}>{item}</button>)}
+      </div>
+      {view === 'calendar' && !isLoading && <ScheduleCalendar events={filtered.map((session: { id: string; startsAt: string; endsAt?: string; status: string; student?: { fullName: string }; tier?: string }) => ({
+        id: session.id, startsAt: session.startsAt, endsAt: session.endsAt,
+        title: session.tier ? `${session.tier} session` : 'Quran session', subtitle: session.student?.fullName || 'Student',
+        tone: session.status.toLowerCase() === 'completed' ? 'purple' as const : 'blue' as const,
+        onClick: () => { setNotesModal(session); const notes = (session as { notes?: string | { sharedNotes?: string } }).notes; setNoteText(typeof notes === 'string' ? notes : notes?.sharedNotes || ''); },
+      }))}
+        visibleHours={shiftHours}
+        isCellDisabled={(date) => date.getHours() < 10 || date.getHours() >= 22 || (shiftHours.length > 0 && !shiftHours.includes(date.getHours()))}
+        getCellDisabledReason={(date) => date.getHours() < 10 || date.getHours() >= 22 || (shiftHours.length > 0 && !shiftHours.includes(date.getHours())) ? 'Outside your shift' : undefined}
+        ariaLabel="Lecturer sessions calendar" />}
       {/* Sessions list */}
       <div className="space-y-3">
         {isLoading && (
           <LoadingScreen message="Loading Sessions..." subtitle="Fetching your scheduled and upcoming classes" />
         )}
-        {!isLoading &&
+        {!isLoading && view === 'list' &&
           filtered.map((s: any) => {
             const startsAtDate = new Date(s.startsAt);
             const endsAtDate = new Date(s.endsAt || new Date(startsAtDate.getTime() + 40 * 60 * 1000));
@@ -423,7 +439,7 @@ export default function LecturerSessionsPage() {
             );
           })}
 
-        {filtered.length === 0 && (
+        {view === 'list' && filtered.length === 0 && (
           <div className="p-12 rounded-2xl border border-dashed border-[hsl(var(--border))] text-center bg-[hsl(var(--card))]">
             <Clock className="h-10 w-10 mx-auto text-[hsl(var(--muted-foreground)/0.6)] mb-3" />
             <p className="font-semibold text-base mb-1">No sessions found</p>

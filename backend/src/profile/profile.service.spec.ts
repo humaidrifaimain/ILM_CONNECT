@@ -23,7 +23,7 @@ describe('ProfileService', () => {
       expect(prisma.studentProfile.findUnique).toHaveBeenCalledWith({
         where: { userId: 'student-1' },
         include: {
-          user: true,
+          user: { select: { id: true, email: true, role: true, status: true } },
           assignedLecturer: true,
           progress: {
             include: {
@@ -35,5 +35,25 @@ describe('ProfileService', () => {
         },
       });
     });
+  });
+});
+
+describe('Editable profile fields', () => {
+  const prisma = { studentProfile: { update: jest.fn() }, lecturerProfile: { update: jest.fn() } };
+  const service = new ProfileService(prisma as any);
+  beforeEach(() => jest.resetAllMocks());
+  it('prevents student settings from changing assignments or tiers', async () => {
+    await expect(service.updateStudentProfile('student', { assignedLecturerId: 'another' })).rejects.toThrow('cannot be edited');
+    await expect(service.updateStudentProfile('student', { currentTier: 'Premium' })).rejects.toThrow('cannot be edited');
+    expect(prisma.studentProfile.update).not.toHaveBeenCalled();
+  });
+  it('validates timezone and allows actual contact fields', async () => {
+    await expect(service.updateStudentProfile('student', { timezone: 'invalid/timezone' })).rejects.toThrow('valid timezone');
+    await service.updateStudentProfile('student', { fullName: 'Student', country: 'United Kingdom', timezone: 'Europe/London' });
+    expect(prisma.studentProfile.update).toHaveBeenCalledWith({ where: { userId: 'student' }, data: { fullName: 'Student', country: 'United Kingdom', timezone: 'Europe/London' } });
+  });
+  it('keeps lecturer shift assignments and ratings admin-controlled', async () => {
+    await expect(service.updateLecturerProfile('lecturer', { hourlyAvailabilityJson: [0, 1] })).rejects.toThrow('cannot be edited');
+    await expect(service.updateLecturerProfile('lecturer', { ratingAvg: 5 })).rejects.toThrow('cannot be edited');
   });
 });

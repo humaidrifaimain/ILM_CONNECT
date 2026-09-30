@@ -135,16 +135,15 @@ function LecturerSupportContent() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-12">
+    <div className="w-full mx-auto space-y-8 animate-fade-in pb-12">
       <div>
-        <h1 className="text-2xl font-bold">Scholar Support & Coordination</h1>
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
           Submit scholar assistance inquiries, student reassignment requests, or connect with academic operations.
         </p>
       </div>
 
       {/* ─── Tabs ─── */}
-      <div className="flex border-b border-[hsl(var(--border))] overflow-x-auto gap-2">
+      <div className="relative flex max-w-fit items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] p-1.5 gap-1">
         {[
           { id: 'contact', label: 'Support Request Form', icon: MessageSquare },
           { id: 'tickets', label: `My Tickets (${tickets.length})`, icon: Clock },
@@ -155,12 +154,17 @@ function LecturerSupportContent() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 py-3 px-4 border-b-2 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all ${
-                isActive
-                  ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]'
-                  : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
+              className={`relative z-10 flex min-h-[40px] items-center gap-2 rounded-full px-5 py-2 text-sm font-bold transition-colors ${
+                isActive ? 'text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
               }`}
             >
+              {isActive && (
+                <motion.div
+                  layoutId="activeLecturerSupportTab"
+                  className="absolute inset-0 -z-10 rounded-full bg-[hsl(var(--background))] shadow-sm border border-[hsl(var(--border))]"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
               <Icon className="h-4 w-4" />
               {tab.label}
             </button>

@@ -149,7 +149,7 @@ function PreJoinScreen({ onJoin, onBack, sessionInfo }: { onJoin: (mic: boolean,
 
         <section className="rounded-2xl border border-white/10 bg-white/[0.055] p-6">
           <span className="mb-5 inline-flex rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">Ready to join</span>
-          <h1 className="text-2xl font-semibold tracking-tight">Your lesson is ready</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">Your lesson is ready</h2>
           {sessionInfo && (
             <div className="my-6 border-y border-white/10 py-5">
               <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/40">Lecturer</p>
@@ -352,7 +352,7 @@ export default function SessionRoom({
         initialMic={initialMic}
         initialCam={initialCam}
         warning={tokenData.warning}
-        onLeave={() => router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}`)}
+        onLeave={() => router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}&prompt=1`)}
       />
     );
   }
@@ -371,7 +371,7 @@ export default function SessionRoom({
         setState('error');
       }}
       onDisconnected={() => {
-        router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}`);
+        router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}&prompt=1`);
       }}
       style={{ height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 50 }}
     >
@@ -379,7 +379,7 @@ export default function SessionRoom({
         sessionInfo={tokenData.session}
         userRole="student"
         courseId={courseId}
-        onLeave={() => router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}`)}
+        onLeave={() => router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}&prompt=1`)}
       />
     </LiveKitRoom>
   );

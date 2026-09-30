@@ -3,26 +3,26 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import { Video, CheckCircle, XCircle, X, Calendar, List, ChevronLeft, ChevronRight, Clock, Edit, Trash2, AlertTriangle, Lock, Play, HelpCircle, MessageSquareText, Loader2 } from 'lucide-react';
+import { Video, X, Calendar, List, Edit, Trash2, AlertTriangle, Lock, Play, HelpCircle, MessageSquareText, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { ScheduleCalendar } from '@/components/classroom/schedule-calendar';
 import { BookingCalendar } from '@/components/classroom/booking-calendar';
+import { StudentIconTile, StudentPageHeader, studentUi } from '@/components/student/student-dashboard-ui';
 
 type ViewMode = 'list' | 'calendar';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
-  scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  canceled: { label: 'Canceled', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  no_show_student: { label: 'Conducted (Absent)', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/50' },
-  no_show_lecturer: { label: 'Lecturer No-show', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  scheduled: { label: 'Scheduled', color: 'bg-[#e8f0ed] text-[#095F46]' },
+  completed: { label: 'Completed', color: 'bg-[#10BF8D]/12 text-[#095F46]' },
+  canceled: { label: 'Canceled', color: 'bg-rose-100 text-rose-700' },
+  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700' },
+  no_show_student: { label: 'Conducted (Absent)', color: 'bg-amber-100 text-amber-800 border border-amber-300/60' },
+  no_show_lecturer: { label: 'Lecturer No-show', color: 'bg-rose-100 text-rose-700' },
 };
 
-function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
-function getFirstDay(y: number, m: number) { return new Date(y, m, 1).getDay(); }
 
 const LOCK_HOURS = 12;
 
@@ -66,6 +66,14 @@ export default function StudentSessionsPage() {
     refetchOnMount: 'always',
   });
 
+  const { data: calendarProfile } = useQuery<{ assignedLecturer?: { hourlyAvailabilityJson?: number[] } }>({
+    queryKey: ['profile', 'student'],
+    queryFn: () => apiFetch('/profile/student'),
+  });
+  const calendarShiftHours = Array.isArray(calendarProfile?.assignedLecturer?.hourlyAvailabilityJson)
+    ? calendarProfile.assignedLecturer.hourlyAvailabilityJson.map(Number)
+    : [];
+
   const sessions = useMemo(() => {
     if (!rawBookings) return [];
     const now = new Date();
@@ -101,7 +109,7 @@ export default function StudentSessionsPage() {
       ]).then(([profile, slots]) => {
         if (profile) {
           setStudentTier(profile.currentTier || 'STANDARD');
-          let lecturer = profile.assignedLecturer || selectedSession.lecturerDetails;
+          const lecturer = profile.assignedLecturer || selectedSession.lecturerDetails;
           if (lecturer) {
              setAssignedLecturer({
                userId: lecturer.userId || lecturer.id,
@@ -120,16 +128,6 @@ export default function StudentSessionsPage() {
       });
     }
   }, [showReschedule, selectedSession]);
-
-  const now = new Date();
-  const [calYear, setCalYear] = useState(now.getFullYear());
-  const [calMonth, setCalMonth] = useState(now.getMonth());
-  const daysInMonth = getDaysInMonth(calYear, calMonth);
-  const firstDay = getFirstDay(calYear, calMonth);
-  const monthName = new Date(calYear, calMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
-  const prevMonth = () => { if (calMonth === 0) { setCalYear(calYear - 1); setCalMonth(11); } else setCalMonth(calMonth - 1); };
-  const nextMonth = () => { if (calMonth === 11) { setCalYear(calYear + 1); setCalMonth(0); } else setCalMonth(calMonth + 1); };
-  const getSessionsForDay = (day: number) => sessions.filter((s: any) => { const d = new Date(s.startsAt); return d.getFullYear() === calYear && d.getMonth() === calMonth && d.getDate() === day; });
 
   const closeDetail = useCallback(() => {
     setSelectedSession(null);
@@ -162,15 +160,12 @@ export default function StudentSessionsPage() {
 
   const handleRescheduleConfirm = async (selectedSlots: string[]) => {
     if (!selectedSession || selectedSlots.length === 0) return;
-    
     setIsRescheduling(true);
     setActionErrorMessage(null);
-    
     try {
       const [dateStr, time] = selectedSlots[0].split('|');
       const [year, month, day] = dateStr.split('-');
       const [hourStr, minStr] = time.split(':');
-      
       const startsAtDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hourStr), Number(minStr));
 
       await apiFetch(`/bookings/${selectedSession.id}/reschedule`, {
@@ -203,18 +198,22 @@ export default function StudentSessionsPage() {
 
   return (
     <>
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">My Sessions</h1>
-        <div className="flex rounded-xl bg-[hsl(var(--muted))] p-1">
-          <button onClick={() => handleViewChange('list')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${view === 'list' ? 'bg-[hsl(var(--card))] shadow-sm text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
+    <div className={studentUi.page}>
+      <StudentPageHeader
+        eyebrow="Schedule"
+        title="My Sessions"
+        description="Review upcoming, completed, and rescheduled Quran sessions."
+        action={
+          <div className="flex rounded-full border border-[#d6e0db] bg-[#f5f7f6] p-1">
+          <button onClick={() => handleViewChange('list')} className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${view === 'list' ? 'bg-white text-[#202823] shadow-sm' : 'text-[#56635c]'}`}>
             <List className="h-3.5 w-3.5" /> List
           </button>
-          <button onClick={() => handleViewChange('calendar')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${view === 'calendar' ? 'bg-[hsl(var(--card))] shadow-sm text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
+          <button onClick={() => handleViewChange('calendar')} className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${view === 'calendar' ? 'bg-white text-[#202823] shadow-sm' : 'text-[#56635c]'}`}>
             <Calendar className="h-3.5 w-3.5" /> Calendar
           </button>
         </div>
-      </div>
+        }
+      />
 
       {/* List View */}
       {view === 'list' && (
@@ -222,11 +221,11 @@ export default function StudentSessionsPage() {
           {isLoading ? (
             <LoadingScreen message="Loading Sessions..." subtitle="Fetching your scheduled classes and learning calendar" />
           ) : sessions.length === 0 ? (
-            <div className="text-center py-12 rounded-xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-              <Calendar className="h-8 w-8 mx-auto text-[hsl(var(--muted-foreground))] opacity-50 mb-3" />
-              <p className="text-sm font-medium">No sessions booked</p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 mb-4">You haven't scheduled any sessions yet.</p>
-              <Link href={`/student/courses/${courseId}/sessions/book`} className="text-sm font-semibold text-[hsl(var(--primary))] hover:underline">Book a session now</Link>
+            <div className="rounded-xl border border-dashed border-[#d6e0db] bg-white py-12 text-center">
+              <Calendar className="mx-auto mb-3 h-8 w-8 text-[#095F46]" />
+              <p className="text-sm font-bold text-[#202823]">No sessions booked</p>
+              <p className="mb-4 mt-1 text-xs text-[#56635c]">You haven&apos;t scheduled any sessions yet.</p>
+              <Link href={`/student/courses/${courseId}/sessions/book`} className="text-sm font-bold text-[#095F46] hover:underline">Book a session now</Link>
             </div>
           ) : sessions.map((s: any) => {
             const cfg = statusConfig[s.status] || statusConfig.scheduled;
@@ -235,25 +234,23 @@ export default function StudentSessionsPage() {
               <div
                 key={s.id}
                 onClick={() => setSelectedSession(s)}
-                className="w-full text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--primary)/0.4)] transition-all cursor-pointer shadow-sm hover:shadow-md"
+                className="flex w-full cursor-pointer flex-col justify-between gap-4 rounded-xl border border-[#d6e0db] bg-white p-4 text-left shadow-sm transition-all hover:border-[#b9cac2] hover:shadow-md sm:flex-row sm:items-center"
               >
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="h-11 w-11 rounded-xl bg-[hsl(var(--primary-light))] flex items-center justify-center flex-shrink-0">
-                    <Video className="h-5 w-5 text-[hsl(var(--primary))]" />
-                  </div>
+                  <StudentIconTile icon={Video} />
                   <div className="min-w-0">
-                    <div className="font-semibold text-sm truncate text-[hsl(var(--foreground))]">{s.subject}</div>
-                    <div className="text-xs text-[hsl(var(--muted-foreground))]">with {s.lecturerName} · {new Date(s.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                    <div className="text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — {new Date(s.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div className="truncate text-sm font-bold text-[#202823]">{s.subject}</div>
+                    <div className="text-xs text-[#56635c]">with {s.lecturerName} · {new Date(s.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                    <div className="text-xs text-[#56635c]">{new Date(s.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — {new Date(s.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2.5 self-end sm:self-center flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${cfg.color}`}>{cfg.label}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${cfg.color}`}>{cfg.label}</span>
                   {s.status === 'scheduled' && !s.isPast && !isWithinLockWindow(s.startsAt) && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setSelectedSession(s); setShowReschedule(true); }}
-                      className="px-3.5 py-1.5 rounded-lg border border-[hsl(var(--primary)/0.3)] text-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.05)] hover:bg-[hsl(var(--primary)/0.1)] transition-colors text-xs font-semibold flex items-center gap-1.5"
+                      className={studentUi.secondaryButton}
                     >
                       <Edit className="h-3 w-3" /> Reschedule
                     </button>
@@ -261,7 +258,7 @@ export default function StudentSessionsPage() {
                   {canJoin && (
                     <Link
                       href={`/student/courses/${courseId}/sessions/${s.id}/room`}
-                      className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center gap-1.5"
+                      className={studentUi.primaryButton}
                     >
                       <Play className="h-3 w-3 fill-current" /> Join Class
                     </Link>
@@ -269,7 +266,7 @@ export default function StudentSessionsPage() {
                   {s.canReview && (
                     <Link
                       href={`/student/courses/${courseId}/feedback?sessionId=${s.id}`}
-                      className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[hsl(var(--primary)/0.25)] bg-[hsl(var(--primary)/0.06)] px-3 text-xs font-semibold text-[hsl(var(--primary))] transition-colors hover:bg-[hsl(var(--primary)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]"
+                      className={studentUi.secondaryButton}
                     >
                       <MessageSquareText className="h-3.5 w-3.5" /> {s.rating ? 'Edit Review' : 'Write Review'}
                     </Link>
@@ -284,41 +281,18 @@ export default function StudentSessionsPage() {
 
       {/* Calendar View */}
       {view === 'calendar' && (
-        <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-[hsl(var(--border))]">
-            <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))]"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="font-semibold">{monthName}</span>
-            <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-[hsl(var(--muted))]"><ChevronRight className="h-4 w-4" /></button>
-          </div>
-          <div className="grid grid-cols-7 text-center text-xs font-semibold text-[hsl(var(--muted-foreground))] border-b border-[hsl(var(--border))]">
-            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="py-2">{d}</div>)}
-          </div>
-          <div className="grid grid-cols-7">
-            {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} className="min-h-[80px] p-1 border-b border-r border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)]" />)}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const daySessions = getSessionsForDay(day);
-              const isToday = calYear === now.getFullYear() && calMonth === now.getMonth() && day === now.getDate();
-              return (
-                <div key={day} className={`min-h-[80px] p-1 border-b border-r border-[hsl(var(--border))] ${isToday ? 'bg-[hsl(var(--primary)/0.05)]' : ''}`}>
-                  <div className={`text-xs font-medium mb-1 ${isToday ? 'h-5 w-5 rounded-full bg-[hsl(var(--primary))] text-white flex items-center justify-center' : 'text-[hsl(var(--muted-foreground))]'}`}>{day}</div>
-                  {daySessions.map((s: any) => (
-                    <button key={s.id} onClick={() => setSelectedSession(s)} className={`w-full text-left px-1 py-0.5 rounded text-[10px] font-medium truncate mb-0.5 ${(statusConfig[s.status] || statusConfig.scheduled).color}`}>
-                      {new Date(s.startsAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} {s.subject?.split('—')[0].trim().slice(0,15)}
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <ScheduleCalendar events={sessions.map((session: { id: string; startsAt: string; endsAt: string; subject: string; lecturerName: string; status: string }) => ({
+          id: session.id, startsAt: session.startsAt, endsAt: session.endsAt, title: session.subject,
+          subtitle: session.lecturerName, tone: session.status === 'completed' ? 'purple' as const : 'blue' as const,
+          onClick: () => setSelectedSession(session),
+        }))} visibleHours={calendarShiftHours} ariaLabel="Student sessions calendar" />
       )}
     </div>
 
       {/* Session Detail Modal */}
       {selectedSession && !showCancelConfirm && !showReschedule && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={closeDetail}>
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={closeDetail}>
+          <div className="w-full max-w-sm rounded-xl border border-[#d6e0db] bg-white p-5 shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg mb-4">{selectedSession.subject}</h3>
             <div className="space-y-2.5 text-sm mb-5">
               <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Lecturer</span><span className="font-medium">{selectedSession.lecturerName}</span></div>
@@ -329,7 +303,7 @@ export default function StudentSessionsPage() {
 
             {/* If session was scheduled and is now past / missed */}
             {(selectedSession.status === 'no_show_student' || selectedSession.isPast) && (
-              <div className="p-4 rounded-2xl border border-amber-300 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/90 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20 text-center space-y-2 mb-5">
+              <div className="p-4 rounded-xl border border-amber-300 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/90 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20 text-center space-y-2 mb-5">
                 <div className="inline-flex p-2.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shadow-sm">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
@@ -395,7 +369,7 @@ export default function StudentSessionsPage() {
                 </Link>
               )}
               {(selectedSession.status === 'scheduled' || selectedSession.status === 'in_progress') && !selectedSession.isPast && (
-                <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all flex items-center justify-center gap-1.5">
+                <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:shadow-md transition-all flex items-center justify-center gap-1.5">
                   <Play className="h-4 w-4 fill-current" /> Join Session
                 </Link>
               )}
@@ -407,7 +381,7 @@ export default function StudentSessionsPage() {
       {/* Cancel Confirmation */}
       {showCancelConfirm && selectedSession && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={closeDetail}>
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+          <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
             <div className="h-12 w-12 rounded-full bg-[hsl(var(--destructive)/0.1)] flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="h-6 w-6 text-[hsl(var(--destructive))]" />
             </div>
@@ -456,8 +430,7 @@ export default function StudentSessionsPage() {
       {/* Reschedule Flow */}
       {showReschedule && selectedSession && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 overflow-y-auto" onClick={closeDetail}>
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl w-full max-w-4xl p-6 animate-fade-in my-8" onClick={e => e.stopPropagation()}>
-            
+          <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl w-full max-w-4xl p-6 animate-fade-in my-8" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-2">
               <div>
                 <h3 className="font-bold text-lg mb-1">Reschedule Session</h3>
@@ -476,7 +449,6 @@ export default function StudentSessionsPage() {
             <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-800 dark:text-blue-300 mb-6 w-fit">
               <strong>Policy:</strong> Students can reschedule sessions up to 12 hours before start time.
             </div>
-            
             {actionSuccessMessage ? (
               <div className="p-3 rounded-xl bg-green-500/10 text-green-700 dark:text-green-300 text-sm font-semibold text-center my-4">
                 ✓ {actionSuccessMessage}

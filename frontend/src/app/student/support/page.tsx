@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Portal } from '@/components/ui/portal';
+import { StudentIconTile, StudentPageHeader, StudentStatusPill, studentUi } from '@/components/student/student-dashboard-ui';
 
 interface TicketMessage {
   id: string;
@@ -175,16 +176,15 @@ function StudentSupportContent() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-12">
-      <div>
-        <h1 className="text-2xl font-bold">Support & Student Advisory</h1>
-        <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          Submit scholar change requests, report issues, or connect directly with our advisory desk.
-        </p>
-      </div>
+    <div className={`${studentUi.page} pb-12`}>
+      <StudentPageHeader
+        eyebrow="Support"
+        title="Support & Student Advisory"
+        description="Submit scholar change requests, report issues, or connect directly with our advisory desk."
+      />
 
       {/* ─── Tabs Navigation Bar ─── */}
-      <div className="grid gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.35)] p-1.5 sm:grid-cols-3">
+      <div className="grid gap-2 rounded-full border border-[#d6e0db] bg-[#f5f7f6] p-1.5 sm:grid-cols-3">
         {[
           { id: 'change-lecturer', label: 'Change Lecturer Request', icon: RefreshCw },
           { id: 'contact', label: 'Contact Support & Help Desk', icon: MessageSquare },
@@ -196,10 +196,10 @@ function StudentSupportContent() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as SupportTab)}
-              className={`flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-center text-xs font-semibold transition-colors sm:text-sm ${
+              className={`flex min-h-10 items-center justify-center gap-2 rounded-full border px-3 py-2 text-center text-xs font-bold transition-colors sm:text-sm ${
                 isActive
-                  ? 'border-[#095F46] bg-white text-[#095F46] shadow-sm'
-                  : 'border-transparent text-[hsl(var(--muted-foreground))] hover:bg-white/70 hover:text-[hsl(var(--foreground))]'
+                  ? 'border-[#b9cac2] bg-white text-[#095F46] shadow-sm'
+                  : 'border-transparent text-[#56635c] hover:bg-white/70 hover:text-[#202823]'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -211,17 +211,15 @@ function StudentSupportContent() {
 
       {/* ─── TAB 1: CHANGE LECTURER REQUEST ─── */}
       {activeTab === 'change-lecturer' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="h-12 w-12 rounded-2xl bg-[#095F46]/10 text-[#095F46] flex items-center justify-center flex-shrink-0">
-                  <RefreshCw className="h-6 w-6" />
-                </div>
+          <div className="space-y-4 lg:col-span-2">
+            <div className="rounded-xl border border-[#d6e0db] bg-white p-4 shadow-sm sm:p-5">
+              <div className="mb-5 flex items-start gap-3">
+                <StudentIconTile icon={RefreshCw} />
                 <div>
-                  <h2 className="text-xl font-bold">Request a Lecturer Change</h2>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 leading-relaxed">
+                  <h2 className="text-lg font-bold text-[#202823]">Request a Lecturer Change</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-[#56635c]">
                     We want your learning journey to be completely comfortable. If you wish to be matched with a different scholar, please share your preferences below.
                   </p>
                 </div>
@@ -231,51 +229,49 @@ function StudentSupportContent() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="p-6 rounded-2xl bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.3)] text-center space-y-3"
+                  className="space-y-3 rounded-xl border border-[#b9cac2] bg-[#e8f0ed] p-5 text-center"
                 >
-                  <div className="h-12 w-12 rounded-full bg-[hsl(var(--success)/0.2)] text-[hsl(var(--success))] mx-auto flex items-center justify-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#095F46]">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
-                  <h3 className="font-bold text-lg text-[hsl(var(--foreground))]">Request Received Successfully!</h3>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] max-w-md mx-auto leading-relaxed">
+                  <h3 className="text-lg font-bold text-[#202823]">Request Received Successfully!</h3>
+                  <p className="mx-auto max-w-md text-xs leading-relaxed text-[#56635c]">
                     Our academic coordinator has received your change request. We will review our scholar roster to find the ideal match for your preferred timing and notify you within 24 hours.
                   </p>
                   <button
                     onClick={() => setChangeSubmitted(false)}
-                    className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[hsl(var(--primary))] text-white hover:opacity-90 transition-all"
+                    className={`${studentUi.primaryButton} mt-2`}
                   >
                     Submit Another Note
                   </button>
                 </motion.div>
               ) : (
-                <form onSubmit={handleChangeLecturerSubmit} className="space-y-5">
+                <form onSubmit={handleChangeLecturerSubmit} className="space-y-4">
                   {/* Current Lecturer Card */}
-                  <div className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.5)] flex items-center justify-between">
+                  <div className="flex items-center justify-between rounded-xl border border-[#d6e0db] bg-[#f5f7f6] p-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-sm">
                         {assignedLecturer?.fullName?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'ML'}
                       </div>
                       <div>
-                        <p className="text-xs text-[hsl(var(--muted-foreground))]">Current Assigned Scholar</p>
-                        <p className="font-bold text-sm text-[hsl(var(--foreground))]">
+                        <p className="text-xs text-[#56635c]">Current Assigned Scholar</p>
+                        <p className="text-sm font-bold text-[#202823]">
                           {assignedLecturer?.fullName || 'Assigned Maulavi'}
                         </p>
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] text-[10px] font-semibold">
-                      Active
-                    </span>
+                    <StudentStatusPill>Active</StudentStatusPill>
                   </div>
 
                   {/* Primary Reason Selector */}
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                    <label className="text-xs font-bold text-[#202823]">
                       Reason for Request <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={changeReason}
                       onChange={(e) => setChangeReason(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                      className={studentUi.field}
                     >
                       {LECTURER_CHANGE_REASONS.map((r) => (
                         <option key={r} value={r}>
@@ -287,7 +283,7 @@ function StudentSupportContent() {
 
                   {/* Preferred Days / Timings */}
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                    <label className="text-xs font-bold text-[#202823]">
                       Preferred Days & Times (Optional)
                     </label>
                     <input
@@ -295,13 +291,13 @@ function StudentSupportContent() {
                       value={preferredDays}
                       onChange={(e) => setPreferredDays(e.target.value)}
                       placeholder="e.g. Weekday evenings after 7:00 PM, or Saturday mornings"
-                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                      className={studentUi.field}
                     />
                   </div>
 
                   {/* Additional Notes */}
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                    <label className="text-xs font-bold text-[#202823]">
                       Specific Requirements or Notes (Optional)
                     </label>
                     <textarea
@@ -309,15 +305,15 @@ function StudentSupportContent() {
                       value={changeDetails}
                       onChange={(e) => setChangeDetails(e.target.value)}
                       placeholder="Share any details about your preferred teaching style, language preference, or study goals..."
-                      className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                      className={studentUi.field}
                     />
                   </div>
 
                   {/* Safeguarding & Confidentiality Banner */}
-                  <div className="p-3.5 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] flex items-start gap-3 text-xs text-[hsl(var(--muted-foreground))]">
-                    <ShieldCheck className="h-4 w-4 text-[hsl(var(--primary))] flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 rounded-xl border border-[#d6e0db] bg-[#f5f7f6] p-3.5 text-xs text-[#56635c]">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#095F46]" />
                     <p className="leading-relaxed">
-                      <strong className="text-[hsl(var(--foreground))]">100% Confidential:</strong> Your feedback is reviewed exclusively by the head administration team. Your current scholar is never notified of personal reasons or criticisms.
+                      <strong className="text-[#202823]">100% Confidential:</strong> Your feedback is reviewed exclusively by the head administration team. Your current scholar is never notified of personal reasons or criticisms.
                     </p>
                   </div>
 
@@ -325,7 +321,7 @@ function StudentSupportContent() {
                   <button
                     type="submit"
                     disabled={createTicketMutation.isPending}
-                    className="w-full py-3 rounded-xl font-bold text-sm text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className={`${studentUi.primaryButton} w-full`}
                   >
                     {createTicketMutation.isPending ? (
                       <>
@@ -343,12 +339,12 @@ function StudentSupportContent() {
           </div>
 
           {/* Sidebar Info */}
-          <div className="space-y-6">
-            <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-4">
-              <h3 className="font-bold text-sm text-[hsl(var(--foreground))] flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-[hsl(var(--primary))]" /> How Change Requests Work
+          <div className="space-y-4">
+            <div className="space-y-4 rounded-xl border border-[#d6e0db] bg-white p-4">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-[#202823]">
+                <UserCheck className="h-4 w-4 text-[#095F46]" /> How Change Requests Work
               </h3>
-              <ol className="text-xs text-[hsl(var(--muted-foreground))] space-y-3 list-decimal list-inside leading-relaxed">
+              <ol className="list-inside list-decimal space-y-3 text-xs leading-relaxed text-[#56635c]">
                 <li>
                   <strong className="text-[hsl(var(--foreground))]">Review:</strong> Our academic team examines your preferred timings and language requirements.
                 </li>
@@ -361,8 +357,8 @@ function StudentSupportContent() {
               </ol>
             </div>
 
-            <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2 text-amber-900 dark:text-amber-200">
-              <p className="font-bold flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
+            <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+              <p className="flex items-center gap-1.5 font-bold text-amber-700">
                 <Clock className="h-4 w-4" /> Average Turnaround Time
               </p>
               <p className="leading-relaxed">
@@ -378,9 +374,9 @@ function StudentSupportContent() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <div className="p-6 sm:p-8 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
+              <div className="p-6 sm:p-8 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
                 <div className="flex items-start gap-4 mb-6">
-                  <div className="h-12 w-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                  <div className="h-12 w-12 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
                     <MessageSquare className="h-6 w-6" />
                   </div>
                   <div>
@@ -395,7 +391,7 @@ function StudentSupportContent() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="p-6 rounded-2xl bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.3)] text-center space-y-3"
+                    className="p-6 rounded-xl bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.3)] text-center space-y-3"
                   >
                     <div className="h-12 w-12 rounded-full bg-[hsl(var(--success)/0.2)] text-[hsl(var(--success))] mx-auto flex items-center justify-center">
                       <CheckCircle2 className="h-6 w-6" />
@@ -492,7 +488,7 @@ function StudentSupportContent() {
 
             {/* Common Solutions Card */}
             <div>
-              <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-3">
+              <div className="p-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] space-y-3">
                 <h3 className="font-bold text-sm text-[hsl(var(--foreground))] flex items-center gap-2">
                   <HelpCircle className="h-4 w-4 text-[hsl(var(--primary))]" /> Common Solutions
                 </h3>
@@ -513,7 +509,7 @@ function StudentSupportContent() {
           {/* Direct WhatsApp Support & Direct Phone Hotline Below Contact Support Desk */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Direct WhatsApp Support Card */}
-            <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-4 relative overflow-hidden">
+            <div className="p-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-4 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-[#25D366]/5 rounded-bl-full pointer-events-none" />
 
               <div className="flex items-center justify-between">
@@ -557,7 +553,7 @@ function StudentSupportContent() {
             </div>
 
             {/* Direct Phone Hotline Card */}
-            <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-3.5 relative overflow-hidden">
+            <div className="p-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm space-y-3.5 relative overflow-hidden">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
@@ -594,7 +590,7 @@ function StudentSupportContent() {
       {/* ─── TAB 4: MY TICKETS ─── */}
       {activeTab === 'tickets' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
+          <div className="p-6 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="font-bold text-lg text-[hsl(var(--foreground))]">Your Support History & Inquiries</h2>
@@ -768,7 +764,7 @@ function StudentSupportContent() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                     Original Inquired Details
                   </h4>
-                  <div className="p-4 rounded-2xl bg-[hsl(var(--muted)/0.4)] border border-[hsl(var(--border))] text-xs text-[hsl(var(--foreground))] whitespace-pre-line leading-relaxed">
+                  <div className="p-4 rounded-xl bg-[hsl(var(--muted)/0.4)] border border-[hsl(var(--border))] text-xs text-[hsl(var(--foreground))] whitespace-pre-line leading-relaxed">
                     {currentSelectedTicket.reason || 'No description provided.'}
                   </div>
                 </div>
@@ -784,7 +780,7 @@ function StudentSupportContent() {
 
                   <div className="space-y-3">
                     {(!currentSelectedTicket.messages || currentSelectedTicket.messages.length === 0) && (
-                      <div className="p-5 rounded-2xl bg-[hsl(var(--muted)/0.2)] border border-dashed border-[hsl(var(--border))] text-center text-xs text-[hsl(var(--muted-foreground))]">
+                      <div className="p-5 rounded-xl bg-[hsl(var(--muted)/0.2)] border border-dashed border-[hsl(var(--border))] text-center text-xs text-[hsl(var(--muted-foreground))]">
                         Your inquiry is currently in the queue. Our academic support coordinator will respond directly in this conversation.
                       </div>
                     )}
@@ -812,7 +808,7 @@ function StudentSupportContent() {
                           </div>
 
                           <div
-                            className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
+                            className={`max-w-[85%] p-3.5 rounded-xl text-xs leading-relaxed whitespace-pre-line ${
                               isAdminSender
                                 ? 'bg-[#095F46] text-white shadow-sm rounded-tl-none'
                                 : 'bg-[hsl(var(--muted)/0.8)] text-[hsl(var(--foreground))] border border-[hsl(var(--border))] rounded-tr-none'

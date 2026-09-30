@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
-import { BookingCalendar } from '@/components/classroom/booking-calendar';
+import { BookingCalendar, type CalendarSlot } from '@/components/classroom/booking-calendar';
 
 interface AssignedLecturer {
   userId: string;
@@ -32,9 +32,10 @@ interface StudentProfileResponse {
 }
 
 interface BookingRecord {
-  id?: string;
+  id: string;
+  endsAt: string;
   startsAt: string;
-  status?: string;
+  status: string;
   subject?: string;
   lecturer?: {
     fullName?: string;
@@ -48,10 +49,9 @@ export default function BookSessionPage() {
 
   const [confirmed, setConfirmed] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const [assignedLecturer, setAssignedLecturer] = useState<AssignedLecturer | null>(null);
   const [lecturerTimeshift, setLecturerTimeshift] = useState<number[]>([]);
-  const [availabilitySlots, setAvailabilitySlots] = useState<unknown[]>([]);
+  const [availabilitySlots, setAvailabilitySlots] = useState<CalendarSlot[]>([]);
   const [studentBookings, setStudentBookings] = useState<BookingRecord[]>([]);
   const [selectedBookedSession, setSelectedBookedSession] = useState<BookingRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,7 +111,7 @@ export default function BookSessionPage() {
            userId: lecturer.userId || lecturer.id || '',
            name: lecturer.fullName || lecturer.name || 'Assigned Lecturer',
            title: lecturer.qualifications || lecturer.title || 'Quran Instructor',
-           hourlyAvailabilityJson: lecturer.hourlyAvailabilityJson || []
+           hourlyAvailabilityJson: Array.isArray(lecturer.hourlyAvailabilityJson) ? lecturer.hourlyAvailabilityJson.map(Number) : []
         };
 
         const timeshiftHours = Array.isArray(lecturerData.hourlyAvailabilityJson)
@@ -121,7 +121,7 @@ export default function BookSessionPage() {
         setAssignedLecturer(lecturerData);
         assignedLecturerIdRef.current = lecturerData.userId;
 
-        const slots = await apiFetch(`/availability/${lecturerData.userId}`).catch(() => null) as unknown[] | null;
+        const slots = await apiFetch(`/availability/${lecturerData.userId}`).catch(() => null) as CalendarSlot[] | null;
         if (isMounted && slots) {
           setAvailabilitySlots(slots);
         }
@@ -176,7 +176,6 @@ export default function BookSessionPage() {
         const [hour, min] = time.split(':');
         const startsAtDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
         const startsAt = startsAtDate.toISOString();
-        
         await apiFetch('/bookings', {
           method: 'POST',
           body: JSON.stringify({
@@ -189,7 +188,6 @@ export default function BookSessionPage() {
         const freshBookings = await apiFetch('/bookings/student');
         setStudentBookings(freshBookings || []);
       } catch {}
-      
       setConfirmed(selectedSlots.length);
       toast.success('Session(s) Booked!', 'Your sessions have been confirmed and added to your schedule.');
     } catch (error: unknown) {
@@ -211,14 +209,13 @@ export default function BookSessionPage() {
     <div className="space-y-6 animate-fade-in w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Book Session</h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Select available time slots with your assigned lecturer</p>
         </div>
         <Link href="/student/dashboard" className="text-sm text-[hsl(var(--primary))] hover:underline">← Back to Dashboard</Link>
       </div>
 
       {!assignedLecturer ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-sm">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
@@ -284,7 +281,7 @@ export default function BookSessionPage() {
           onClick={() => setSelectedBookedSession(null)}
         >
           <div
-            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-scale-in relative overflow-hidden"
+            className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-scale-in relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Ambient accent background glow */}
@@ -293,7 +290,7 @@ export default function BookSessionPage() {
             {/* Modal Header */}
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 shadow-xs">
+                <div className="h-11 w-11 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 shadow-xs">
                   <Calendar className="h-5 w-5" />
                 </div>
                 <div>
@@ -408,7 +405,7 @@ export default function BookSessionPage() {
               ) && (
                 <Link
                   href={`/student/courses/${courseId}/sessions/${selectedBookedSession.id}/room`}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-md transition-all flex items-center justify-center gap-1.5 order-first sm:order-none"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:shadow-md transition-all flex items-center justify-center gap-1.5 order-first sm:order-none"
                 >
                   <Video className="h-3.5 w-3.5" /> Enter Classroom
                 </Link>
@@ -434,14 +431,14 @@ export default function BookSessionPage() {
 
       {/* Confirmation Modal */}
       {confirmed > 0 && assignedLecturer && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={() => setConfirmed(false)}>
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in text-center" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={() => setConfirmed(0)}>
+          <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in text-center" onClick={e => e.stopPropagation()}>
             <div className="h-14 w-14 rounded-full bg-[hsl(var(--success)/0.15)] flex items-center justify-center mx-auto mb-4">
               <Check className="h-7 w-7 text-[hsl(var(--success))]" />
             </div>
             <h3 className="text-lg font-bold mb-2">Sessions Booked!</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{confirmed} session{confirmed === 1 ? '' : 's'} confirmed with {assignedLecturer.name}. You&apos;ll be able to join the internal classroom 5 minutes before the session starts.</p>
-            <Link href="/student/dashboard" className="block w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)]">Return to Dashboard</Link>
+            <Link href="/student/dashboard" className="block w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46]">Return to Dashboard</Link>
           </div>
         </div>
       )}

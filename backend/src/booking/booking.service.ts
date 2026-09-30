@@ -60,7 +60,10 @@ export class BookingService {
       where: {
         studentId,
         status: 'ACTIVE',
+        currentPeriodStart: { lte: now },
+        currentPeriodEnd: { gt: now },
       },
+      orderBy: { currentPeriodEnd: 'desc' },
     });
     if (!subscription) {
       throw new BadRequestException('Student does not have an active subscription');
@@ -237,7 +240,7 @@ export class BookingService {
 
   async validateBookingAllowance(studentId: string, bookingDate: Date, tier: string) {
     // Determine limits based on tier
-    const isPremium = tier && tier.toUpperCase().includes('PREMIUM');
+    const isPremium = /PREMIUM|FAST[\s_-]*TRACK/i.test(tier || '');
     const weeklyLimit = isPremium ? 3 : 2;
     const dailyLimit = 1;
 
@@ -283,7 +286,7 @@ export class BookingService {
     ).length;
 
     if (bookedThisWeek >= weeklyLimit) {
-      throw new BadRequestException(`Maximum weekly session allowance reached (${weeklyLimit} sessions per week for ${isPremium ? 'Premium' : 'Standard'} plan)`);
+      throw new BadRequestException(`Maximum weekly session allowance reached (${weeklyLimit} sessions per week for ${isPremium ? 'Fast Track' : 'Standard'} plan)`);
     }
 
     if (bookedThisDay >= dailyLimit) {
@@ -496,9 +499,13 @@ export class BookingService {
     });
   }
 
-  async updateBooking(id: string, data: { notes?: string; status?: string }) {
+  async updateBooking(id: string, data: { notes?: string; status?: string }, user: { id: string; role: Role }) {
     const session = await this.prisma.session.findUnique({ where: { id } });
     if (!session) throw new NotFoundException('Session not found');
+    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN && session.lecturerId !== user.id) throw new ForbiddenException('This session is not assigned to you');
+    if (data.notes !== undefined && (typeof data.notes !== 'string' || data.notes.length > 10000)) throw new BadRequestException('Invalid session notes');
+    if (data.status && data.status !== SessionStatus.COMPLETED) throw new BadRequestException('Use the cancellation, rescheduling, or attendance action to change session status');
+    if (data.status === SessionStatus.COMPLETED && (session.startsAt > new Date() || ![SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS].includes(session.status as any))) throw new BadRequestException('Only a started active session can be completed');
 
     return this.prisma.session.update({
       where: { id },

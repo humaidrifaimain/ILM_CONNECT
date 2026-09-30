@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, Length, MaxLength, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { Role } from '@prisma/client';
 
 export class RegisterDto {
@@ -9,7 +9,7 @@ export class RegisterDto {
   @MinLength(6, { message: 'Password must be at least 6 characters' })
   password: string;
 
-  @IsEnum(Role)
+  @IsIn([Role.STUDENT, Role.LECTURER])
   @IsOptional()
   role?: Role;
 
@@ -74,4 +74,27 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+}
+
+export class ForgotPasswordDto {
+  @IsEmail()
+  email: string;
+}
+export class ResetPasswordDto {
+  @IsString()
+  @Length(64, 64)
+  token: string;
+  @IsString()
+  @Length(8, 128)
+  password: string;
+}
+
+export class WaitlistDto {
+  @IsString() @Length(1, 200) fullName: string;
+  @IsEmail() @MaxLength(254) email: string;
+  @IsString() @MaxLength(30) phone: string;
+  @IsString() @Length(1, 100) country: string;
+  @IsIn(['Noorani Qaida', 'Tajweed Quran Recitation', 'Hifz Memorization']) course: string;
+  @IsIn(['standard', 'fast-track']) pace: string;
+  @IsString() @MaxLength(2000) notes: string;
 }

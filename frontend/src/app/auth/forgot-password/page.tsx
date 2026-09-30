@@ -1,10 +1,15 @@
 'use client';
 
+import { useState } from 'react';
+import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 import { Mail, ArrowLeft } from 'lucide-react';
 import Logo from '@/components/ui/logo';
 
 export default function ForgotPasswordPage() {
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   return (
     <div className="pattern-islamic flex min-h-dvh items-center justify-center bg-[#f7faf8] px-4 py-12">
       <div className="w-full max-w-md">
@@ -16,16 +21,17 @@ export default function ForgotPasswordPage() {
           <p className="text-sm text-[hsl(var(--muted-foreground))]">Enter your email and we&apos;ll send you a reset link</p>
         </div>
         <div className="rounded-[var(--radius-control)] border border-stone-200 bg-white p-6 shadow-[0_12px_35px_rgba(9,95,70,0.08)] sm:p-8">
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+          <form className="space-y-4" onSubmit={async event => { event.preventDefault(); setPending(true); setError(''); setMessage(''); const email = String(new FormData(event.currentTarget).get('email')); try { const result = await apiFetch('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }), skipRedirect: true }); setMessage(result.message); } catch (error) { setError(error instanceof Error ? error.message : 'Unable to request a reset link'); } finally { setPending(false); } }}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium mb-1.5">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-                <input id="email" type="email" placeholder="you@example.com" className="h-12 w-full rounded-[var(--radius-control)] border border-stone-300 bg-white pl-10 pr-4 text-sm outline-none transition-colors hover:border-stone-400 focus:border-[#095F46] focus:ring-2 focus:ring-[#095F46]/20" />
+                <input id="email" name="email" required autoComplete="email" type="email" placeholder="you@example.com" className="h-12 w-full rounded-[var(--radius-control)] border border-stone-300 bg-white pl-10 pr-4 text-sm outline-none transition-colors hover:border-stone-400 focus:border-[#095F46] focus:ring-2 focus:ring-[#095F46]/20" />
               </div>
             </div>
-            <button type="submit" className="brand-button brand-button-primary h-12 w-full">
-              Send reset link
+            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}{message && <p role="status" className="text-sm text-[#095F46]">{message}</p>}
+            <button disabled={pending} type="submit" className="brand-button brand-button-primary h-12 w-full">
+              {pending ? 'Sending…' : 'Send reset link'}
             </button>
           </form>
         </div>

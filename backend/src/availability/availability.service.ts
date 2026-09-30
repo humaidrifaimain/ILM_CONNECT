@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSlotDto } from './dto/availability.dto';
 
@@ -12,13 +12,8 @@ export class AvailabilityService {
       where: { userId: lecturerId },
     });
 
-    let targetId = lecturerId;
-    if (!profile) {
-      const firstLecturer = await this.prisma.lecturerProfile.findFirst();
-      if (firstLecturer) {
-        targetId = firstLecturer.userId;
-      }
-    }
+    if (!profile) throw new NotFoundException('Lecturer profile not found');
+    const targetId = lecturerId;
 
     return this.prisma.availabilitySlot.findMany({
       where: { lecturerId: targetId },
@@ -30,24 +25,14 @@ export class AvailabilityService {
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(dto.endsAt);
 
-    if (startsAt >= endsAt) {
+    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || startsAt >= endsAt) {
       throw new BadRequestException('Slot start time must be before end time');
     }
 
     // Ensure target lecturer has a valid profile
-    let targetId = lecturerId;
-    const profile = await this.prisma.lecturerProfile.findUnique({
-      where: { userId: lecturerId },
-    });
-
-    if (!profile) {
-      const firstLecturer = await this.prisma.lecturerProfile.findFirst();
-      if (firstLecturer) {
-        targetId = firstLecturer.userId;
-      } else {
-        throw new BadRequestException('No active lecturer profile found to assign availability slot');
-      }
-    }
+    const targetId = lecturerId;
+    const profile = await this.prisma.lecturerProfile.findUnique({ where: { userId: lecturerId } });
+    if (!profile) throw new NotFoundException('Lecturer profile not found');
 
     // If identical slot already exists for this lecturer, return it (idempotent)
     const existingSame = await this.prisma.availabilitySlot.findFirst({
@@ -75,15 +60,7 @@ export class AvailabilityService {
       if (overlap.status === 'BOOKED') {
         throw new BadRequestException('Slot overlaps with an already booked student session');
       }
-      // If existing slot is OPEN, update its timing smoothly rather than rejecting
-      return this.prisma.availabilitySlot.update({
-        where: { id: overlap.id },
-        data: {
-          startsAt,
-          endsAt,
-          recurringRule: dto.recurringRule || overlap.recurringRule,
-        },
-      });
+      throw new BadRequestException('Slot overlaps with an existing availability slot');
     }
 
     return this.prisma.availabilitySlot.create({

@@ -1,115 +1,54 @@
 'use client';
-
-import { Save } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
+import { useSubscriptionPlans } from '@/lib/subscription-plans';
+import { toast } from '@/components/ui/toast';
+import { usePricingCurrencies } from '@/lib/pricing-currency';
+import { studentUi } from '@/components/student/student-dashboard-ui';
 
 export default function AdminConfigPage() {
-  return (
-    <div className="space-y-6 animate-fade-in max-w-3xl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Configuration</h1>
-        <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] shadow-sm transition-all">
-          <Save className="h-4 w-4" /> Save All
-        </button>
-      </div>
-
-      {/* Pricing — Noorani Qaida */}
-      <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-stone-950">Beginner: Noorani Qaida Pricing (USD/month)</h2>
-          <span className="text-xs font-mono text-[#095F46] font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">8 or 12 sessions</span>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">Standard Plan (2 / week · 8 sessions)</label>
-            <input type="number" defaultValue={59} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-[#095F46] uppercase tracking-wider mb-1.5">Fast Track Plan (3 / week · 12 sessions)</label>
-            <input type="number" defaultValue={89} className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/20 text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-        </div>
-      </div>
-
-      {/* Pricing — Tajweed Quran Recitation */}
-      <div className="p-6 rounded-xl border-2 border-[#095F46]/30 bg-white shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-stone-950">Intermediate: Tajweed Recitation Pricing (USD/month)</h2>
-          <span className="text-xs font-bold text-white bg-[#095F46] px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px]">Popular</span>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">Standard Plan (2 / week · 8 sessions)</label>
-            <input type="number" defaultValue={59} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-[#095F46] uppercase tracking-wider mb-1.5">Fast Track Plan (3 / week · 12 sessions)</label>
-            <input type="number" defaultValue={89} className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/20 text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-        </div>
-      </div>
-
-      {/* Pricing — Hifz Memorization */}
-      <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-stone-950">Advanced: Hifz Memorization Pricing (USD/month)</h2>
-          <span className="text-xs font-mono text-[#095F46] font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">8 or 12 sessions</span>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">Standard Plan (2 / week · 8 sessions)</label>
-            <input type="number" defaultValue={59} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-[#095F46] uppercase tracking-wider mb-1.5">Fast Track Plan (3 / week · 12 sessions)</label>
-            <input type="number" defaultValue={89} className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/20 text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-        </div>
-      </div>
-
-      {/* Session Rules */}
-      <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">
-        <h2 className="font-semibold mb-4 text-stone-950">Session & Scheduling Rules</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-stone-700">Session Duration (minutes)</label>
-            <input type="number" defaultValue={45} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-stone-700">Standard Plan Sessions (monthly)</label>
-            <input type="number" defaultValue={8} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-[#095F46]">Fast Track Sessions (monthly)</label>
-            <input type="number" defaultValue={12} className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/20 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-stone-700">Min Gap Between Sessions (days)</label>
-            <input type="number" defaultValue={2} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Free Reschedule Window (hours)</label>
-            <input type="number" defaultValue={12} className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Min Booking Lead Time (hours)</label>
-            <input type="number" defaultValue={12} className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Lecturer Rate per Session (LKR)</label>
-            <input type="number" defaultValue={1250} className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Payout Cycle</label>
-            <select className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
-              <option>Bi-weekly</option><option>Monthly</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Payment Processing Fee (%)</label>
-            <input type="number" defaultValue={3} step={0.1} className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const queryClient = useQueryClient();
+  const { data: currencies = [] } = usePricingCurrencies();
+  const saveCurrencies = useMutation({
+    mutationFn: (rates: { code: string; lkrPerUnit: number; rateDate: string }[]) => apiFetch('/subscriptions/currencies', { method: 'PATCH', body: JSON.stringify({ rates }) }),
+    onSuccess: data => { queryClient.setQueryData(['pricingCurrencies'], data); toast.success('Currency rates saved'); },
+    onError: error => toast.error('Unable to save currency rates', error.message),
+  });
+  const { data: plans = [], isPending, isError } = useSubscriptionPlans();
+  const save = useMutation({
+    mutationFn: (prices: { id: string; monthlyUsd: number }[]) => apiFetch('/subscriptions/plans', { method: 'PATCH', body: JSON.stringify({ prices }) }),
+    onSuccess: data => {
+      queryClient.setQueryData(['subscriptionPlans'], data);
+      toast.success('Prices saved', 'Updated prices are now used by the pricing page and student plan selection.');
+    },
+    onError: error => toast.error('Unable to save prices', error.message),
+  });
+  if (isPending) return <p role="status">Loading configuration…</p>;
+  if (isError) return <p role="alert">Unable to load configuration. Please refresh to retry.</p>;
+  return <div className="space-y-5"><form key={JSON.stringify(plans)} onSubmit={event => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    save.mutate(plans.map(plan => ({ id: plan.id, monthlyUsd: Number(form.get(plan.id)) })));
+  }} className="w-full space-y-5">
+    <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-[#56635c]">Set monthly prices in USD. Changes apply to new plan selections.</p><button disabled={save.isPending} className={studentUi.primaryButton}>{save.isPending ? 'Saving…' : 'Save all prices'}</button></div>
+    <section className="grid gap-4 md:grid-cols-3">
+      {plans.filter(plan => plan.tier === 'Standard').map(standard => {
+        const accelerated = plans.find(plan => plan.courseId === standard.courseId && plan.tier === 'Fast Track')!;
+        return <article key={standard.id} className="rounded-xl border border-[#d6e0db] bg-white p-5">
+          <h2 className="min-h-12 text-lg font-semibold">{standard.course}</h2>
+          <div className="mt-4 space-y-4">{[standard, accelerated].map(plan => <label key={plan.id} className="block text-sm text-[#56635c]">{plan.tier} · {plan.sessions / 4} classes/week<input name={plan.id} aria-label={`${standard.course} ${plan.tier} monthly price in USD`} type="number" required min="0.01" max="10000" step="0.01" defaultValue={plan.monthlyUsd} disabled={save.isPending} className={`${studentUi.field} mt-2`} /></label>)}</div>
+        </article>;
+      })}
+    </section>
+    <section className="rounded-xl border border-[#d6e0db] bg-white p-5"><h2 className="font-semibold">Session & scheduling rules</h2><dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">{[['Session duration', '40 minutes'], ['Standard sessions', '8 per month'], ['Fast Track sessions', '12 per month'], ['Booking notice', '12 hours'], ['Free rescheduling notice', '12 hours']].map(([label, value]) => <div key={label}><dt className="text-sm text-[#56635c]">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</dl></section>
+  </form>
+    <form key={JSON.stringify(currencies)} onSubmit={event => {
+      event.preventDefault(); const form = new FormData(event.currentTarget);
+      saveCurrencies.mutate(currencies.map(item => ({ code: item.code, lkrPerUnit: item.code === 'LKR' ? 1 : Number(form.get(`rate-${item.code}`)), rateDate: String(form.get(`date-${item.code}`)) })));
+    }} className="rounded-xl border border-[#d6e0db] bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">Countries & currencies</h2><button disabled={saveCurrencies.isPending || currencies.length !== 5} className={studentUi.primaryButton}>{saveCurrencies.isPending ? 'Saving…' : 'Save currency rates'}</button></div>
+      <p className="mt-2 text-sm text-[#56635c]">Rates are Sri Lankan rupees for one unit of each currency. LKR is fixed at 1. Existing USD plan prices convert through LKR using these saved rates. Update rates and dates as needed; changes apply to displayed prices.</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{currencies.map(item => <div key={item.code}><h3 className="font-semibold">{item.region} · {item.code}</h3><label className="mt-3 block text-sm text-[#56635c]">LKR for 1 {item.code}<input name={`rate-${item.code}`} type="number" required min="0.000001" max="1000000" step="any" defaultValue={item.lkrPerUnit} readOnly={item.code === 'LKR'} className={`${studentUi.field} mt-1`} /></label><label className="mt-3 block text-sm text-[#56635c]">Rate date<input name={`date-${item.code}`} type="date" required defaultValue={item.rateDate} className={`${studentUi.field} mt-1`} /></label></div>)}</div>
+    </form>
+  </div>;
 }
