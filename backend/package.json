@@ -20,7 +20,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:demo": "npm run build && node test/demo-readiness.e2e.cjs"
+    "test:demo": "npm run build && node test/demo-readiness.e2e.cjs",
+    "test:trial": "npm run build && node test/trial-access.e2e.cjs"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
