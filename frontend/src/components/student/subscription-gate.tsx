@@ -10,8 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api';
 import { DashboardLoadingOverlay } from './dashboard-loading-overlay';
 import { useSubscriptionPlans, type SubscriptionPlan } from '@/lib/subscription-plans';
-
-interface SubscriptionAccess { requiresSubscription: boolean; }
+import { fetchSubscriptionAccess, type SubscriptionAccess } from '@/lib/subscription-access';
 
 export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth();
@@ -20,8 +19,8 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const { data, isPending, isError, refetch } = useQuery<SubscriptionAccess>({
     queryKey: ['subscriptionAccess', user?.id],
-    queryFn: () => apiFetch('/subscriptions/access'),
-    enabled: user?.role === 'STUDENT',
+    queryFn: () => fetchSubscriptionAccess(apiFetch),
+    enabled: !isLoading && user?.role === 'STUDENT',
     refetchInterval: query => query.state.data?.requiresSubscription ? 5000 : 60000,
     refetchOnWindowFocus: 'always',
     staleTime: 0,
