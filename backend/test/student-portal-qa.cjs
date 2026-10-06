@@ -150,7 +150,7 @@ async function run() {
   await check('Invalid reschedule date rejected',`/bookings/${upcoming.id}/reschedule`,'POST',{startsAt:'not-a-date'},student.token,400);
   await check('Classroom outsider rejected',`/livekit/token/${upcoming.id}`,'GET',undefined,outsider.token,403);
   await check('Missing classroom rejected','/livekit/token/missing-id','GET',undefined,student.token,400);
-  await check('Early classroom entry rejected',`/livekit/token/${upcoming.id}`,'GET',undefined,student.token,400);
+  await check('Early classroom entry allowed',`/livekit/token/${upcoming.id}`,'GET',undefined,student.token,200);
   await check('Completed classroom entry rejected',`/livekit/token/${completed.id}`,'GET',undefined,student.token,400);
   await check('Expired subscription classroom entry rejected',`/livekit/token/${expiredSession.id}`,'GET',undefined,expired.token,[400,403]);
   await check('Canceled classroom rejected',`/livekit/token/${canceled.id}`,'GET',undefined,student.token,400);
@@ -283,7 +283,7 @@ async function recheck() {
   await check('Profile excludes lecturer financial data','/profile/student','GET',undefined,f.student.token,200,data=>!data.assignedLecturer?.payoutDetails);
   await check('Bookings exclude internal notes and financial data','/bookings/student','GET',undefined,f.student.token,200,data=>data.every(item=>!item.notes?.internalNotes&&!item.lecturer?.payoutDetails));
   await check('Invalid reschedule date rejected',`/bookings/${f.upcoming.id}/reschedule`,'POST',{startsAt:'not-a-date'},f.student.token,400);
-  await check('Early classroom entry rejected',`/livekit/token/${f.upcoming.id}`,'GET',undefined,f.student.token,400);
+  await check('Early classroom entry allowed',`/livekit/token/${f.upcoming.id}`,'GET',undefined,f.student.token,200);
   await check('Completed classroom entry rejected',`/livekit/token/${f.completed.id}`,'GET',undefined,f.student.token,400);
   await check('Expired subscription classroom entry rejected',`/livekit/token/${f.expiredSession.id}`,'GET',undefined,f.expired.token,[400,403]);
   await check('Student cannot reopen canceled lesson',`/livekit/reopen/${f.canceled.id}`,'POST',{},f.student.token,[400,403]);

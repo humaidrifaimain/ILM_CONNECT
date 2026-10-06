@@ -134,7 +134,8 @@ async function run(){const {lecturer:l,other:o,student:s,fresh:f,foreign:x,admin
  const bookingTime=date(800);await slot(l,bookingTime);await check('Lecturer books assigned student','/bookings','POST',{studentId:f.id,lecturerId:l.id,startsAt:bookingTime.toISOString()},l.token,201,d=>d.studentId===f.id);
  const foreignTime=date(430);await slot(l,foreignTime);await check('Lecturer cannot book unassigned student','/bookings','POST',{studentId:x.id,startsAt:foreignTime.toISOString()},l.token,[400,403]);
  for(const [name,id] of [['foreign',foreignSession.id],['missing','missing']])await check('Classroom '+name+' denied','/livekit/token/'+id,'GET',undefined,l.token,name==='foreign'?403:400);
- for(const [name,id] of [['early',near.id],['completed',completed.id],['canceled',canceled.id]])await check('Classroom '+name+' blocked','/livekit/token/'+id,'GET',undefined,l.token,400);
+ await check('Classroom early entry allowed','/livekit/token/'+near.id,'GET',undefined,l.token,200);
+ for(const [name,id] of [['completed',completed.id],['canceled',canceled.id]])await check('Classroom '+name+' blocked','/livekit/token/'+id,'GET',undefined,l.token,400);
  await check('Classroom active entry','/livekit/token/'+live.id,'GET',undefined,l.token,200,d=>d.isSimulation&&d.session.id===live.id);
  await check('Other lecturer reopen denied','/livekit/reopen/'+canceled.id,'POST',{},o.token,403);
  await check('Completed reopen denied','/livekit/reopen/'+completed.id,'POST',{},l.token,400);
@@ -194,8 +195,8 @@ async function run(){const {lecturer:l,other:o,student:s,fresh:f,foreign:x,admin
  const raceTime=date(950);await slot(l,raceTime);
  const bookingRace=await Promise.all([req('/bookings','POST',{studentId:ra.id,startsAt:raceTime.toISOString()},l.token),req('/bookings','POST',{studentId:rb.id,startsAt:raceTime.toISOString()},l.token)]);
  const bookingRows=await db.session.count({where:{lecturerId:l.id,startsAt:raceTime,status:'SCHEDULED'}});checks.push({name:'Concurrent bookings reserve one lecturer slot once',at:new Date().toISOString(),passed:bookingRows===1&&bookingRace.filter(r=>r.status===201).length===1,response:{statuses:bookingRace.map(r=>r.status),sessions:bookingRows}});
- const farOld=await session(s,l,-72,'IN_PROGRESS');await check('Classroom expired join window blocked','/livekit/token/'+farOld.id,'GET',undefined,l.token,400);
- const oldCancel=await session(s,l,-96,'CANCELED');await check('Reopen expired classroom rejected','/livekit/token/'+oldCancel.id+'?reopen=true','GET',undefined,l.token,400);
+ const farOld=await session(s,l,-72,'IN_PROGRESS');await check('Classroom late entry allowed','/livekit/token/'+farOld.id,'GET',undefined,l.token,200);
+ const oldCancel=await session(s,l,-96,'CANCELED');await check('Reopen late classroom allowed','/livekit/token/'+oldCancel.id+'?reopen=true','GET',undefined,l.token,200);
  await db.supportTicket.update({where:{id:ticket.id},data:{status:'RESOLVED',resolvedAt:new Date()}});
  await check('Support resolved ticket reopens on lecturer reply','/support/tickets/'+ticket.id+'/messages','POST',{message:'QA further assistance'},l.token,201,d=>d.status==='IN_REVIEW'&&d.resolvedAt===null);
  const note=await db.notification.create({data:{userId:l.id,type:'QA_TEST',channel:'IN_APP',payloadJson:{title:'QA notification'}}});

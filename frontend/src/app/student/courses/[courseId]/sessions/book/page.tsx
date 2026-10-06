@@ -389,7 +389,7 @@ export default function BookSessionPage() {
               <div className="p-3.5 rounded-xl bg-[hsl(var(--primary)/0.08)] border border-[hsl(var(--primary)/0.2)] text-xs text-[hsl(var(--foreground)/0.8)] mb-5 flex items-start gap-2.5">
                 <Info className="h-4 w-4 text-[hsl(var(--primary))] flex-shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
-                  This session slot is already booked and reserved for you. You can enter the classroom 5 minutes before the scheduled time from your sessions dashboard.
+                  This session slot is already booked and reserved for you. You can enter the classroom at any time from your sessions dashboard while the session is scheduled or in progress.
                 </p>
               </div>
             )}
@@ -437,7 +437,7 @@ export default function BookSessionPage() {
               <Check className="h-7 w-7 text-[hsl(var(--success))]" />
             </div>
             <h3 className="text-lg font-bold mb-2">Sessions Booked!</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{confirmed} session{confirmed === 1 ? '' : 's'} confirmed with {assignedLecturer.name}. You&apos;ll be able to join the internal classroom 5 minutes before the session starts.</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{confirmed} session{confirmed === 1 ? '' : 's'} confirmed with {assignedLecturer.name}. You can join the classroom at any time while the session is scheduled or in progress.</p>
             <Link href="/student/dashboard" className="block w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46]">Return to Dashboard</Link>
           </div>
         </div>

@@ -81,10 +81,7 @@ export default function StudentSessionsPage() {
     return rawBookings.map((b: any) => {
       const endsAtDate = new Date(b.endsAt || new Date(new Date(b.startsAt).getTime() + 40 * 60 * 1000));
       const isPast = endsAtDate < now;
-      let effectiveStatus = b.status.toLowerCase();
-      if (effectiveStatus === 'scheduled' && isPast) {
-        effectiveStatus = 'no_show_student';
-      }
+      const effectiveStatus = b.status.toLowerCase();
       return {
         id: b.id,
         subject: b.subject || 'Quran Session',
@@ -234,7 +231,7 @@ export default function StudentSessionsPage() {
             </div>
           ) : sessions.map((s: any) => {
             const cfg = statusConfig[s.status] || statusConfig.scheduled;
-            const canJoin = (s.status === 'scheduled' || s.status === 'in_progress') && !s.isPast;
+            const canJoin = s.status === 'scheduled' || s.status === 'in_progress';
             return (
               <div
                 key={s.id}
@@ -305,8 +302,7 @@ export default function StudentSessionsPage() {
               <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Status</span><span className={`px-2 py-0.5 text-xs rounded-full font-medium ${(statusConfig[selectedSession.status] || statusConfig.scheduled).color}`}>{(statusConfig[selectedSession.status] || statusConfig.scheduled).label}</span></div>
             </div>
 
-            {/* If session was scheduled and is now past / missed */}
-            {(selectedSession.status === 'no_show_student' || selectedSession.isPast) && (
+            {selectedSession.status === 'no_show_student' && (
               <div className="p-4 rounded-xl border border-amber-300 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/90 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20 text-center space-y-2 mb-5">
                 <div className="inline-flex p-2.5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shadow-sm">
                   <AlertTriangle className="h-5 w-5" />
@@ -372,7 +368,7 @@ export default function StudentSessionsPage() {
                   <MessageSquareText className="h-4 w-4" /> {selectedSession.rating ? 'Edit Review' : 'Write Review'}
                 </Link>
               )}
-              {(selectedSession.status === 'scheduled' || selectedSession.status === 'in_progress') && !selectedSession.isPast && (
+              {(selectedSession.status === 'scheduled' || selectedSession.status === 'in_progress') && (
                 <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:shadow-md transition-all flex items-center justify-center gap-1.5">
                   <Play className="h-4 w-4 fill-current" /> Join Session
                 </Link>

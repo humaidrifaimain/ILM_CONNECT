@@ -16,12 +16,6 @@ export class LivekitController {
     private readonly notificationService: NotificationService,
   ) {}
 
-  private validateJoinWindow(session: { startsAt: Date }) {
-    const now = Date.now();
-    if (now < +session.startsAt - 30 * 60000) throw new BadRequestException('The classroom opens 30 minutes before the session starts');
-    if (now > +session.startsAt + 2 * 60 * 60000) throw new BadRequestException('The join window for this session has expired');
-  }
-
   /**
    * POST /livekit/reopen/:sessionId
    * Reopens a canceled or no-show session to SCHEDULED or IN_PROGRESS state.
@@ -47,7 +41,6 @@ export class LivekitController {
     if (!isLecturer && !isAdmin) {
       throw new ForbiddenException('You are not authorized to reopen this session');
     }
-    this.validateJoinWindow(session);
     if (![SessionStatus.CANCELED, SessionStatus.NO_SHOW_STUDENT].includes(session.status as any)) throw new BadRequestException('Only canceled sessions or student absences can be reopened');
 
     const now = new Date();
@@ -118,7 +111,6 @@ export class LivekitController {
 
     const now = new Date();
     const startsAt = new Date(session.startsAt);
-    this.validateJoinWindow(session);
     if ([SessionStatus.COMPLETED, SessionStatus.NO_SHOW_LECTURER].includes(session.status as any)) throw new BadRequestException('This session has concluded');
     if (isStudent) {
       const subscription = await this.prisma.subscription.findFirst({ where: {

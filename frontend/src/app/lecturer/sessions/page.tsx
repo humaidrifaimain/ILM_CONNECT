@@ -295,16 +295,12 @@ export default function LecturerSessionsPage() {
             const nowTime = now.getTime();
 
             const isPast = endsAtTime < nowTime;
-            let effectiveStatus = s.status;
-            if (effectiveStatus === 'SCHEDULED' && isPast) {
-              effectiveStatus = 'NO_SHOW_STUDENT';
-            }
+            const effectiveStatus = s.status;
 
             const cfg = statusConfig[effectiveStatus.toLowerCase()] || statusConfig.scheduled;
             const studentName = s.student?.fullName || 'Unknown Student';
             const subject = s.tier || 'Session';
             const isScheduled = effectiveStatus === 'SCHEDULED' && !isPast;
-            const isInProgress = effectiveStatus === 'IN_PROGRESS';
 
             // Lecturer 6-hour policy:
             // 1. Reschedule: Allowed at least 6 hours before start, OR within 6 hours after class ends.
@@ -358,7 +354,7 @@ export default function LecturerSessionsPage() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-[hsl(var(--border))]">
-                  {(isScheduled || isInProgress) && (
+                  {['SCHEDULED', 'IN_PROGRESS'].includes(s.status) && (
                     <Link
                       href={`/lecturer/sessions/${s.id}/room`}
                       className="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center gap-1.5"
