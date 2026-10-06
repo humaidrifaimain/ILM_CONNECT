@@ -1,27 +1,70 @@
-Students without an assigned learning path previously saw only a message telling them to contact a lecturer. They can now browse the course catalogue, request a course from their assigned lecturer, and track the review status. The lecturer receives a portal notification, reviews the request on Courses, and accepts or declines it. Acceptance assigns the course at 0% progress and notifies the student.
+## Description
 
-This PR also includes the existing QA fixes across the student, lecturer, admin, and super-admin portals: account-status enforcement, authenticated logout, booking concurrency checks, attendance rules, role checks, audit records, CSV escaping, and dialog/mobile fixes.
+This pull request provides a comprehensive suite of Quality Assurance (QA) bug fixes, security hardening, accessibility enhancements, and new feature implementations across the Super Admin, Admin, Lecturer, and Student portals, along with core backend services.
 
-## Course requests and compatibility
+---
 
-- Persist request status and notifications in database transactions. Duplicate requests do not duplicate notifications; concurrent reviews allow one successful decision.
-- Restrict review to the student's currently assigned lecturer. Acceptance preserves existing course progress and does not mark lessons complete.
-- Keep the catalogue and assigned course visible if the request API is unavailable during rollout. Disable request controls until the API responds.
-- Validate the finance response before rendering or exporting it, so an older backend missing `revenueByPlan` produces an error message instead of crashing the page.
+### Part 1: New Features & Architectural Enhancements (6 October 2026)
 
-## Deployment preparation
+#### 1. Student Availability & Assignment Requests
+- **Mandatory Preferred Hours**: Enforced selection of preferred study time blocks during student signup and within Student Settings (`availability-settings.tsx`, `availability-dialog.tsx`).
+- **Normalized Persistence**: Backend validates and sorts hour arrays (0–23), rejecting duplicates, empty arrays, and out-of-range values.
+- **Assignment Request Workflow**: Student signups automatically generate an assignment request in the Admin portal (`request-lecturer-assignment.tsx`). Prevents student self-assignment and rejects lecturer assignments with conflicting schedules.
+- **Prisma Migrations**: Added migrations `20261006000000_student_preferred_hours` and `20261006120000_student_assignment_requests`.
 
-- Add the course-request schema migration and repair unsupported PostgreSQL syntax in the September 11 support-ticket migration using guarded constraint creation.
-- Add `npm run deploy:prepare` in `backend` to apply pending migrations and then compile. Fix production startup to use `dist/src/main.js`; compile without incremental state so clean builds emit all required files.
-- Run preparation against the intended database before releasing the backend, then rebuild the frontend with the matching API URL. Preparation does not deploy the application or change hosting settings.
-- A database that previously recorded a failed migration still needs its state inspected before recovery. No automatic migration reset or forced migration resolution is included.
+#### 2. Live Classroom Meeting Clock & Session Lifecycle
+- **Authoritative Server Timer**: Implemented `MeetingClockService` to track lesson start times authoritatively, preventing client-side clock tampering.
+- **Synchronized Session Timer**: Both participants share the same countdown. At 40 minutes, a 5-minute extension banner is shown; at 45 minutes, the room automatically marks completed and revokes token access.
+- **In-Call Collaboration**: Integrated `meeting-chat.tsx` and `meeting-reactions.tsx` for real-time interaction during live classroom calls.
+- **Prisma Migration**: Added `20261006170000_meeting_clock_and_session_status`.
 
-## Validation
+#### 3. Lecturer Breaks & 10-Minute Step Availability
+- **10-Minute Buffer Rule**: Enforced a mandatory 10-minute break between 40-minute sessions in booking and rescheduling services (`conflictsWithLecturerBreak`).
+- **Sub-Hour Schedule Grid**: Updated Lecturer Availability calendar to 10-minute step increments (`cellStepMinutes={10}`, `breakMinutes={10}`) with clear guidance and boundary validation.
+- **Sequential Mutation**: Serialized delete-then-create slot operations to prevent transient overlap errors when re-arranging schedule blocks.
 
-- All 18 existing backend suites and 114 tests pass.
-- All nine migrations apply to fresh PostgreSQL 16; a repeat preparation reports no pending migrations. Replaying the repaired support-ticket SQL also succeeds.
-- Course-request API lifecycle tests pass against the migrated local database, including permissions, validation, duplicate submissions, concurrent review, decline/re-request, and assignment at 0%.
-- Browser checks pass for student request, lecturer notification/acceptance, student notification and assigned course, mobile overflow, API-unavailable catalogue fallback, and the older finance-response crash.
-- Backend production startup/database-health smoke check, frontend TypeScript/lint checks, and production builds pass.
+#### 4. Regional Pricing & Currency Conversion
+- **Independent LKR & USD Pricing**: Super admins can configure distinct pricing structures for Sri Lankan Rupees (LKR) and US Dollars (USD).
+- **Exchange Rate Engine**: Added `ExchangeRateService` for automated conversions to GBP, EUR, and AUD with fallback caching.
+- **Finance Panel & Billing**: Added `exchange-rates-panel.tsx` to Admin Finance and currency switcher (`pricing-currency.tsx`) in student billing.
+- **Prisma Migration**: Added `20261006190000_regional_pricing`.
 
-Deployment instructions and test commands: [`docs/course-request-deployment.md`](docs/course-request-deployment.md).
+#### 5. Signup Demographics
+- **Demographics Collection**: Collected and validated gender and date of birth during student registration with age and formatting checks.
+- **Prisma Migration**: Added `20261006200000_signup_demographics`.
+
+---
+
+### Part 2: Core QA Bug Fixes & Security Hardening (5 October 2026)
+
+#### 1. Authentication, Sessions & Security
+- **Active Account Enforcement**: Enforced strict `ACTIVE` account checks in the JWT authentication strategy and signin flow, rejecting suspended or soft-deleted accounts immediately.
+- **Registration Input Validation**: Sanitized and validated all registration inputs (full name, phone number, country, and verified IANA timezone identifiers).
+- **Secure Authenticated Logout**: Added authenticated `POST /api/v1/auth/logout` endpoint that increments `tokenVersion` to invalidate active JWT tokens and logs an audit trail event.
+- **Sensitive Data Scrubbing**: Stripped password hashes and private credentials from administrative user and lecturer response payloads.
+
+#### 2. Booking, Availability & Attendance
+- **Slot Locking & Concurrency Protection**: Added transactional locking (`FOR UPDATE`) to prevent race conditions and duplicate bookings for identical time slots.
+- **Assigned Lecturer Validation**: Enforced verification ensuring students have an assigned active lecturer before booking a trial or regular session.
+- **Attendance Resolution**: Prohibited attendance modifications on future or terminal sessions. Differentiated lecturer absence (`No-Show (Lecturer)`) from student absence (`No-Show (Student)`) with full audit tracking.
+
+#### 3. Admin & Super Admin Portals
+- **Audit Trails**: Added automatic audit logging for user status modifications, lecturer assignments, and administrative payout executions.
+- **CSV Export Security**: Secured session CSV exports against formula injection (`=`, `@`, `+`, `-`) with formula escaping and standard RFC formatting.
+- **Modal Dialog Accessibility**: Integrated `useDialogAccessibility` hook across admin dialogs for keyboard focus trapping, `Escape` key dismissal, and focus restoration to trigger buttons.
+- **Mobile Responsiveness**: Fixed navigation and layout overflow across all admin routes, ensuring clean display down to 320px viewports without horizontal scrolling.
+
+#### 4. Lecturer & Student Portals
+- **Support & Ticket Role Checks**: Prevented students and lecturers from escalating administrative ticket statuses during discussion replies.
+- **Classroom & Video Conferencing**: Improved LiveKit room token generation, verified role permissions, and stabilized classroom controls.
+- **Student Portal Polish**: Corrected star rating accessibility labels, improved course materials pagination, and streamlined session rescheduling flows.
+
+---
+
+### Verification & Test Results
+
+- **Backend Test Suites**: All **24 suites / 189 unit & integration tests passing** (`npm test`).
+- **Backend Build**: Successfully compiled with `prisma generate && tsc -p tsconfig.build.json`.
+- **Frontend Typecheck**: TypeScript check passed with **0 errors** (`npx tsc --noEmit`).
+- **Frontend Production Build**: Optimized Turbopack build passed cleanly (`next build`, **all 38 static and dynamic routes**).
+- **Database Migrations**: All 14 Prisma database migrations tested and applied cleanly.
