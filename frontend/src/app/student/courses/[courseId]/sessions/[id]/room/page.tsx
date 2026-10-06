@@ -13,6 +13,7 @@ import {
 import { apiFetch } from '@/lib/api';
 import { InteractiveClassroom } from '@/components/classroom/interactive-classroom';
 import { LiveClassroom } from '@/components/classroom/live-classroom';
+import { useClassroomConnection } from '@/hooks/use-classroom-connection';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface SessionInfo {
@@ -181,6 +182,15 @@ export default function SessionRoom({
   const [error, setError] = useState<string | null>(null);
   const [initialMic, setInitialMic] = useState(true);
   const [initialCam, setInitialCam] = useState(true);
+  const leaveClassroom = useCallback(() => {
+    router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}&prompt=1`);
+  }, [router, courseId, sessionId]);
+  const reportConnectionError = useCallback((err: Error) => {
+    console.error('LiveKit connection error:', err);
+    setError(err.message || 'Failed to connect to the classroom');
+    setState('error');
+  }, []);
+  const { handleLeave, handleError, handleConnected, handleDisconnected } = useClassroomConnection(leaveClassroom, reportConnectionError);
 
   // Fetch session info for pre-join screen
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
@@ -210,19 +220,22 @@ export default function SessionRoom({
   };
 
   useEffect(() => {
+    let active = true;
     (async () => {
       try {
         const data = await apiFetch(`/livekit/token/${sessionId}`);
+        if (!active) return;
         setSessionInfo(data.session);
         setTokenData(data);
       } catch (err: any) {
+        if (!active) return;
         if (err.data?.session) {
           setSessionInfo(err.data.session);
         }
-        // If canceled or not within window, record error
         setError(err.message);
       }
     })();
+    return () => { active = false; };
   }, [sessionId]);
 
   const isCanceledError = error?.toLowerCase().includes('cancel');
@@ -312,7 +325,7 @@ export default function SessionRoom({
         initialMic={initialMic}
         initialCam={initialCam}
         warning={tokenData.warning}
-        onLeave={() => router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}&prompt=1`)}
+        onLeave={handleLeave}
       />
     );
   }
@@ -325,21 +338,16 @@ export default function SessionRoom({
       connect={true}
       video={initialCam}
       audio={initialMic}
-      onError={(err) => {
-        console.error('LiveKit connection error:', err);
-        setError(err.message || 'Failed to connect to LiveKit video server');
-        setState('error');
-      }}
-      onDisconnected={() => {
-        router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}&prompt=1`);
-      }}
+      onError={handleError}
+      onConnected={handleConnected}
+      onDisconnected={handleDisconnected}
       style={{ height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 50 }}
     >
       <LiveClassroom
         sessionInfo={tokenData.session}
         userRole="student"
         courseId={courseId}
-        onLeave={() => router.push(`/student/courses/${courseId}/feedback?sessionId=${sessionId}&prompt=1`)}
+        onLeave={handleLeave}
       />
     </LiveKitRoom>
   );
