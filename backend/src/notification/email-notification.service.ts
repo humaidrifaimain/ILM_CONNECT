@@ -14,6 +14,7 @@ export interface EmailDispatchPayload {
     | 'BOOKING_CANCELLED'
     | 'BOOKING_RESCHEDULED'
     | 'SESSION_STUDENT_NO_SHOW'
+    | 'SESSION_LECTURER_NO_SHOW'
     | 'GENERAL';
   metadata?: Record<string, any>;
 }
@@ -91,7 +92,8 @@ export class EmailNotificationService {
       | 'BOOKING_CONFIRMED'
       | 'BOOKING_CANCELLED'
       | 'BOOKING_RESCHEDULED'
-      | 'SESSION_STUDENT_NO_SHOW';
+      | 'SESSION_STUDENT_NO_SHOW'
+      | 'SESSION_LECTURER_NO_SHOW';
     recipientName: string;
     actorName: string;
     actorRole: string;
@@ -143,6 +145,11 @@ export class EmailNotificationService {
       headline = 'Session Attendance: Marked Absent';
       statusColor = '#ea580c'; // Orange
       mainDescription = `You were marked absent by ${actorName} (${roleLabel}) for the scheduled session.`;
+    } else if (eventType === 'SESSION_LECTURER_NO_SHOW') {
+      subject = `[IlmConnect] Lecturer absence on ${sessionDateFormatted}`;
+      headline = 'Lecturer absence recorded';
+      statusColor = '#c2410c';
+      mainDescription = 'Your lecturer was absent for the scheduled session. Contact support to arrange the next lesson.';
     }
 
     const textContent = `

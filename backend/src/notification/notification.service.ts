@@ -22,7 +22,8 @@ export interface DispatchBookingNotificationParams {
     | 'BOOKING_CONFIRMED'
     | 'BOOKING_CANCELLED'
     | 'BOOKING_RESCHEDULED'
-    | 'SESSION_STUDENT_NO_SHOW';
+    | 'SESSION_STUDENT_NO_SHOW'
+    | 'SESSION_LECTURER_NO_SHOW';
   sessionId: string;
   actor: {
     id: string;
@@ -184,6 +185,9 @@ export class NotificationService {
     } else if (eventType === 'SESSION_STUDENT_NO_SHOW') {
       title = 'Class Attendance: Marked Absent';
       message = `You were marked absent by ${actor.name} for the scheduled session on ${sessionDateFormatted} at ${sessionTimeFormatted}.${reason ? ` Note: ${reason}` : ''}`;
+    } else if (eventType === 'SESSION_LECTURER_NO_SHOW') {
+      title = 'Lecturer absence recorded';
+      message = `Your lecturer was absent for the session on ${sessionDateFormatted} at ${sessionTimeFormatted}.${reason ? ` Note: ${reason}` : ''}`;
     }
 
     this.logger.log(

@@ -1,4 +1,4 @@
-import DashboardSidebar from './dashboard-sidebar';
+import DashboardSidebar, { DashboardMobileNav } from './dashboard-sidebar';
 import { DashboardTopbar } from './dashboard-nav';
 
 export function DashboardShell({ children, floatingAction }: {
@@ -10,6 +10,7 @@ export function DashboardShell({ children, floatingAction }: {
       <DashboardSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <DashboardTopbar />
+        <DashboardMobileNav />
         <main className="min-w-0 w-full flex-1 p-3 sm:p-4 lg:p-4">{children}</main>
       </div>
       {floatingAction}

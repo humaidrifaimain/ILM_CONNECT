@@ -248,7 +248,7 @@ export default function StudentDetailPage() {
         <StatCard icon={Calendar} label="Total Sessions" value={stats.totalSessions} color="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
         <StatCard icon={CheckCircle2} label="Completed" value={stats.completedCount} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" />
         <StatCard icon={Clock} label="Upcoming" value={stats.upcomingCount} color="bg-amber-500/10 text-amber-700 dark:text-amber-400" />
-        <StatCard icon={Star} label="Avg Progress Rating" value={stats.avgStudentRating ? `${stats.avgStudentRating}/5` : '—'} color="bg-purple-500/10 text-purple-600 dark:text-purple-400" />
+        <StatCard icon={Star} label="Avg Progress Rating" value={stats.avgStudentRating ? `${stats.avgStudentRating}/5` : 'No ratings'} color="bg-purple-500/10 text-purple-600 dark:text-purple-400" />
       </div>
 
       {/* Curriculum Progress */}
@@ -259,7 +259,7 @@ export default function StudentDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
             <div className="p-3 rounded-xl bg-[hsl(var(--muted)/0.4)] border border-[hsl(var(--border))]">
               <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1 flex items-center gap-1.5"><Layers className="h-3.5 w-3.5" /> Learning Path</div>
-              <div className="text-sm font-semibold">{progress.currentLearningPath?.title || '—'}</div>
+              <div className="text-sm font-semibold">{progress.currentLearningPath?.title || 'No course assigned'}</div>
               <div className="text-xs text-[hsl(var(--muted-foreground))]">{progress.currentLearningPath?.level}</div>
             </div>
             <div className="p-3 rounded-xl bg-[hsl(var(--muted)/0.4)] border border-[hsl(var(--border))]">
@@ -364,7 +364,7 @@ export default function StudentDetailPage() {
                           ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                           : isMedium
                           ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                          : 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20'
                       }`}>
                         {a.score}/{a.maxScore || 100} {a.grade && `· ${a.grade}`}
                       </div>

@@ -30,6 +30,10 @@ describe('Subscription access', () => {
     prisma.subscription.findMany.mockResolvedValue([]);
     await expect(service.getAccess('student-1')).resolves.toEqual({ requiresSubscription: false });
   });
+  it('blocks an expired paid account with no previous trial', async () => {
+    prisma.subscription.findMany.mockResolvedValue([{ ...trial, tier: 'Standard' }]);
+    await expect(service.getAccess('student-1')).resolves.toEqual({ requiresSubscription: true });
+  });
 });
 
 describe('Plan price configuration', () => {

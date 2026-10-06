@@ -12,13 +12,13 @@ export default function LecturerStudentsPage() {
   const router = useRouter();
 
   // Fetch all bookings for this lecturer
-  const { data: bookings = [], isLoading: loadingBookings } = useQuery({
+  const { data: bookings = [], isLoading: loadingBookings, isError: bookingsError, refetch: refetchBookings } = useQuery({
     queryKey: ['lecturerBookings'],
     queryFn: () => apiFetch('/bookings/lecturer'),
   });
 
   // Fetch all assigned students for this lecturer
-  const { data: assignedStudents = [], isLoading: loadingStudents } = useQuery({
+  const { data: assignedStudents = [], isLoading: loadingStudents, isError: studentsError, refetch: refetchStudents } = useQuery({
     queryKey: ['lecturerAssignedStudents'],
     queryFn: () => apiFetch('/profile/lecturer/students'),
   });
@@ -93,6 +93,7 @@ export default function LecturerStudentsPage() {
     s.courseTier.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (bookingsError || studentsError) return <div role="alert" className="space-y-3"><p>Unable to load your assigned students and sessions.</p><button className="rounded-lg border px-4 py-2" onClick={() => { void refetchStudents(); void refetchBookings(); }}>Retry</button></div>;
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

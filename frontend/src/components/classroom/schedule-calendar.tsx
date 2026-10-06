@@ -34,7 +34,7 @@ function timeLabel(date: Date) {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleHours, onCellClick, isCellDisabled, getCellDisabledReason, onDateChange, ariaLabel = 'Session calendar' }: {
+export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleHours, onCellClick, isCellDisabled, getCellDisabledReason, onDateChange, ariaLabel = 'Session calendar', timezoneLabel = 'Times shown in your device’s timezone' }: {
   events: ScheduleEvent[];
   startHour?: number;
   endHour?: number;
@@ -44,6 +44,7 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
   getCellDisabledReason?: (date: Date) => string | undefined;
   onDateChange?: (date: Date) => void;
   ariaLabel?: string;
+  timezoneLabel?: string;
 }) {
   const [date, setDate] = useState(() => new Date());
   const [view, setView] = useState<CalendarView>('week');
@@ -78,11 +79,11 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
   );
 
   return (
-    <section aria-label={ariaLabel} className="overflow-hidden rounded-xl border border-[#e4e7eb] bg-white shadow-sm">
+    <section aria-label={ariaLabel} className="min-w-0 max-w-full overflow-hidden rounded-xl border border-[#e4e7eb] bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="flex items-center gap-3"><h2 className="text-lg font-bold text-stone-900">{date.toLocaleDateString([], { month: 'long', year: 'numeric' })}</h2><button type="button" onClick={() => moveTo(new Date())} className="rounded-md border border-[#e4e7eb] px-3 py-2 text-sm font-semibold hover:bg-stone-50">Today</button></div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-lg bg-[#f5f6f8] p-1" aria-label="Calendar view">{(['day', 'week', 'month'] as const).map(item => <button type="button" key={item} aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-md px-3 py-2 text-sm capitalize ${view === item ? 'bg-white font-bold text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}>{item.charAt(0).toUpperCase() + item.slice(1)}</button>)}</div>
+          <div className="flex rounded-lg bg-[#f5f6f8] p-1" aria-label="Calendar view">{(['day', 'week', 'month'] as const).map(item => <button type="button" key={item} aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-md px-3 py-2 text-sm capitalize ${view === item ? 'bg-white font-bold text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'}`}>{item.charAt(0).toUpperCase() + item.slice(1)}</button>)}</div>
           <span className="flex items-center gap-2 rounded-lg border border-[#e4e7eb] px-3 py-2 text-xs font-semibold text-stone-600"><CalendarDays className="h-4 w-4" />{view === 'month' ? date.toLocaleDateString([], { month: 'long', year: 'numeric' }) : `${days[0].toLocaleDateString([], { day: 'numeric', month: 'short' })} – ${days[days.length - 1].toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}`}</span>
         </div>
       </div>
@@ -108,7 +109,7 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
                         title={reason || (onCellClick ? 'Click to add an available session' : 'No session')}
                         aria-label={`${cellDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}, ${timeLabel(cellDate)}${reason ? `, ${reason}` : ''}`}
                         style={{ height: hourHeight * 2 / 3 - 4, borderRadius: 10, fontSize: 10, backgroundImage: disabled ? 'repeating-linear-gradient(135deg, transparent, transparent 5px, #d6e0db55 5px, #d6e0db55 6px)' : undefined }}
-                        className={`flex w-full flex-col items-center justify-center gap-0.5 border text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095F46] ${disabled ? 'border-[#d6e0db] bg-[#f0f3f1] text-[#56635c]' : 'border-[#e1e9e5] bg-white text-[#8a9890] enabled:hover:border-[#095F46] enabled:hover:bg-[#effaf5]'}`}>
+                        className={`flex w-full flex-col items-center justify-center gap-0.5 border text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095F46] ${disabled ? 'border-[#d6e0db] bg-[#f0f3f1] text-[#56635c]' : 'border-[#e1e9e5] bg-white text-[#56635c] enabled:hover:border-[#095F46] enabled:hover:bg-[#effaf5]'}`}>
                         {disabled ? <><LockKeyhole aria-hidden="true" className="h-3 w-3" /><span className="max-w-full truncate px-1">{reason}</span></> : onCellClick ? <span>+ Add slot</span> : null}
                       </button>
                     </div>;
@@ -127,7 +128,7 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
             </div>}
         </div>
       </div>
-      <div className="flex flex-wrap gap-4 border-t border-[#e4e7eb] px-4 py-3 text-xs text-stone-500"><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#b9cac2]" />Scheduled / booked</span><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#10BF8D]" />Selected / completed</span><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#b4dfce]" />Available</span><span className="flex items-center gap-2"><LockKeyhole className="h-3 w-3" />Locked / unavailable</span><span>Times shown in your device’s timezone</span></div>
+      <div className="flex flex-wrap gap-4 border-t border-[#e4e7eb] px-4 py-3 text-xs text-stone-600"><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#b9cac2]" />Scheduled / booked</span><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#10BF8D]" />Selected / completed</span><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#b4dfce]" />Available</span><span className="flex items-center gap-2"><LockKeyhole className="h-3 w-3" />Locked / unavailable</span><span>{timezoneLabel}</span></div>
     </section>
   );
 }

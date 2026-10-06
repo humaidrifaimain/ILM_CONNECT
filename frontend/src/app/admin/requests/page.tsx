@@ -4,7 +4,6 @@ import { AdminWaitlist } from '@/components/layout/admin-waitlist';
 import { useState } from 'react';
 import {
   Search,
-  UserPlus,
   RefreshCw,
   CheckCircle,
   Clock,
@@ -13,21 +12,17 @@ import {
   X,
   User,
   GraduationCap,
-  Sparkles,
   AlertCircle,
   HelpCircle,
-  ExternalLink,
-  ChevronRight,
   Loader2,
-  CheckCircle2,
-  RotateCcw,
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { TableSkeleton } from '@/components/ui/loading-screen';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Portal } from '@/components/ui/portal';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 
 interface TicketMessage {
   id: string;
@@ -73,9 +68,10 @@ export default function AdminRequestsPage() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const dialogRef = useDialogAccessibility(!!selectedTicket, () => { if (!sendingReply) setSelectedTicket(null); });
 
   // Fetch tickets with 10-second silent background polling
-  const { data: tickets = [], isLoading, refetch } = useQuery<SupportTicket[]>({
+  const { data: tickets = [], isLoading, isError, refetch } = useQuery<SupportTicket[]>({
     queryKey: ['adminSupportTickets'],
     queryFn: () => apiFetch('/support/tickets'),
     refetchInterval: 10000,
@@ -123,8 +119,8 @@ export default function AdminRequestsPage() {
       });
       await queryClient.invalidateQueries({ queryKey: ['adminSupportTickets'] });
       toast.success('Status Updated', `Ticket status updated to ${newStatus}.`);
-    } catch (err: any) {
-      toast.error('Update Failed', err?.message || 'Failed to update ticket status');
+    } catch (err) {
+      toast.error('Update Failed', err instanceof Error ? err.message : 'Failed to update ticket status');
     }
   };
 
@@ -142,8 +138,8 @@ export default function AdminRequestsPage() {
       setReplyText('');
       await queryClient.invalidateQueries({ queryKey: ['adminSupportTickets'] });
       toast.success('Reply Sent', 'Your message has been delivered to the user.');
-    } catch (err: any) {
-      toast.error('Failed to send reply', err?.message || 'Could not post message');
+    } catch (err) {
+      toast.error('Failed to send reply', err instanceof Error ? err.message : 'Could not post message');
     } finally {
       setSendingReply(false);
     }
@@ -159,6 +155,7 @@ export default function AdminRequestsPage() {
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <AdminWaitlist />
+      {isError && <p role="alert">Unable to load support requests. <button className="underline" onClick={() => refetch()}>Retry</button></p>}
       {/* ─── Header ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -372,13 +369,13 @@ export default function AdminRequestsPage() {
                               ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
                               : isInReview
                               ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
-                              : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                              : 'bg-amber-100 text-amber-900 dark:text-amber-900'
                           }`}
                         >
                           {isResolved ? (
                             <CheckCircle className="h-3 w-3" />
                           ) : isInReview ? (
-                            <Sparkles className="h-3 w-3" />
+                            <MessageSquare className="h-3 w-3" />
                           ) : (
                             <Clock className="h-3 w-3" />
                           )}
@@ -425,7 +422,7 @@ export default function AdminRequestsPage() {
                       <div className="h-12 w-12 rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] flex items-center justify-center mx-auto mb-3">
                         <MessageSquare className="h-6 w-6" />
                       </div>
-                      <p className="font-semibold text-sm">No operational requests match your filter.</p>
+                      <p className="font-semibold text-sm">{isError ? 'Unable to load support requests.' : 'No operational requests match your filter.'}</p>
                       <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
                         Try resetting the search or selecting &ldquo;All Requests&rdquo;.
                       </p>
@@ -447,6 +444,11 @@ export default function AdminRequestsPage() {
               onClick={() => setSelectedTicket(null)}
             >
               <motion.div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="request-conversation-title"
+                tabIndex={-1}
                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -467,7 +469,7 @@ export default function AdminRequestsPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-[hsl(var(--foreground))]">
+                      <h2 id="request-conversation-title" className="text-base font-bold text-[hsl(var(--foreground))]">
                         {getDisplayName(currentSelectedTicket)}
                       </h2>
                       <span
@@ -493,13 +495,14 @@ export default function AdminRequestsPage() {
                         ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
                         : currentSelectedTicket.status === 'IN_REVIEW'
                         ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
-                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                        : 'bg-amber-100 text-amber-900'
                     }`}
                   >
                     {currentSelectedTicket.status}
                   </span>
                   <button
                     onClick={() => setSelectedTicket(null)}
+                    aria-label="Close request conversation"
                     className="h-8 w-8 rounded-full hover:bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))] transition-colors"
                   >
                     <X className="h-4 w-4" />
@@ -608,6 +611,8 @@ export default function AdminRequestsPage() {
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     placeholder={`Write an official reply message to ${getDisplayName(currentSelectedTicket)}...`}
+                    aria-label="Reply to support request"
+                    maxLength={10000}
                     className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] placeholder:text-[hsl(var(--muted-foreground))]"
                   />
                 </div>
@@ -621,7 +626,7 @@ export default function AdminRequestsPage() {
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                         currentSelectedTicket.status === 'IN_REVIEW'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
+                          : 'bg-blue-500/10 text-blue-800 hover:bg-blue-500/20'
                       }`}
                     >
                       In Review
@@ -632,7 +637,7 @@ export default function AdminRequestsPage() {
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                         currentSelectedTicket.status === 'RESOLVED'
                           ? 'bg-emerald-600 text-white'
-                          : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
+                          : 'bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/20'
                       }`}
                     >
                       Resolved

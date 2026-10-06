@@ -41,7 +41,9 @@ export class AuthController {
   }
 
   @Post('logout')
-  async logout(@Res({ passthrough: true }) response: Response) {
+  @UseGuards(JwtAuthGuard)
+  async logout(@Req() request: any, @Res({ passthrough: true }) response: Response) {
+    await this.authService.logout(request.user.id);
     response.clearCookie('session', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

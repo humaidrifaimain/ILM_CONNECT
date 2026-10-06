@@ -58,6 +58,12 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     try {
+      for (const field of ['fullName', 'phone', 'country', 'timezone'] as const) {
+        if (typeof dto[field] !== 'string' || !dto[field].trim()) throw new BadRequestException(`Provide a valid ${field}`);
+        dto[field] = dto[field].trim();
+      }
+      try { new Intl.DateTimeFormat('en', { timeZone: dto.timezone }); }
+      catch { throw new BadRequestException('Choose a valid timezone, such as Asia/Colombo'); }
       const existingUser = await this.prisma.user.findUnique({
         where: { email: dto.email.toLowerCase() },
       });
@@ -148,7 +154,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid credentials');
       }
 
-      if (user.status === UserStatus.SUSPENDED) {
+      if (user.deletedAt || user.status !== UserStatus.ACTIVE) {
         throw new UnauthorizedException('Account suspended. Please contact administrator.');
       }
 
@@ -186,6 +192,13 @@ export class AuthService {
   generateJwtToken(userId: string, email: string, role: Role, version = 0) {
     const payload = { email, sub: userId, role, version };
     return this.jwtService.sign(payload);
+  }
+
+  async logout(userId: string) {
+    await this.prisma.$transaction(async tx => {
+      await tx.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+      await tx.auditLog.create({ data: { actorId: userId, action: 'USER_LOGOUT', entity: 'USER', entityId: userId, details: {} } });
+    });
   }
 
   sanitizeUser(user: any) {

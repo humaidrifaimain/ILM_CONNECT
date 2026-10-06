@@ -250,7 +250,7 @@ export default function StudentDashboard() {
           </section>
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,2.1fr)_minmax(300px,0.8fr)]">
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(330px,1fr)]">
                 <article className="min-w-0 overflow-hidden rounded-xl bg-[#0b3027] p-3.5 text-white shadow-sm">
                   <div className="flex items-start justify-between gap-4">
@@ -285,7 +285,7 @@ export default function StudentDashboard() {
                   </div>
                   <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-white/[0.04] p-3 sm:grid-cols-[1fr_auto] sm:items-center">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/50">Current lesson</p>
+                      <p className="text-xs font-semibold text-white/70">Current lesson</p>
                       <p className="mt-1 text-base font-bold text-white">{dashboardProgress?.currentLesson?.title || 'Ready to begin'}</p>
                       <p className="text-xs text-white/60">{dashboardProgress?.currentModule?.title || 'Book a session to start your plan'}</p>
                     </div>

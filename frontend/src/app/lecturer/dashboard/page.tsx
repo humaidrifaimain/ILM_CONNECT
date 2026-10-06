@@ -9,6 +9,7 @@ import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 
 interface LecturerBooking { id: string; studentId: string; startsAt: string; status: string; student?: { fullName: string }; }
 interface LecturerPayout { status: string; amountLkr: number; }
@@ -18,6 +19,7 @@ export default function LecturerDashboard() {
   const { user } = useAuth();
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const withdrawDialog = useDialogAccessibility(showWithdrawModal, () => { if (!isWithdrawing) setShowWithdrawModal(false); });
 
   const { data: profile, isLoading: profileLoading, isError: profileError } = useQuery<LecturerProfile>({
     queryKey: ['lecturerProfile'],
@@ -124,7 +126,7 @@ export default function LecturerDashboard() {
         {[
           { label: 'Sessions This Week', value: sessionsThisWeek, icon: Clock },
           { label: 'Active Students', value: activeStudents, icon: Users },
-          { label: 'Avg Rating', value: profile.ratingCount ? (profile.ratingAvg?.toFixed(1) || '—') : 'No ratings', icon: Star },
+          { label: 'Avg Rating', value: profile.ratingCount ? (profile.ratingAvg?.toFixed(1) || 'No ratings') : 'No ratings', icon: Star },
           { label: 'Payout Requests', value: payouts?.length ?? 0, icon: Wallet },
         ].map((stat) => (
           <DashboardStatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} />
@@ -164,7 +166,7 @@ export default function LecturerDashboard() {
 
       {showWithdrawModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-xl max-w-sm w-full p-6 animate-fade-in">
+          <div ref={withdrawDialog} role="dialog" aria-modal="true" aria-label="Withdraw Earnings" tabIndex={-1} className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-xl max-w-sm w-full p-6 animate-fade-in">
             <h3 className="text-lg font-bold mb-2">Withdraw Earnings</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Withdraw your available earnings of Rs. {availableEarnings.toLocaleString()}.</p>
             <div className="p-3 rounded-lg bg-[hsl(var(--muted))] text-xs text-[hsl(var(--muted-foreground))] mb-4">

@@ -138,18 +138,30 @@ export function DashboardTopbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowNotifications(false);
+        document.getElementById('notif-bell-btn')?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [showNotifications]);
+
   // Determine messages href based on role
-  const messagesHref = pathname.startsWith('/lecturer') ? '/lecturer/messages' : '/student/messages';
+  const messagesHref = pathname.startsWith('/admin') ? '/admin/requests' : pathname.startsWith('/lecturer') ? '/lecturer/messages' : '/student/messages';
 
   const recentNotifs = notifications.slice(0, 8);
-  const displayName = profile?.fullName || user?.email?.split('@')[0]?.replace(/[._-]/g, ' ') || 'Muhammad Humaid';
+  const displayName = profile?.fullName || user?.email?.split('@')[0]?.replace(/[._-]/g, ' ') || 'Account';
   const firstName = displayName.split(' ')[0];
   const topbarTitle = isDashboardHome ? `Welcome Back ${firstName}` : pageTitle;
 
   return (
     <>
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b backdrop-blur-sm h-[72px] border-[#d6e0db] bg-white/95 px-4 lg:px-6">
-        <div className="flex items-center gap-3">
+      <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b h-[72px] border-[#d6e0db] bg-white px-3 lg:px-6">
+        <div className="flex min-w-0 items-center gap-3">
           <Link href={dashboardHref} className="flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095F46] lg:hidden" aria-label={`${roleLabel} dashboard home`}>
             <Image
               src="/images/ilmbit-logo-green.png"
@@ -194,7 +206,7 @@ export function DashboardTopbar() {
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl animate-fade-in z-50 overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-24px)] sm:w-96 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl animate-fade-in z-50 overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(var(--border))]">
                   <div className="flex items-center gap-2">
@@ -234,16 +246,17 @@ export function DashboardTopbar() {
 
                       const href = isMsg
                         ? (threadId ? `${messagesHref}?threadId=${encodeURIComponent(threadId)}` : messagesHref)
-                        : (pathname.startsWith('/lecturer') ? '/lecturer/sessions' : '/student/dashboard');
+                        : (pathname.startsWith('/admin') ? '/admin/sessions' : pathname.startsWith('/lecturer') ? '/lecturer/sessions' : '/student/dashboard');
 
                       const previewText = notif.payloadJson?.message
                         || notif.payloadJson?.preview
                         || (notif.payloadJson?.actorName ? `Update from ${notif.payloadJson.actorName}` : 'Session update');
 
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={notif.id}
-                          className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[hsl(var(--muted))] cursor-pointer ${!notif.readAt ? 'bg-[hsl(var(--primary)/0.04)]' : ''}`}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[hsl(var(--muted))] ${!notif.readAt ? 'bg-[hsl(var(--primary)/0.04)]' : ''}`}
                           onClick={() => {
                             if (!notif.readAt) markOneMutation.mutate(notif.id);
                             if (href) { router.push(href); setShowNotifications(false); }
@@ -285,7 +298,7 @@ export function DashboardTopbar() {
                           {!notif.readAt && (
                             <div className="flex-shrink-0 mt-2 h-2 w-2 rounded-full bg-[hsl(var(--primary))]" />
                           )}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -310,6 +323,7 @@ export function DashboardTopbar() {
 
 
           <button
+            aria-label="Logout"
             onClick={handleLogout}
             className="flex items-center gap-1.5 text-sm font-medium transition-colors min-h-10 rounded-full border border-red-100 px-4 text-[hsl(var(--destructive))] hover:bg-red-50"
             title="Logout"

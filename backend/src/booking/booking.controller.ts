@@ -42,9 +42,9 @@ export class BookingController {
   async markAbsent(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body?: { reason?: string },
+    @Body() body?: { reason?: string; absentRole?: 'student' | 'lecturer' },
   ) {
-    return this.bookingService.markStudentAbsent(req.user, id, body?.reason);
+    return this.bookingService.markStudentAbsent(req.user, id, body?.reason, body?.absentRole);
   }
 
   @Get('student')

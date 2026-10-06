@@ -28,7 +28,7 @@ export default function CourseMaterialsPage() {
   }, [selectedSlide]);
 
   // 1. Fetch student profile to get progress and lecturer permissions
-  const { data: studentProfile, isLoading: loadingProfile } = useQuery<{ progress?: { currentLessonId?: string; currentLearningPathId?: string } }>({
+  const { data: studentProfile, isLoading: loadingProfile, isError: profileError, refetch: retryProfile } = useQuery<{ progress?: { currentLessonId?: string; currentLearningPathId?: string } }>({
     queryKey: ['studentProfile'],
     queryFn: () => apiFetch('/profile/student'),
     staleTime: 0,
@@ -38,7 +38,7 @@ export default function CourseMaterialsPage() {
   });
 
   // 2. Fetch learning paths to match the course
-  const { data: paths = [], isLoading: loadingPaths } = useQuery<LearningPath[]>({
+  const { data: paths = [], isLoading: loadingPaths, isError: pathsError, refetch: retryPaths } = useQuery<LearningPath[]>({
     queryKey: ['curriculumPaths'],
     queryFn: () => apiFetch('/curriculum/paths'),
   });
@@ -88,6 +88,7 @@ export default function CourseMaterialsPage() {
       <LoadingScreen message="Loading Course Materials..." subtitle="Fetching curriculum slides and lesson resources" />
     );
   }
+  if (profileError || pathsError) return <div role="alert" className="space-y-3 p-5 text-sm text-[#202823]"><p>Course materials could not be loaded.</p><button type="button" onClick={() => { void retryProfile(); void retryPaths(); }} className="rounded-md border border-[#b9cac2] px-4 py-2 font-semibold text-[#095F46]">Try again</button></div>;
 
   return (
     <div className={studentUi.page}>

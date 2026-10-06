@@ -80,7 +80,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Payouts</div>
-                  <div className="text-xl font-bold text-[hsl(var(--accent))]">Rs. {(s.payoutsThisMonth / 1000).toFixed(0)}K</div>
+                  <div className="text-xl font-bold text-[#095F46]">Rs. {(s.payoutsThisMonth / 1000).toFixed(0)}K</div>
                 </div>
                 <div>
                   <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">Profit</div>

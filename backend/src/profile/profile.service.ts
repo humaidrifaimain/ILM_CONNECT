@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+export const publicLecturerSelect = {
+  userId: true, fullName: true, bio: true, qualifications: true,
+  languages: true, specializations: true, ratingAvg: true, ratingCount: true, hourlyAvailabilityJson: true,
+} as const;
+
 @Injectable()
 export class ProfileService {
   constructor(private readonly prisma: PrismaService) {}
@@ -23,7 +28,7 @@ export class ProfileService {
       where: { userId },
       include: { 
         user: { select: { id: true, email: true, role: true, status: true } },
-        assignedLecturer: true,
+        assignedLecturer: { select: publicLecturerSelect },
         progress: {
           include: {
             currentLearningPath: true,
@@ -65,13 +70,8 @@ export class ProfileService {
 
   async getAllLecturers() {
     return this.prisma.lecturerProfile.findMany({
-      include: {
-        user: {
-          select: {
-            email: true,
-          },
-        },
-      },
+      where: { user: { status: 'ACTIVE', deletedAt: null } },
+      select: publicLecturerSelect,
     });
   }
 
@@ -216,6 +216,7 @@ export class ProfileService {
     studentId: string,
     lessonId: string,
   ) {
+    if (typeof lessonId !== 'string' || !lessonId.trim()) throw new BadRequestException('Choose a lesson');
     // Verify this student is assigned to the lecturer
     const student = await this.prisma.studentProfile.findFirst({
       where: { userId: studentId, assignedLecturerId: lecturerUserId },
@@ -277,6 +278,7 @@ export class ProfileService {
     studentId: string,
     learningPathId: string,
   ) {
+    if (typeof learningPathId !== 'string' || !learningPathId.trim()) throw new BadRequestException('Choose a course');
     const student = await this.prisma.studentProfile.findFirst({
       where: { userId: studentId, assignedLecturerId: lecturerUserId },
     });

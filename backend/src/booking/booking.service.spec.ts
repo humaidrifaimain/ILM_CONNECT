@@ -33,16 +33,22 @@ describe('Booking plan allowances', () => {
 });
 
 describe('Session notes and completion ownership', () => {
-  const prisma = { session: { findUnique: jest.fn(), update: jest.fn() } };
+  const prisma = { session: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() }, $transaction: jest.fn() };
   const service = new BookingService(prisma as any, {} as any);
-  beforeEach(() => { jest.resetAllMocks(); prisma.session.findUnique.mockResolvedValue({ lecturerId: 'lecturer', startsAt: new Date(Date.now() - 1000), status: 'IN_PROGRESS' }); });
+  beforeEach(() => { jest.resetAllMocks(); prisma.$transaction.mockImplementation(callback => callback(prisma)); prisma.session.updateMany.mockResolvedValue({ count: 1 }); prisma.session.findUnique.mockResolvedValue({ lecturerId: 'lecturer', startsAt: new Date(Date.now() - 1000), status: 'IN_PROGRESS' }); });
   it('blocks another lecturer from changing a session', async () => {
     await expect(service.updateBooking('session', { notes: 'Changed' }, { id: 'outsider', role: Role.LECTURER })).rejects.toThrow('not assigned');
     expect(prisma.session.update).not.toHaveBeenCalled();
   });
   it('completes a started session and saves shared notes', async () => {
     await service.updateBooking('session', { status: 'COMPLETED', notes: 'Lesson complete' }, { id: 'lecturer', role: Role.LECTURER });
-    expect(prisma.session.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'COMPLETED', notes: expect.any(Object) }) }));
+    expect(prisma.session.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'COMPLETED' }, where: expect.objectContaining({ status: { in: ['SCHEDULED', 'IN_PROGRESS'] } }) }));
+    expect(prisma.session.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ notes: expect.objectContaining({ upsert: expect.objectContaining({ update: { sharedNotes: 'Lesson complete' } }) }) }) }));
+  });
+  it('does not complete a session whose attendance changed concurrently', async () => {
+    prisma.session.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.updateBooking('session', { status: 'COMPLETED' }, { id: 'lecturer', role: Role.LECTURER })).rejects.toThrow('no longer active');
+    expect(prisma.session.update).not.toHaveBeenCalled();
   });
   it('rejects future completion and status changes which bypass dedicated actions', async () => {
     await expect(service.updateBooking('session', { status: 'CANCELED' }, { id: 'lecturer', role: Role.LECTURER })).rejects.toThrow('cancellation');

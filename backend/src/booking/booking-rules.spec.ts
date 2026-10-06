@@ -19,6 +19,8 @@ describe('BookingService - Business Rules', () => {
           useValue: {
             session: {
               findUnique: jest.fn(),
+              findUniqueOrThrow: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
               update: jest.fn(),
               updateMany: jest.fn(),
               findFirst: jest.fn(),
@@ -26,7 +28,10 @@ describe('BookingService - Business Rules', () => {
             availabilitySlot: {
               findFirst: jest.fn(),
               update: jest.fn(),
+              updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
+            $queryRaw: jest.fn().mockResolvedValue([]),
+            subscription: { findFirst: jest.fn().mockResolvedValue({ tier: 'STANDARD', currentPeriodStart: new Date(0), currentPeriodEnd: new Date('2100-01-01') }) },
             auditLog: {
               create: jest.fn(),
             },
@@ -44,6 +49,8 @@ describe('BookingService - Business Rules', () => {
 
     service = module.get<BookingService>(BookingService);
     prisma = module.get<PrismaService>(PrismaService);
+    prisma.$transaction = jest.fn().mockImplementation(async callback => callback(prisma));
+    jest.mocked(prisma.session.findUniqueOrThrow).mockImplementation(() => jest.mocked(prisma.session.findUnique).mock.results.at(-1)?.value);
     notificationService = module.get<NotificationService>(NotificationService);
   });
 
@@ -224,6 +231,7 @@ describe('BookingService - Business Rules', () => {
 
     it('should allow lecturer to mark absent for SCHEDULED session', async () => {
       jest.spyOn(prisma.session, 'findUnique').mockResolvedValue(mockSession(SessionStatus.SCHEDULED) as any);
+      jest.spyOn(prisma.session, 'updateMany').mockResolvedValue({ count: 1 });
       jest.spyOn(prisma.session, 'update').mockResolvedValue({} as any);
 
       await expect(

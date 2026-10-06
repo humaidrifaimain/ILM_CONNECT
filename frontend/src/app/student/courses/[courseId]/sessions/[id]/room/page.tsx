@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 
 import { apiFetch } from '@/lib/api';
-import { toast } from '@/components/ui/toast';
 import { InteractiveClassroom } from '@/components/classroom/interactive-classroom';
 import { LiveClassroom } from '@/components/classroom/live-classroom';
 
@@ -35,7 +34,7 @@ interface TokenResponse {
 }
 
 // ─── Pre-Join Screen ─────────────────────────────────────────────────────────
-function PreJoinScreen({ onJoin, onBack, sessionInfo }: { onJoin: (mic: boolean, cam: boolean) => void; onBack: () => void; sessionInfo: SessionInfo | null }) {
+function PreJoinScreen({ onJoin, onBack, sessionInfo, joinError, ready }: { onJoin: (mic: boolean, cam: boolean) => void; onBack: () => void; sessionInfo: SessionInfo | null; joinError: string | null; ready: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [micEnabled, setMicEnabled] = useState(true);
@@ -71,10 +70,8 @@ function PreJoinScreen({ onJoin, onBack, sessionInfo }: { onJoin: (mic: boolean,
   }, [stream, camEnabled]);
 
   const toggleMic = () => {
-    if (stream) {
-      stream.getAudioTracks().forEach(t => { t.enabled = !micEnabled; });
-      setMicEnabled(!micEnabled);
-    }
+    stream?.getAudioTracks().forEach(t => { t.enabled = !micEnabled; });
+    setMicEnabled(!micEnabled);
   };
 
   const toggleCam = async () => {
@@ -122,7 +119,7 @@ function PreJoinScreen({ onJoin, onBack, sessionInfo }: { onJoin: (mic: boolean,
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-300 text-[#10201c]"><Camera className="h-4 w-4" /></span>
           IlmConnect Classroom
         </div>
-        <span className="hidden items-center gap-1.5 text-xs text-white/45 sm:flex"><Wifi className="h-3.5 w-3.5" /> Secure room</span>
+        <span className="hidden items-center gap-1.5 text-xs text-white/70 sm:flex"><Wifi className="h-3.5 w-3.5" /> Not connected</span>
       </header>
 
       <main className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:px-8">
@@ -144,23 +141,23 @@ function PreJoinScreen({ onJoin, onBack, sessionInfo }: { onJoin: (mic: boolean,
               </button>
             </div>
           </div>
-          <p className="mt-3 text-center text-xs text-white/40">Check your camera and microphone before entering.</p>
+          <p className="mt-3 text-center text-xs text-white/70">Check your camera and microphone before entering.</p>
         </div>
 
         <section className="rounded-2xl border border-white/10 bg-white/[0.055] p-6">
-          <span className="mb-5 inline-flex rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">Ready to join</span>
-          <h2 className="text-2xl font-semibold tracking-tight">Your lesson is ready</h2>
+          <h2 className="text-2xl font-semibold">Your classroom</h2>
+          {joinError && <div role="alert" className="my-4 space-y-3 text-sm text-white/80"><p>{joinError}</p><button type="button" onClick={() => window.location.reload()} className="rounded-md border border-white/40 px-3 py-2 text-white">Retry</button></div>}
           {sessionInfo && (
             <div className="my-6 border-y border-white/10 py-5">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-white/40">Lecturer</p>
+              <p className="text-xs font-medium text-white/70">Lecturer</p>
               <p className="mt-1 text-base font-semibold">{sessionInfo.lecturerName}</p>
-              <p className="mt-3 text-sm text-white/50">{new Date(sessionInfo.startsAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+              <p className="mt-3 text-sm text-white/70">{new Date(sessionInfo.startsAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
             </div>
           )}
-          <button onClick={() => onJoin(micEnabled, camEnabled)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 text-sm font-bold text-[#10201c] transition-colors hover:bg-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#10201c]">
+          <button disabled={!ready || !!joinError} onClick={() => onJoin(micEnabled, camEnabled)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 text-sm font-bold text-[#10201c] transition-colors hover:bg-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#10201c]">
             Enter classroom <ChevronRight className="h-4 w-4" />
           </button>
-          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-white/40"><Wifi className="h-3.5 w-3.5" /> Encrypted LiveKit connection</p>
+          <p className="mt-4 text-center text-xs text-white/70">{ready && !joinError ? 'Admission checked' : 'Waiting for classroom admission'}</p>
         </section>
       </main>
     </div>
@@ -184,8 +181,6 @@ export default function SessionRoom({
   const [error, setError] = useState<string | null>(null);
   const [initialMic, setInitialMic] = useState(true);
   const [initialCam, setInitialCam] = useState(true);
-
-  const [isReopening, setIsReopening] = useState(false);
 
   // Fetch session info for pre-join screen
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
@@ -230,23 +225,6 @@ export default function SessionRoom({
     })();
   }, [sessionId]);
 
-  const handleReopenAndJoin = async () => {
-    setIsReopening(true);
-    try {
-      const data = await apiFetch(`/livekit/token/${sessionId}?reopen=true`);
-      setSessionInfo(data.session);
-      setTokenData(data);
-      setError(null);
-      setState('connected');
-      toast.success('Session Reopened', 'The session has been reactivated. Welcome to your classroom!');
-    } catch (err: any) {
-      toast.error('Reopen Failed', err.message || 'Could not reactivate session.');
-      setError(err.message);
-    } finally {
-      setIsReopening(false);
-    }
-  };
-
   const isCanceledError = error?.toLowerCase().includes('cancel');
 
   // ── Error State ─────────────────────────────────────────────────────────
@@ -271,7 +249,7 @@ export default function SessionRoom({
 
           <p className="text-[hsl(var(--muted-foreground))] text-sm mb-4 leading-relaxed">
             {isCanceledError
-              ? 'This session was previously canceled or marked as past in the database. You can reactivate it and enter the live classroom.'
+              ? 'This session has been canceled. Contact support to arrange another session.'
               : error}
           </p>
 
@@ -284,24 +262,6 @@ export default function SessionRoom({
           )}
 
           <div className="flex flex-col gap-2.5">
-            {isCanceledError && (
-              <button
-                onClick={handleReopenAndJoin}
-                disabled={isReopening}
-                className="w-full py-3 px-5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isReopening ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Reactivating Session...
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="h-4 w-4" /> Reopen & Enter Classroom
-                  </>
-                )}
-              </button>
-            )}
-
             <div className="flex gap-2.5 pt-1">
               <button
                 onClick={() => router.push(`/student/courses/${courseId}/sessions`)}
@@ -336,7 +296,7 @@ export default function SessionRoom({
 
   // ── Pre-Join State ──────────────────────────────────────────────────────
   if (state === 'prejoin') {
-    return <PreJoinScreen onJoin={handleJoin} onBack={() => router.back()} sessionInfo={sessionInfo} />;
+    return <PreJoinScreen onJoin={handleJoin} onBack={() => router.back()} sessionInfo={sessionInfo} joinError={error} ready={!!tokenData} />;
   }
 
   // ── Connected ───────────────────────────────────────────────────────────

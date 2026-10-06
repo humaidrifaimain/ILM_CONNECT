@@ -36,7 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       },
     });
 
-    if (!user || user.deletedAt || user.status === 'SUSPENDED' || (payload.version || 0) !== user.tokenVersion) {
+    if (!user || user.deletedAt || user.status !== 'ACTIVE' || (payload.version || 0) !== user.tokenVersion) {
       throw new UnauthorizedException('User not found or suspended');
     }
 

@@ -54,9 +54,8 @@ export class SubscriptionService {
       select: { tier: true, status: true, currentPeriodStart: true, currentPeriodEnd: true },
     });
     const now = new Date();
-    const trialEnded = subscriptions.some(subscription => subscription.tier.toLowerCase() === 'trial' && subscription.currentPeriodEnd <= now);
-    const activePaid = subscriptions.some(subscription => subscription.tier.toLowerCase() !== 'trial' && subscription.status === 'ACTIVE' && subscription.currentPeriodStart <= now && subscription.currentPeriodEnd > now);
-    return { requiresSubscription: trialEnded && !activePaid };
+    const active = subscriptions.some(subscription => subscription.status === 'ACTIVE' && subscription.currentPeriodStart <= now && subscription.currentPeriodEnd > now);
+    return { requiresSubscription: subscriptions.length > 0 && !active };
   }
 
   async getMySubscription(studentId: string) {
@@ -81,16 +80,18 @@ export class SubscriptionService {
   }
 
   async createTrialSubscription(studentId: string) {
-    // Check if they already have one
-    const existing = await this.prisma.subscription.findFirst({
-      where: { studentId, tier: 'Trial' },
+    return this.prisma.$transaction(async tx => {
+    // Database locking keeps claims single-use across API instances.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`trial:${studentId}`}))::text`;
+    const existing = await tx.subscription.findFirst({
+      where: { studentId, tier: { equals: 'Trial', mode: 'insensitive' } },
     });
 
     if (existing) {
       throw new BadRequestException('You have already claimed a free trial.');
     }
 
-    const subscription = await this.prisma.subscription.create({
+    const subscription = await tx.subscription.create({
       data: {
         studentId,
         tier: 'Trial',
@@ -103,6 +104,7 @@ export class SubscriptionService {
     });
 
     return subscription;
+    }, { maxWait: 10000, timeout: 15000 });
   }
 
   async handleWebhook(payload: any, signature: string) {

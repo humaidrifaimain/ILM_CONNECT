@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Search, UserX, UserCheck, UserPlus, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 import { toast } from '@/components/ui/toast';
 import { TableSkeleton } from '@/components/ui/loading-screen';
 
@@ -31,6 +32,12 @@ export default function AdminUsersPage() {
   const [specializations, setSpecializations] = useState('Tajweed, Hifz, Fiqh');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const dialogRef = useDialogAccessibility(showAddLecturerModal || !!selectedStudentForAssignment || !!selectedLecturerForEdit, () => {
+    if (isSubmitting) return;
+    setShowAddLecturerModal(false);
+    setSelectedStudentForAssignment(null);
+    setSelectedLecturerForEdit(null);
+  });
 
   // Timeshifts: 10 to 2, 2 to 6, and 6 to 10 (each unlocks 40-min slots in lecturer portal)
   const TIMESHIFTS = [
@@ -281,7 +288,7 @@ export default function AdminUsersPage() {
       u.email.toLowerCase().includes(search.toLowerCase());
     const matchRole =
       roleFilter === 'all' ||
-      u.roleLower === roleFilter.toLowerCase();
+      u.roleLower === roleFilter.toLowerCase() || (roleFilter === 'admin' && u.role === 'SUPER_ADMIN');
     return matchSearch && matchRole;
   });
 
@@ -390,7 +397,7 @@ export default function AdminUsersPage() {
                         u.assignedScholar ? (
                           <span className="text-[hsl(var(--foreground))] font-medium">Assigned: {u.assignedScholar}</span>
                         ) : (
-                          <span className="text-amber-600 dark:text-amber-400 font-medium">Unassigned</span>
+                          <span className="text-amber-800 dark:text-amber-400 font-medium">Unassigned</span>
                         )
                       ) : u.role === 'LECTURER' ? (
                         <div>
@@ -400,7 +407,7 @@ export default function AdminUsersPage() {
                               : 'Quran & Islamic Studies'}
                           </div>
                           {Array.isArray(u.timeshift) && u.timeshift.length > 0 && (
-                            <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
+                            <div className="text-[10px] text-amber-800 dark:text-amber-400 mt-0.5 font-medium">
                               ⏰ Shift: {formatShiftName(u.timeshift)}
                             </div>
                           )}
@@ -485,10 +492,15 @@ export default function AdminUsersPage() {
           onClick={closeModal}
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assignment-title"
+            tabIndex={-1}
             className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">{selectedStudentForAssignment.assignedScholar ? "Reassign Scholar" : "Assign Scholar"}</h3>
+            <h3 id="assignment-title" className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">{selectedStudentForAssignment.assignedScholar ? "Reassign Scholar" : "Assign Scholar"}</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
               Select a vetted scholar for <strong className="text-[hsl(var(--foreground))]">{selectedStudentForAssignment.name}</strong>.
             </p>
@@ -546,10 +558,15 @@ export default function AdminUsersPage() {
           onClick={() => !isSubmitting && setShowAddLecturerModal(false)}
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-lecturer-title"
+            tabIndex={-1}
             className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-lg w-full p-6 animate-fade-in max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Create Lecturer Account</h3>
+            <h3 id="create-lecturer-title" className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Create Lecturer Account</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
               Directly onboard a vetted scholar into the database.
             </p>
@@ -566,6 +583,7 @@ export default function AdminUsersPage() {
                 <div>
                   <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">First Name</label>
                   <input
+                    aria-label="First Name"
                     required
                     type="text"
                     value={firstName}
@@ -577,6 +595,7 @@ export default function AdminUsersPage() {
                 <div>
                   <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Last Name</label>
                   <input
+                    aria-label="Last Name"
                     required
                     type="text"
                     value={lastName}
@@ -590,6 +609,7 @@ export default function AdminUsersPage() {
               <div>
                 <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Email Address</label>
                 <input
+                  aria-label="Email Address"
                   required
                   type="email"
                   value={email}
@@ -604,6 +624,7 @@ export default function AdminUsersPage() {
                   Initial Password <span className="text-[hsl(var(--muted-foreground))] font-normal">(At least 8 characters)</span>
                 </label>
                 <input
+                  aria-label="Initial Password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -615,6 +636,7 @@ export default function AdminUsersPage() {
               <div>
                 <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Specializations (comma separated)</label>
                 <input
+                  aria-label="Specializations (comma separated)"
                   required
                   type="text"
                   value={specializations}
@@ -749,10 +771,15 @@ export default function AdminUsersPage() {
           onClick={() => !isSubmitting && closeEditModal()}
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-shifts-title"
+            tabIndex={-1}
             className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-lg w-full p-6 animate-fade-in max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Edit Lecturer Shifts</h3>
+            <h3 id="edit-shifts-title" className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Edit Lecturer Shifts</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
               Update working shifts for <strong className="text-[hsl(var(--foreground))]">{selectedLecturerForEdit.name}</strong>.
             </p>

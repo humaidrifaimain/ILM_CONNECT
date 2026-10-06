@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { downloadCsv } from '@/lib/download';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 import { toast } from '@/components/ui/toast';
 import { TableSkeleton } from '@/components/ui/loading-screen';
 import { Search, Download, Eye, XCircle, AlertTriangle, FileText, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -16,29 +18,46 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   no_show_lecturer: { label: 'No-Show (Lecturer)', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 };
 
-type StatusFilter = 'all' | 'scheduled' | 'in_progress' | 'completed' | 'no_show_student' | 'canceled';
+type StatusFilter = 'all' | 'scheduled' | 'in_progress' | 'completed' | 'no_show_student' | 'no_show_lecturer' | 'canceled';
 
 const PAGE_SIZE = 25;
+
+interface SessionRecord {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  livekitRoomName?: string;
+  studentName?: string;
+  lecturerName?: string;
+  subject?: string;
+  student?: { fullName?: string; user?: { email?: string } };
+  lecturer?: { fullName?: string; user?: { email?: string } };
+  lesson?: { title?: string; module?: { title?: string; learningPath?: { title?: string } } };
+  notes?: { sharedNotes?: string; internalNotes?: string; topicsCovered?: string };
+}
+
+type DisplaySession = SessionRecord & { studentName: string; lecturerName: string; subject: string; rawStatus: string; notesText: string };
 
 export default function AdminSessionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [page, setPage] = useState(0);
-  const [actionModal, setActionModal] = useState<{ session: any; action: string } | null>(null);
+  const [actionModal, setActionModal] = useState<{ session: DisplaySession; action: string } | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [noShowRole, setNoShowRole] = useState<'student' | 'lecturer'>('student');
   const [isProcessing, setIsProcessing] = useState(false);
+  const dialogRef = useDialogAccessibility(!!actionModal, () => { if (!isProcessing) setActionModal(null); });
 
-  // Live session query connected to real database with 10s auto-refresh
-  const { data: rawSessions = [], isLoading, refetch } = useQuery<any[]>({
+  const { data: rawSessions = [], isLoading, isError, refetch } = useQuery<SessionRecord[]>({
     queryKey: ['adminSessions'],
     queryFn: () => apiFetch('/admin/sessions'),
     refetchInterval: 10000,
   });
 
   const sessionsList = useMemo(() => {
-    return (rawSessions || []).map((s: any) => {
+    return rawSessions.map((s) => {
       const studentName =
         s.student?.fullName ||
         s.student?.user?.email?.split('@')[0] ||
@@ -69,7 +88,6 @@ export default function AdminSessionsPage() {
           s.notes?.sharedNotes ||
           s.notes?.internalNotes ||
           s.notes?.topicsCovered ||
-          s.notes ||
           '',
       };
     });
@@ -100,19 +118,7 @@ export default function AdminSessionsPage() {
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const exportCSV = () => {
-    const header = 'Session ID,Date,Student,Lecturer,Subject,Status\n';
-    const rows = filtered
-      .map(
-        (s) =>
-          `"${s.id}","${new Date(s.startsAt).toISOString()}","${s.studentName}","${s.lecturerName}","${s.subject}","${s.rawStatus}"`
-      )
-      .join('\n');
-    const blob = new Blob([header + rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sessions-export.csv';
-    a.click();
+    downloadCsv([['Session ID', 'Date', 'Student', 'Lecturer', 'Subject', 'Status'], ...filtered.map(s => [s.id, new Date(s.startsAt).toISOString(), s.studentName, s.lecturerName, s.subject, s.rawStatus])], 'sessions-export.csv');
   };
 
   const handleCancelSession = async () => {
@@ -127,8 +133,8 @@ export default function AdminSessionsPage() {
       setActionModal(null);
       setCancelReason('');
       await refetch();
-    } catch (err: any) {
-      toast.error('Cancellation Failed', err?.message || 'Could not cancel session');
+    } catch (err) {
+      toast.error('Cancellation Failed', err instanceof Error ? err.message : 'Could not cancel session');
     } finally {
       setIsProcessing(false);
     }
@@ -140,13 +146,13 @@ export default function AdminSessionsPage() {
     try {
       await apiFetch(`/bookings/${actionModal.session.id}/absent`, {
         method: 'POST',
-        body: JSON.stringify({ reason: `Marked absent by Administrator (${noShowRole})` }),
+        body: JSON.stringify({ absentRole: noShowRole, reason: `Marked absent by Administrator (${noShowRole})` }),
       });
       toast.success('Attendance Recorded', `Session marked as ${noShowRole} absent.`);
       setActionModal(null);
       await refetch();
-    } catch (err: any) {
-      toast.error('Failed to update status', err?.message || 'Could not update attendance');
+    } catch (err) {
+      toast.error('Failed to update status', err instanceof Error ? err.message : 'Could not update attendance');
     } finally {
       setIsProcessing(false);
     }
@@ -154,6 +160,7 @@ export default function AdminSessionsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in p-6 lg:p-8">
+      {isError && <p role="alert">Unable to load sessions. <button className="underline" onClick={() => refetch()}>Retry</button></p>}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
@@ -185,6 +192,7 @@ export default function AdminSessionsPage() {
           />
         </div>
         <select
+          aria-label="Filter sessions by course"
           value={courseFilter}
           onChange={(e) => {
             setCourseFilter(e.target.value);
@@ -202,7 +210,7 @@ export default function AdminSessionsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {(['all', 'scheduled', 'in_progress', 'completed', 'no_show_student', 'canceled'] as StatusFilter[]).map((s) => (
+        {(['all', 'scheduled', 'in_progress', 'completed', 'no_show_student', 'no_show_lecturer', 'canceled'] as StatusFilter[]).map((s) => (
           <button
             key={s}
             onClick={() => {
@@ -219,6 +227,8 @@ export default function AdminSessionsPage() {
               ? 'All'
               : s === 'no_show_student'
               ? 'Conducted No-show'
+              : s === 'no_show_lecturer'
+              ? 'Lecturer No-show'
               : s === 'in_progress'
               ? 'In Progress'
               : s.charAt(0).toUpperCase() + s.slice(1)}
@@ -282,7 +292,7 @@ export default function AdminSessionsPage() {
                             <XCircle className="h-3.5 w-3.5" />
                           </button>
                         )}
-                        {s.status === 'scheduled' && (
+                        {s.status === 'scheduled' && new Date(s.startsAt) <= new Date() && (
                           <button
                             onClick={() => {
                               setActionModal({ session: s, action: 'noshow' });
@@ -311,7 +321,7 @@ export default function AdminSessionsPage() {
               {paginated.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                    No sessions found matching current filter or search criteria.
+                    {isError ? 'Unable to load sessions.' : 'No sessions found matching current filter or search criteria.'}
                   </td>
                 </tr>
               )}
@@ -352,6 +362,11 @@ export default function AdminSessionsPage() {
           onClick={() => !isProcessing && setActionModal(null)}
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Session actions"
+            tabIndex={-1}
             className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-scale-in relative"
             onClick={(e) => e.stopPropagation()}
           >

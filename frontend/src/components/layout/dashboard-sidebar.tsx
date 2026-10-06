@@ -3,7 +3,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { useRole } from '@/lib/role-context';
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -25,6 +24,7 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  Menu,
   Library,
   MessageSquare,
   Award,
@@ -90,6 +90,26 @@ const adminNav: NavItem[] = [
   { href: '/admin/audit', label: 'Audit Log', icon: Shield },
 ];
 
+export function DashboardMobileNav() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  if (!user) return null;
+  if (user.role === 'STUDENT' && pathname.startsWith('/student')) {
+    const courseId = pathname.match(/^\/student\/courses\/([^/]+)/)?.[1];
+    const items = courseId ? [...globalStudentNav, ...getCourseNav(courseId).slice(1)] : globalStudentNav;
+    return <details className="border-b border-[#d6e0db] bg-white px-3 py-2 lg:hidden" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-sm font-semibold text-[#202823] focus-visible:outline-2 focus-visible:outline-[#095F46]"><Menu className="h-4 w-4" aria-hidden="true" />Menu</summary>
+      <nav aria-label="Student pages" className="grid grid-cols-2 gap-1 py-2">
+        {items.map(item => <Link key={item.href} href={item.href} aria-current={pathname === item.href ? 'page' : undefined} className={`flex min-h-11 min-w-0 items-center gap-2 rounded-md px-3 text-sm font-semibold ${pathname === item.href ? 'bg-[#095F46] text-white' : 'text-[#202823] hover:bg-[#eef4f1]'}`}><item.icon className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{item.label}</span></Link>)}
+      </nav>
+    </details>;
+  }
+  const items = pathname.startsWith('/admin') && ['ADMIN', 'SUPER_ADMIN'].includes(user.role) ? adminNav : pathname.startsWith('/lecturer') && user.role === 'LECTURER' ? lecturerNav : [];
+  if (!items.length) return null;
+  return <nav aria-label={user.role === 'LECTURER' ? 'Lecturer pages' : 'Admin pages'} className="grid grid-cols-2 gap-1 border-b border-[#d6e0db] bg-white px-3 py-2 sm:grid-cols-4 lg:hidden">
+    {items.map(item => <Link key={item.href} href={item.href} aria-current={pathname === item.href ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold ${pathname === item.href ? 'bg-[#095F46] text-white' : 'text-[#202823] hover:bg-[#eef4f1]'}`}>{item.label}</Link>)}
+  </nav>;
+}
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
@@ -130,15 +150,10 @@ export default function DashboardSidebar() {
   let roleName = '';
   let userName = '';
   
-  let adminRole = 'owner';
-  try {
-    const context = useRole();
-    adminRole = context.role;
-  } catch {}
 
   if (pathname.startsWith('/student')) {
     roleName = 'Student';
-    userName = profile?.fullName || user?.email?.split('@')[0]?.replace(/[._-]/g, ' ') || 'Muhammad Humaid';
+    userName = profile?.fullName || user?.email?.split('@')[0]?.replace(/[._-]/g, ' ') || 'Student';
     
     // Check if we are inside a specific course (e.g., /student/courses/beginner-qaida/...)
     const courseMatch = pathname.match(/^\/student\/courses\/([^/]+)/);
@@ -149,7 +164,7 @@ export default function DashboardSidebar() {
     }
   } else if (pathname.startsWith('/lecturer')) {
     roleName = 'Lecturer';
-    userName = profile?.fullName || 'Maulavi Ahmed Raza';
+    userName = profile?.fullName || 'Lecturer';
     // Check if inside a specific lecturer course
     const lecturerCourseMatch = pathname.match(/^\/lecturer\/courses\/([^/]+)/);
     if (lecturerCourseMatch) {
@@ -158,10 +173,8 @@ export default function DashboardSidebar() {
       navItems = lecturerNav;
     }
   } else if (pathname.startsWith('/admin')) {
-    navItems = adminRole === 'staff' 
-      ? adminNav.filter(n => !['Finance', 'Configuration', 'Audit Log'].includes(n.label))
-      : adminNav;
-    roleName = adminRole === 'staff' ? 'Staff' : 'Administrator';
+    navItems = adminNav;
+    roleName = user?.role === 'SUPER_ADMIN' ? 'Super administrator' : 'Administrator';
     userName = user?.email?.split('@')[0]?.replace(/[._-]/g, ' ') || 'Administrator';
   }
 
@@ -200,6 +213,8 @@ export default function DashboardSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                 isActive
                   ? 'rounded-full bg-[#10BF8D] text-[#0b3027] font-extrabold shadow-sm'
@@ -259,6 +274,7 @@ export default function DashboardSidebar() {
         )}
 
         <button
+          aria-label={collapsed ? 'Expand' : 'Collapse'}
           onClick={() => setCollapsed(!collapsed)}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors text-white/60 hover:bg-white/[0.08] hover:text-white"
         >

@@ -11,6 +11,7 @@ import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ScheduleCalendar } from '@/components/classroom/schedule-calendar';
 import { BookingCalendar } from '@/components/classroom/booking-calendar';
 import { StudentIconTile, StudentPageHeader, studentUi } from '@/components/student/student-dashboard-ui';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -59,7 +60,7 @@ export default function StudentSessionsPage() {
   }, []);
   const handleViewChange = (v: ViewMode) => { setView(v); localStorage.setItem('ilm-sessions-view', v); };
 
-  const { data: rawBookings, isLoading } = useQuery({
+  const { data: rawBookings, isLoading, isError: bookingsError, refetch: retryBookings } = useQuery({
     queryKey: ['studentBookings'],
     queryFn: () => apiFetch('/bookings/student'),
     staleTime: 0,
@@ -136,6 +137,9 @@ export default function StudentSessionsPage() {
     setActionSuccessMessage(null);
     setActionErrorMessage(null);
   }, []);
+  const detailDialog = useDialogAccessibility(!!selectedSession && !showCancelConfirm && !showReschedule, closeDetail);
+  const cancelDialog = useDialogAccessibility(!!selectedSession && showCancelConfirm, closeDetail);
+  const rescheduleDialog = useDialogAccessibility(!!selectedSession && showReschedule, closeDetail);
 
   const handleCancelSession = async () => {
     if (!selectedSession) return;
@@ -215,8 +219,9 @@ export default function StudentSessionsPage() {
         }
       />
 
+      {bookingsError && <div role="alert" className="space-y-3 p-5 text-sm text-[#202823]"><p>Your sessions could not be loaded.</p><button type="button" onClick={() => void retryBookings()} className="rounded-md border border-[#b9cac2] px-4 py-2 font-semibold text-[#095F46]">Try again</button></div>}
       {/* List View */}
-      {view === 'list' && (
+      {!bookingsError && view === 'list' && (
         <div className="space-y-3">
           {isLoading ? (
             <LoadingScreen message="Loading Sessions..." subtitle="Fetching your scheduled classes and learning calendar" />
@@ -233,19 +238,18 @@ export default function StudentSessionsPage() {
             return (
               <div
                 key={s.id}
-                onClick={() => setSelectedSession(s)}
                 className="flex w-full cursor-pointer flex-col justify-between gap-4 rounded-xl border border-[#d6e0db] bg-white p-4 text-left shadow-sm transition-all hover:border-[#b9cac2] hover:shadow-md sm:flex-row sm:items-center"
               >
-                <div className="flex items-center gap-4 min-w-0">
+                <button type="button" onClick={() => setSelectedSession(s)} aria-label={`Open session details for ${new Date(s.startsAt).toLocaleString()}`} className="flex min-w-0 items-center gap-4 text-left focus-visible:outline-2 focus-visible:outline-[#095F46]">
                   <StudentIconTile icon={Video} />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-bold text-[#202823]">{s.subject}</div>
                     <div className="text-xs text-[#56635c]">with {s.lecturerName} · {new Date(s.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
                     <div className="text-xs text-[#56635c]">{new Date(s.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — {new Date(s.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
-                </div>
+                </button>
 
-                <div className="flex items-center gap-2.5 self-end sm:self-center flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2.5 self-end sm:self-center flex-shrink-0">
                   <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${cfg.color}`}>{cfg.label}</span>
                   {s.status === 'scheduled' && !s.isPast && !isWithinLockWindow(s.startsAt) && (
                     <button
@@ -280,7 +284,7 @@ export default function StudentSessionsPage() {
       )}
 
       {/* Calendar View */}
-      {view === 'calendar' && (
+      {!bookingsError && view === 'calendar' && (
         <ScheduleCalendar events={sessions.map((session: { id: string; startsAt: string; endsAt: string; subject: string; lecturerName: string; status: string }) => ({
           id: session.id, startsAt: session.startsAt, endsAt: session.endsAt, title: session.subject,
           subtitle: session.lecturerName, tone: session.status === 'completed' ? 'purple' as const : 'blue' as const,
@@ -292,7 +296,7 @@ export default function StudentSessionsPage() {
       {/* Session Detail Modal */}
       {selectedSession && !showCancelConfirm && !showReschedule && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={closeDetail}>
-          <div className="w-full max-w-sm rounded-xl border border-[#d6e0db] bg-white p-5 shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
+          <div ref={detailDialog} role="dialog" aria-modal="true" aria-label="Session details" tabIndex={-1} className="w-full max-w-sm rounded-xl border border-[#d6e0db] bg-white p-5 shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg mb-4">{selectedSession.subject}</h3>
             <div className="space-y-2.5 text-sm mb-5">
               <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Lecturer</span><span className="font-medium">{selectedSession.lecturerName}</span></div>
@@ -381,7 +385,7 @@ export default function StudentSessionsPage() {
       {/* Cancel Confirmation */}
       {showCancelConfirm && selectedSession && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={closeDetail}>
-          <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+          <div ref={cancelDialog} role="dialog" aria-modal="true" aria-label="Cancel session" tabIndex={-1} className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
             <div className="h-12 w-12 rounded-full bg-[hsl(var(--destructive)/0.1)] flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="h-6 w-6 text-[hsl(var(--destructive))]" />
             </div>
@@ -430,7 +434,7 @@ export default function StudentSessionsPage() {
       {/* Reschedule Flow */}
       {showReschedule && selectedSession && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 overflow-y-auto" onClick={closeDetail}>
-          <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl w-full max-w-4xl p-6 animate-fade-in my-8" onClick={e => e.stopPropagation()}>
+          <div ref={rescheduleDialog} role="dialog" aria-modal="true" aria-label="Reschedule session" tabIndex={-1} className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl w-full max-w-4xl p-6 animate-fade-in my-8" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-2">
               <div>
                 <h3 className="font-bold text-lg mb-1">Reschedule Session</h3>
@@ -472,7 +476,7 @@ export default function StudentSessionsPage() {
                     assignedLecturer={assignedLecturer || {}}
                     lecturerTimeshift={lecturerTimeshift}
                     availabilitySlots={availabilitySlots}
-                    studentBookings={rawBookings || []}
+                    studentBookings={(rawBookings || []).filter((booking: { id: string }) => booking.id !== selectedSession.id)}
                     studentTier={studentTier}
                     onConfirm={handleRescheduleConfirm}
                     isSubmitting={isRescheduling}

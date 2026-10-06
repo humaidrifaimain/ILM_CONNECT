@@ -90,8 +90,8 @@ export default function EarningsPage() {
 
       {/* Payout History */}
       <div>
-        <h2 className="font-semibold text-lg mb-4">Payout History</h2>
-        <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto">
+        <h2 id="payout-history" className="font-semibold text-lg mb-4">Payout History</h2>
+        <div tabIndex={0} role="region" aria-labelledby="payout-history" className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]">
           {isLoading ? (
             <TableSkeleton rows={4} cols={4} />
           ) : (

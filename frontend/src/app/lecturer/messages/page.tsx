@@ -351,7 +351,7 @@ function LecturerMessagesContent() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] -m-4 lg:-m-6 overflow-hidden">
+    <div className="flex min-w-0 h-[calc(100dvh-4rem)] overflow-hidden">
       {/* Thread List Sidebar */}
       <div
         className={`w-full lg:w-80 xl:w-96 border-r border-[hsl(var(--border))] flex flex-col bg-[hsl(var(--card))] flex-shrink-0 ${
@@ -370,7 +370,7 @@ function LecturerMessagesContent() {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    className="px-2.5 py-1 rounded-full bg-red-500 text-white text-xs font-bold shadow-sm animate-pulse"
+                    className="px-2.5 py-1 rounded-full bg-red-700 text-white text-xs font-bold shadow-sm"
                   >
                     {threads.reduce((s, t) => s + t.unreadCount, 0)} unread
                   </motion.span>
@@ -497,7 +497,7 @@ function LecturerMessagesContent() {
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.3 } }}
-                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[hsl(var(--card))] shadow-sm"
+                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-700 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[hsl(var(--card))] shadow-sm"
                           >
                             {thread.unreadCount > 9 ? '9+' : thread.unreadCount}
                           </motion.span>
@@ -521,7 +521,7 @@ function LecturerMessagesContent() {
                         </div>
                         <span
                           className={`text-[10px] ml-2 flex-shrink-0 transition-colors duration-300 ${
-                            hasUnread ? 'font-semibold text-red-500' : 'text-[hsl(var(--muted-foreground))]'
+                            hasUnread ? 'font-semibold text-red-700' : 'text-[hsl(var(--muted-foreground))]'
                           }`}
                         >
                           {formatTime(thread.lastMessage.createdAt)}
@@ -542,7 +542,7 @@ function LecturerMessagesContent() {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0, transition: { duration: 0.3 } }}
-                            className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold shadow-sm"
+                            className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-bold shadow-sm"
                           >
                             <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                             {thread.unreadCount} unread message{thread.unreadCount > 1 ? 's' : ''}
@@ -603,7 +603,7 @@ function LecturerMessagesContent() {
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4 } }}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold shadow-sm"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-bold shadow-sm"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                         {activeUnreadCount} UNREAD
@@ -676,10 +676,10 @@ function LecturerMessagesContent() {
             </div>
 
             {/* Messages Stream */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+            <div tabIndex={0} role="region" aria-label="Conversation messages" className="flex-1 min-w-0 overflow-y-auto px-4 py-4 space-y-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095F46]">
               <div className="flex items-center gap-2 mx-auto max-w-sm px-3 py-2 rounded-xl bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] text-xs text-center mb-4">
                 <Info className="h-3.5 w-3.5 flex-shrink-0" />
-                <span>All messages are kept within the Ilmbit platform for safeguarding compliance.</span>
+                <span>Messages are saved in this conversation.</span>
               </div>
 
               {messagesLoading ? (
@@ -729,7 +729,7 @@ function LecturerMessagesContent() {
                             >
                               <div className="flex items-center gap-3">
                                 <div className="flex-1 h-[1.5px] bg-gradient-to-r from-transparent via-red-500/50 to-red-500" />
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500 text-white text-xs font-bold shadow-md shadow-red-500/20">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-700 text-white text-xs font-bold shadow-md shadow-red-500/20">
                                   <span className="h-2 w-2 rounded-full bg-white animate-ping" />
                                   New / Unread Messages Below
                                 </span>
@@ -753,7 +753,7 @@ function LecturerMessagesContent() {
                           <div className="max-w-[75%] sm:max-w-[65%]">
                             {/* Message Bubble with smooth border/ring highlight transition */}
                             <div
-                              className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words transition-all duration-700 ${
+                              className={`min-w-0 px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] transition-all duration-700 ${
                                 isMine
                                   ? 'bg-[#095F46] text-white rounded-br-sm'
                                   : isUnread
@@ -783,7 +783,7 @@ function LecturerMessagesContent() {
                                     initial={{ opacity: 0, scale: 0.8 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4 } }}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold shadow-sm"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-bold shadow-sm"
                                   >
                                     <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                     UNREAD
@@ -799,7 +799,7 @@ function LecturerMessagesContent() {
                                 </span>
                               )}
                               {isMine && !msg.readAt && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-medium border border-amber-500/20">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-900 dark:text-amber-200 text-[10px] font-medium border border-amber-500/20">
                                   <Clock className="h-2.5 w-2.5" />
                                   Unread by {selectedThread.otherUser.name || 'Student'}
                                 </span>
@@ -819,6 +819,7 @@ function LecturerMessagesContent() {
             <div className="px-4 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--card))]">
               <div className="flex items-end gap-2">
                 <textarea
+                  maxLength={10000}
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -835,6 +836,7 @@ function LecturerMessagesContent() {
                 />
                 <button
                   onClick={handleSend}
+                  aria-label="Send message"
                   disabled={!input.trim() || sendMutation.isPending}
                   className="h-11 w-11 flex items-center justify-center rounded-xl bg-[#095F46] hover:bg-[#074c38] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-md transition-all flex-shrink-0"
                 >

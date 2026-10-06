@@ -8,7 +8,7 @@ import { studentUi } from '@/components/student/student-dashboard-ui';
 
 export default function AdminConfigPage() {
   const queryClient = useQueryClient();
-  const { data: currencies = [] } = usePricingCurrencies();
+  const { data: currencies = [], isPending: currenciesPending, isError: currenciesError, refetch: retryCurrencies } = usePricingCurrencies();
   const saveCurrencies = useMutation({
     mutationFn: (rates: { code: string; lkrPerUnit: number; rateDate: string }[]) => apiFetch('/subscriptions/currencies', { method: 'PATCH', body: JSON.stringify({ rates }) }),
     onSuccess: data => { queryClient.setQueryData(['pricingCurrencies'], data); toast.success('Currency rates saved'); },
@@ -48,6 +48,8 @@ export default function AdminConfigPage() {
     }} className="rounded-xl border border-[#d6e0db] bg-white p-5">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">Countries & currencies</h2><button disabled={saveCurrencies.isPending || currencies.length !== 5} className={studentUi.primaryButton}>{saveCurrencies.isPending ? 'Saving…' : 'Save currency rates'}</button></div>
       <p className="mt-2 text-sm text-[#56635c]">Rates are Sri Lankan rupees for one unit of each currency. LKR is fixed at 1. Existing USD plan prices convert through LKR using these saved rates. Update rates and dates as needed; changes apply to displayed prices.</p>
+      {currenciesPending && <p role="status">Loading currencies...</p>}
+      {currenciesError && <p role="alert">Unable to load currencies. <button type="button" className="underline" onClick={() => retryCurrencies()}>Retry</button></p>}
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{currencies.map(item => <div key={item.code}><h3 className="font-semibold">{item.region} · {item.code}</h3><label className="mt-3 block text-sm text-[#56635c]">LKR for 1 {item.code}<input name={`rate-${item.code}`} type="number" required min="0.000001" max="1000000" step="any" defaultValue={item.lkrPerUnit} readOnly={item.code === 'LKR'} className={`${studentUi.field} mt-1`} /></label><label className="mt-3 block text-sm text-[#56635c]">Rate date<input name={`date-${item.code}`} type="date" required defaultValue={item.rateDate} className={`${studentUi.field} mt-1`} /></label></div>)}</div>
     </form>
   </div>;

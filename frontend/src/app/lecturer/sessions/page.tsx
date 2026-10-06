@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { toast } from '@/components/ui/toast';
 import { ScheduleCalendar } from '@/components/classroom/schedule-calendar';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 import {
   Search,
   Clock,
@@ -53,7 +54,7 @@ export default function LecturerSessionsPage() {
   }, []);
 
   const queryClient = useQueryClient();
-  const { data: bookings = [], isLoading } = useQuery({
+  const { data: bookings = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['lecturerBookings'],
     queryFn: () => apiFetch('/bookings/lecturer'),
   });
@@ -93,6 +94,10 @@ export default function LecturerSessionsPage() {
   const [absentReason, setAbsentReason] = useState('');
   const [isSubmittingAbsent, setIsSubmittingAbsent] = useState(false);
   const [absentError, setAbsentError] = useState<string | null>(null);
+  const notesDialog = useDialogAccessibility(!!notesModal, () => { if (!isSavingNotes) setNotesModal(null); });
+  const rescheduleDialog = useDialogAccessibility(!!rescheduleModal, () => { if (!isRescheduling) setRescheduleModal(null); });
+  const cancelDialog = useDialogAccessibility(!!cancelModal, () => { if (!isCanceling) setCancelModal(null); });
+  const absentDialog = useDialogAccessibility(!!absentModal, () => { if (!isSubmittingAbsent) setAbsentModal(null); });
 
   const filtered = bookings.filter((s: any) => {
     const studentName = s.student?.fullName || 'Unknown Student';
@@ -222,6 +227,7 @@ export default function LecturerSessionsPage() {
     }
   };
 
+  if (isError) return <div role="alert" className="space-y-3"><p>Unable to load your sessions.</p><button className="rounded-lg border px-4 py-2" onClick={() => void refetch()}>Retry</button></div>;
   return (
     <div className="space-y-6 animate-fade-in p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -262,7 +268,7 @@ export default function LecturerSessionsPage() {
       </div>
 
       <div className="flex gap-1 rounded-lg bg-stone-100 p-1 w-fit">
-        {(['calendar', 'list'] as const).map(item => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-md px-4 py-2 text-sm capitalize ${view === item ? 'bg-white font-bold shadow-sm' : 'text-stone-500'}`}>{item}</button>)}
+        {(['calendar', 'list'] as const).map(item => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-md px-4 py-2 text-sm capitalize ${view === item ? 'bg-white font-bold shadow-sm' : 'text-stone-600'}`}>{item}</button>)}
       </div>
       {view === 'calendar' && !isLoading && <ScheduleCalendar events={filtered.map((session: { id: string; startsAt: string; endsAt?: string; status: string; student?: { fullName: string }; tier?: string }) => ({
         id: session.id, startsAt: session.startsAt, endsAt: session.endsAt,
@@ -304,7 +310,7 @@ export default function LecturerSessionsPage() {
             // 1. Reschedule: Allowed at least 6 hours before start, OR within 6 hours after class ends.
             const isBeforeRescheduleAllowed = startsAtTime - nowTime >= 6 * 60 * 60 * 1000;
             const isAfterRescheduleAllowed = nowTime >= endsAtTime && (nowTime - endsAtTime) <= 6 * 60 * 60 * 1000;
-            const canReschedule = s.status !== 'CANCELED' && (isBeforeRescheduleAllowed || isAfterRescheduleAllowed);
+            const canReschedule = ['SCHEDULED', 'IN_PROGRESS', 'NO_SHOW_STUDENT'].includes(s.status) && (isBeforeRescheduleAllowed || isAfterRescheduleAllowed);
 
             // 2. Pre-session lock indicator (< 6h before start, while still upcoming):
             const isPreSessionLocked = !isPast && !isBeforeRescheduleAllowed && s.status !== 'CANCELED';
@@ -381,8 +387,7 @@ export default function LecturerSessionsPage() {
                     </button>
                   )}
 
-                  {/* Absent button: active for upcoming scheduled sessions */}
-                  {isScheduled && (
+                  {startsAtTime <= nowTime && ['SCHEDULED', 'IN_PROGRESS'].includes(s.status) && (
                     <button
                       onClick={() => {
                         setAbsentModal(s);
@@ -455,7 +460,8 @@ export default function LecturerSessionsPage() {
           onClick={() => setRescheduleModal(null)}
         >
           <div
-            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-fade-in"
+            ref={rescheduleDialog} role="dialog" aria-modal="true" aria-label="Reschedule Session" tabIndex={-1}
+            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full max-h-[90dvh] overflow-y-auto p-6 animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[hsl(var(--border))]">
@@ -465,6 +471,7 @@ export default function LecturerSessionsPage() {
               </div>
               <button
                 onClick={() => setRescheduleModal(null)}
+                aria-label="Close reschedule dialog"
                 className="p-1 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
               >
                 <X className="h-4 w-4" />
@@ -560,7 +567,8 @@ export default function LecturerSessionsPage() {
           onClick={() => setCancelModal(null)}
         >
           <div
-            className="bg-[hsl(var(--card))] rounded-2xl border border-red-500/20 shadow-2xl max-w-md w-full p-6 animate-fade-in"
+            ref={cancelDialog} role="dialog" aria-modal="true" aria-label="Cancel Session" tabIndex={-1}
+            className="bg-[hsl(var(--card))] rounded-2xl border border-red-500/20 shadow-2xl max-w-md w-full max-h-[90dvh] overflow-y-auto p-6 animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[hsl(var(--border))]">
@@ -570,6 +578,7 @@ export default function LecturerSessionsPage() {
               </div>
               <button
                 onClick={() => setCancelModal(null)}
+                aria-label="Close cancellation dialog"
                 className="p-1 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
               >
                 <X className="h-4 w-4" />
@@ -633,7 +642,8 @@ export default function LecturerSessionsPage() {
           onClick={() => setAbsentModal(null)}
         >
           <div
-            className="bg-[hsl(var(--card))] rounded-2xl border border-amber-500/20 shadow-2xl max-w-md w-full p-6 animate-fade-in"
+            ref={absentDialog} role="dialog" aria-modal="true" aria-label="Record student absence" tabIndex={-1}
+            className="bg-[hsl(var(--card))] rounded-2xl border border-amber-500/20 shadow-2xl max-w-md w-full max-h-[90dvh] overflow-y-auto p-6 animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[hsl(var(--border))]">
@@ -643,6 +653,7 @@ export default function LecturerSessionsPage() {
               </div>
               <button
                 onClick={() => setAbsentModal(null)}
+                aria-label="Close attendance dialog"
                 className="p-1 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
               >
                 <X className="h-4 w-4" />
@@ -702,15 +713,17 @@ export default function LecturerSessionsPage() {
           onClick={() => setNotesModal(null)}
         >
           <div
-            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-xl max-w-md w-full p-6 animate-fade-in"
+            ref={notesDialog} role="dialog" aria-modal="true" aria-label="Session Notes" tabIndex={-1}
+            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-xl max-w-md w-full max-h-[90dvh] overflow-y-auto p-6 animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-bold text-lg mb-1">Session Notes</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">
-              {notesModal.tier || 'Session'} — {notesModal.student?.fullName}
+              {notesModal.tier || 'Session'} · {notesModal.student?.fullName}
             </p>
             <textarea
               rows={4}
+              aria-label="Session notes" maxLength={10000}
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="Add your notes about this session..."

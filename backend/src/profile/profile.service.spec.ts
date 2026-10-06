@@ -24,7 +24,7 @@ describe('ProfileService', () => {
         where: { userId: 'student-1' },
         include: {
           user: { select: { id: true, email: true, role: true, status: true } },
-          assignedLecturer: true,
+          assignedLecturer: { select: { userId: true, fullName: true, bio: true, qualifications: true, languages: true, specializations: true, ratingAvg: true, ratingCount: true, hourlyAvailabilityJson: true } },
           progress: {
             include: {
               currentLearningPath: true,

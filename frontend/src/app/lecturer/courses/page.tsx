@@ -17,12 +17,12 @@ import {
 export default function LecturerCoursesPage() {
   const [search, setSearch] = useState('');
 
-  const { data: paths = [], isLoading: loadingPaths } = useQuery({
+  const { data: paths = [], isLoading: loadingPaths, isError: pathsError, refetch: refetchPaths } = useQuery({
     queryKey: ['curriculumPaths'],
     queryFn: () => apiFetch('/curriculum/paths'),
   });
 
-  const { data: students = [], isLoading: loadingStudents } = useQuery({
+  const { data: students = [], isLoading: loadingStudents, isError: studentsError, refetch: refetchStudents } = useQuery({
     queryKey: ['lecturerStudentsProgress'],
     queryFn: () => apiFetch('/profile/lecturer/students/progress'),
   });
@@ -46,6 +46,7 @@ export default function LecturerCoursesPage() {
     return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
   };
 
+  if (pathsError || studentsError) return <div role="alert" className="space-y-3"><p>Unable to load courses and student access.</p><button className="rounded-lg border px-4 py-2" onClick={() => { void refetchPaths(); void refetchStudents(); }}>Retry</button></div>;
   return (
     <div className="space-y-6 animate-fade-in w-full mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

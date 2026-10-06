@@ -774,6 +774,8 @@ function StudentMessagesContent() {
                 />
                 <button
                   onClick={handleSend}
+                  aria-label="Send message"
+                  title="Send message"
                   disabled={!input.trim() || sendMutation.isPending}
                   className="h-11 w-11 flex items-center justify-center rounded-xl bg-[#095F46] hover:bg-[#074c38] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-md transition-all flex-shrink-0"
                 >

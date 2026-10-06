@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { CreateLecturerDto } from './dto/create-lecturer.dto';
+import { CreateLecturerDto, UpdateLecturerDto } from './dto/create-lecturer.dto';
 
 @Injectable()
 export class AdminService {
@@ -24,6 +24,8 @@ export class AdminService {
 
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
     
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
@@ -32,7 +34,7 @@ export class AdminService {
     });
 
     const sessionsThisWeek = await this.prisma.session.count({
-      where: { startsAt: { gte: startOfWeek } },
+      where: { startsAt: { gte: startOfWeek, lt: endOfWeek } },
     });
 
     const mrrRes = await this.prisma.subscription.aggregate({
@@ -50,7 +52,7 @@ export class AdminService {
 
     const payoutsRes = await this.prisma.payout.aggregate({
       _sum: { amountLkr: true },
-      where: { status: 'SUCCESSFUL', initiatedAt: { gte: startOfMonth } },
+      where: { status: 'SUCCESSFUL', completedAt: { gte: startOfMonth } },
     });
     const payoutsThisMonth = payoutsRes._sum.amountLkr || 0;
 
@@ -84,10 +86,14 @@ export class AdminService {
   }
 
   async getUsers(role?: string, status?: string) {
+    const roleFilter = role?.toUpperCase();
+    const statusFilter = status?.toUpperCase();
+    if (roleFilter && roleFilter !== 'ALL' && !Object.values(Role).includes(roleFilter as Role)) throw new BadRequestException('Invalid user role');
+    if (statusFilter && statusFilter !== 'ALL' && !Object.values(UserStatus).includes(statusFilter as UserStatus)) throw new BadRequestException('Invalid user status');
     return this.prisma.user.findMany({
       where: {
-        ...(role && role !== 'all' && { role: role.toUpperCase() as any }),
-        ...(status && status !== 'all' && { status: status.toUpperCase() as any }),
+        ...(roleFilter && roleFilter !== 'ALL' && { role: roleFilter as Role }),
+        ...(statusFilter && statusFilter !== 'ALL' && { status: statusFilter as UserStatus }),
       },
       select: {
         id: true,
@@ -137,11 +143,7 @@ export class AdminService {
     const defaultPassword = dto.password;
     const passwordHash = await bcrypt.hash(defaultPassword, saltRounds);
 
-    const specializations = Array.isArray(dto.specializations)
-      ? dto.specializations
-      : typeof dto.specializations === 'string'
-      ? dto.specializations.split(',').map((s: string) => s.trim()).filter(Boolean)
-      : ['Quran Recitation'];
+    const specializations = dto.specializations || ['Quran Recitation'];
 
     const user = await this.prisma.user.create({
       data: {
@@ -203,13 +205,16 @@ export class AdminService {
     if (!studentUser) {
       throw new NotFoundException('Student user not found');
     }
+    if (studentUser.role !== Role.STUDENT || studentUser.deletedAt) throw new BadRequestException('Choose a student account');
 
     const lecturerProfile = await this.prisma.lecturerProfile.findUnique({
       where: { userId: lecturerUserId },
+      include: { user: { select: { status: true, deletedAt: true, role: true } } },
     });
     if (!lecturerProfile) {
       throw new NotFoundException('Lecturer profile not found');
     }
+    if (lecturerProfile.user.role !== Role.LECTURER || lecturerProfile.user.status !== UserStatus.ACTIVE || lecturerProfile.user.deletedAt || lecturerProfile.status !== UserStatus.ACTIVE) throw new BadRequestException('Choose an active lecturer');
 
     const updated = await this.prisma.studentProfile.upsert({
       where: { userId: studentUserId },
@@ -250,7 +255,7 @@ export class AdminService {
     return updated;
   }
 
-  async updateLecturer(id: string, dto: any) {
+  async updateLecturer(id: string, dto: UpdateLecturerDto, actorId?: string) {
     const lecturerProfile = await this.prisma.lecturerProfile.findUnique({
       where: { userId: id }
     });
@@ -258,24 +263,26 @@ export class AdminService {
       throw new NotFoundException('Lecturer profile not found');
     }
     
-    const updateData: any = {};
-    if (dto.hourlyAvailabilityJson !== undefined) {
-      updateData.hourlyAvailabilityJson = dto.hourlyAvailabilityJson;
-    }
-    
-    return this.prisma.lecturerProfile.update({
-      where: { userId: id },
-      data: updateData,
+    return this.prisma.$transaction(async tx => {
+      const result = await tx.lecturerProfile.update({ where: { userId: id }, data: { hourlyAvailabilityJson: dto.hourlyAvailabilityJson } });
+      if (actorId) await tx.auditLog.create({ data: { actorId, action: 'LECTURER_AVAILABILITY_UPDATED', entity: 'LECTURER_PROFILE', entityId: id, details: { hours: dto.hourlyAvailabilityJson } } });
+      return result;
     });
   }
 
-  async updateUserStatus(id: string, status: string) {
+  async updateUserStatus(id: string, status: UserStatus, actorId?: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
 
-    return this.prisma.user.update({
-      where: { id },
-      data: { status: status as any },
+    return this.prisma.$transaction(async tx => {
+      const result = await tx.user.update({
+        where: { id },
+        data: { status, ...(user.status !== status ? { tokenVersion: { increment: 1 } } : {}) },
+        select: { id: true, email: true, role: true, status: true, createdAt: true },
+      });
+      if (user.role === Role.LECTURER) await tx.lecturerProfile.updateMany({ where: { userId: id }, data: { status } });
+      if (actorId) await tx.auditLog.create({ data: { actorId, action: 'USER_STATUS_UPDATED', entity: 'USER', entityId: id, details: { previousStatus: user.status, status } } });
+      return result;
     });
   }
 
@@ -304,7 +311,6 @@ export class AdminService {
         notes: true,
       },
       orderBy: { startsAt: 'desc' },
-      take: 200,
     });
   }
 
@@ -312,12 +318,10 @@ export class AdminService {
     const payments = await this.prisma.payment.findMany({
       where: { status: 'SUCCESSFUL' },
       orderBy: { processedAt: 'desc' },
-      take: 50,
     });
 
     const payouts = await this.prisma.payout.findMany({
       orderBy: { initiatedAt: 'desc' },
-      take: 50,
     });
 
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -340,7 +344,7 @@ export class AdminService {
   async getFeedback() {
     return this.prisma.rating.findMany({
       select: { id: true, score: true, comment: true, createdAt: true, student: { select: { fullName: true } }, lecturer: { select: { fullName: true } } },
-      orderBy: { createdAt: 'desc' }, take: 200,
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -348,11 +352,10 @@ export class AdminService {
     return this.prisma.auditLog.findMany({
       include: { actor: { select: { email: true } } },
       orderBy: { createdAt: 'desc' },
-      take: 100,
     });
   }
 
-  async updatePayoutStatus(id: string, status: string) {
+  async updatePayoutStatus(id: string, status: string, actorId?: string) {
     if (!['SUCCESSFUL', 'FAILED'].includes(status)) throw new BadRequestException('Choose SUCCESSFUL or FAILED');
     return this.prisma.$transaction(async tx => {
       const payout = await tx.payout.findUnique({ where: { id } });
@@ -362,6 +365,7 @@ export class AdminService {
       if (updated.count !== 1) throw new BadRequestException('Only pending payouts can be processed');
       const blockIds = Array.isArray(payout.sessionBlocksIncluded) ? payout.sessionBlocksIncluded.filter((value): value is string => typeof value === 'string') : [];
       await tx.sessionBlock.updateMany({ where: { id: { in: blockIds }, lecturerId: payout.lecturerId }, data: { status: status === 'SUCCESSFUL' ? 'PAID_OUT' : 'COMPLETED' } });
+      if (actorId) await tx.auditLog.create({ data: { actorId, action: 'PAYOUT_STATUS_UPDATED', entity: 'PAYOUT', entityId: id, details: { status, amountLkr: payout.amountLkr } } });
       return tx.payout.findUnique({ where: { id } });
     });
   }

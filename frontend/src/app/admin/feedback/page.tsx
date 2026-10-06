@@ -28,7 +28,7 @@ export default function AdminFeedbackPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
           <input type="text" placeholder="Search by student or lecturer name..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(['all', 5, 4, 3, 2, 1] as const).map((r) => (
             <button key={r} onClick={() => setRatingFilter(r)} className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center gap-1 ${ratingFilter === r ? 'bg-[hsl(var(--primary))] text-white' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'}`}>
               {r === 'all' ? 'All Ratings' : <><Star className="h-3 w-3 fill-current" /> {r} Stars</>}
@@ -37,7 +37,7 @@ export default function AdminFeedbackPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto">
+      <div tabIndex={0} role="region" aria-label="Session feedback table" className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden overflow-x-auto">
         <table className="w-full min-w-[900px]">
           <thead>
             <tr className="border-b border-[hsl(var(--border))]">
@@ -62,9 +62,9 @@ export default function AdminFeedbackPage() {
                   <span className="text-sm">{fb.lecturer.fullName}</span>
                 </td>
                 <td className="py-4 px-5">
-                  <div className="flex gap-0.5">
+                  <div role="img" aria-label={`${fb.score} out of 5 stars`} className="flex gap-0.5">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`h-4 w-4 ${i < fb.score ? 'fill-amber-400 text-amber-400' : 'text-[hsl(var(--border))]'}`} />
+                      <Star aria-hidden="true" key={i} className={`h-4 w-4 ${i < fb.score ? 'fill-amber-400 text-amber-400' : 'text-[hsl(var(--border))]'}`} />
                     ))}
                   </div>
                 </td>

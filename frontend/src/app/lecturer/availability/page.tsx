@@ -44,19 +44,27 @@ function formatDateKey(date: Date): string {
 interface AvailabilitySlot { id: string; startsAt: string; endsAt: string; status: string; }
 interface AvailabilityProfile { userId?: string; hourlyAvailabilityJson?: number[]; }
 const getSlotKey = (dayStr: string, hour: number) => `${dayStr}@${hour}`;
+function shiftDate(instant: string) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(instant));
+  const value = (name: string) => Number(parts.find(part => part.type === name)?.value);
+  return new Date(value('year'), value('month') - 1, value('day'), value('hour'), value('minute'), value('second'));
+}
+function shiftInstant(date: Date) {
+  return new Date(`${formatDateKey(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:00+05:30`);
+}
 
 export default function AvailabilityPage() {
   const [localSlots, setLocalSlots] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   const queryClient = useQueryClient();
-  const { data: rawDbSlots, isLoading } = useQuery<AvailabilitySlot[]>({
+  const { data: rawDbSlots, isLoading, isError: slotsError, refetch: refetchSlots } = useQuery<AvailabilitySlot[]>({
     queryKey: ['availabilitySlots'],
     queryFn: () => apiFetch('/availability'),
   });
 
   // Fetch lecturer's own profile to get timeshift
-  const { data: lecturerProfile } = useQuery<AvailabilityProfile>({
+  const { data: lecturerProfile, isLoading: profileLoading, isError: profileError, refetch: refetchProfile } = useQuery<AvailabilityProfile>({
     queryKey: ['lecturerProfile'],
     queryFn: () => apiFetch('/profile/lecturer'),
   });
@@ -69,7 +77,7 @@ export default function AvailabilityPage() {
     const map = new Map<string, AvailabilitySlot>();
     if (Array.isArray(rawDbSlots)) {
       rawDbSlots.forEach((slot) => {
-        const d = new Date(slot.startsAt);
+        const d = shiftDate(slot.startsAt);
         const dayStr = formatDateKey(d);
         const hour = d.getHours();
         map.set(getSlotKey(dayStr, hour), slot);
@@ -104,8 +112,8 @@ export default function AvailabilityPage() {
           const [dayStr, hourStr] = key.split('@');
           const [year, month, dateNum] = dayStr.split('-').map(Number);
           const hour = parseInt(hourStr, 10);
-          const startsAt = new Date(year, month - 1, dateNum, hour, 0, 0, 0);
-          const endsAt = new Date(year, month - 1, dateNum, hour, 40, 0, 0); // 40-minute capped session slot
+          const startsAt = shiftInstant(new Date(year, month - 1, dateNum, hour, 0));
+          const endsAt = new Date(+startsAt + 40 * 60000);
 
           creates.push(apiFetch('/availability', {
             method: 'POST',
@@ -172,13 +180,14 @@ export default function AvailabilityPage() {
     const startsAt = new Date(year, month - 1, day, Number(hourStr));
     const booked = dbSlot?.status === 'BOOKED';
     calendarEvents.push({
-      id: key, startsAt: startsAt.toISOString(), endsAt: dbSlot?.endsAt || new Date(startsAt.getTime() + 40 * 60000).toISOString(),
+      id: key, startsAt: startsAt.toISOString(), endsAt: dbSlot ? shiftDate(dbSlot.endsAt).toISOString() : new Date(startsAt.getTime() + 40 * 60000).toISOString(),
       title: booked ? 'Booked session' : 'Available session', subtitle: booked ? 'Reserved for a student' : '40-minute session',
       tone: booked ? 'blue' : localSlots[key] ? 'purple' : 'green', selected: localSlots[key] === true,
       disabled: booked || isSaving, onClick: () => toggleSlot(key),
     });
   }
 
+  if (slotsError || profileError) return <div role="alert" className="space-y-3"><p>Unable to load your availability and assigned shift.</p><button className="rounded-lg border px-4 py-2" onClick={() => { void refetchSlots(); void refetchProfile(); }}>Retry</button></div>;
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-end gap-4">
@@ -200,16 +209,16 @@ export default function AvailabilityPage() {
             <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
             <div>
               <p className="font-bold text-sm text-amber-900 dark:text-amber-200">
-                Assigned Working Timeshift: {formatShiftName(timeshift)}
+                Assigned Working Timeshift: {formatShiftName(timeshift)} (Asia/Colombo)
               </p>
-              <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+              <p className="text-xs text-amber-900 dark:text-amber-200 mt-0.5">
                 You can set availability during your assigned shift hours ({timeshift.map(h => `${h.toString().padStart(2,'0')}:00`).join(', ')}). Lecturers cannot self-modify their assigned shift. Need to switch shifts (e.g. 10 to 2, 2 to 6, 6 to 10)?
               </p>
             </div>
           </div>
           <Link
             href="/lecturer/support?tab=contact"
-            className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition-colors whitespace-nowrap flex-shrink-0 shadow-sm"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 transition-colors whitespace-nowrap flex-shrink-0 shadow-sm"
           >
             Request Shift Change
           </Link>
@@ -236,17 +245,18 @@ export default function AvailabilityPage() {
         </div>
       )}
 
-      {isLoading && (
+      {(isLoading || profileLoading) && (
         <LoadingScreen message="Loading Schedule..." subtitle="Fetching your lecturer working hours & open slots" />
       )}
 
-      {!isLoading && <ScheduleCalendar
+      {!isLoading && !profileLoading && <ScheduleCalendar
         events={calendarEvents}
         startHour={10}
         visibleHours={timeshift}
         onCellClick={(date) => toggleSlot(getSlotKey(formatDateKey(date), date.getHours()))}
-        isCellDisabled={(date) => isSaving || !hours.includes(date.getHours()) || (timeshift.length > 0 && !timeshift.includes(date.getHours()))}
-        getCellDisabledReason={(date) => !hours.includes(date.getHours()) || (timeshift.length > 0 && !timeshift.includes(date.getHours())) ? 'Outside your shift' : isSaving ? 'Saving changes' : undefined}
+        isCellDisabled={(date) => isSaving || shiftInstant(date) <= new Date() || !hours.includes(date.getHours()) || !timeshift.includes(date.getHours())}
+        getCellDisabledReason={(date) => shiftInstant(date) <= new Date() ? 'Past time' : !hours.includes(date.getHours()) || !timeshift.includes(date.getHours()) ? 'Outside your shift' : isSaving ? 'Saving changes' : undefined}
+        timezoneLabel="Times shown in Asia/Colombo"
         ariaLabel="Lecturer availability calendar"
       />}
     </div>

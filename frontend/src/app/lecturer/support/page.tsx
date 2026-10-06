@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 import { useAuth } from '@/lib/auth-context';
 import {
   HelpCircle,
@@ -84,6 +85,7 @@ function LecturerSupportContent() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [lecturerReply, setLecturerReply] = useState('');
   const [sendingLecturerReply, setSendingLecturerReply] = useState(false);
+  const ticketDialog = useDialogAccessibility(!!selectedTicket, () => { if (!sendingLecturerReply) setSelectedTicket(null); });
 
   // Sync selectedTicket with live query
   const currentSelectedTicket = selectedTicket
@@ -201,7 +203,7 @@ function LecturerSupportContent() {
                     </div>
                     <h3 className="font-bold text-lg text-[hsl(var(--foreground))]">Inquiry Submitted!</h3>
                     <p className="text-xs text-[hsl(var(--muted-foreground))] max-w-md mx-auto leading-relaxed">
-                      Your inquiry has been logged. Our academic coordinators will review and reply within a few hours.
+                      Your inquiry has been logged. Check My Tickets for replies from the support team.
                     </p>
                     <button
                       onClick={() => setIssueSubmitted(false)}
@@ -211,12 +213,13 @@ function LecturerSupportContent() {
                     </button>
                   </motion.div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-5">
+                  <form id="support-inquiry" onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                      <label htmlFor="lecturer-support-category" className="text-xs font-bold text-[hsl(var(--foreground))]">
                         Category <span className="text-red-500">*</span>
                       </label>
                       <select
+                        id="lecturer-support-category"
                         value={issueCategory}
                         onChange={(e) => setIssueCategory(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
@@ -230,10 +233,11 @@ function LecturerSupportContent() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                      <label htmlFor="lecturer-support-subject" className="text-xs font-bold text-[hsl(var(--foreground))]">
                         Subject <span className="text-red-500">*</span>
                       </label>
                       <input
+                        id="lecturer-support-subject" maxLength={200}
                         type="text"
                         required
                         value={issueSubject}
@@ -244,10 +248,11 @@ function LecturerSupportContent() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-[hsl(var(--foreground))]">
+                      <label htmlFor="lecturer-support-description" className="text-xs font-bold text-[hsl(var(--foreground))]">
                         Details <span className="text-red-500">*</span>
                       </label>
                       <textarea
+                        id="lecturer-support-description" maxLength={9500}
                         rows={5}
                         required
                         value={issueDescription}
@@ -324,22 +329,22 @@ function LecturerSupportContent() {
 
               <div className="space-y-1.5 p-3 rounded-xl bg-[hsl(var(--muted)/0.5)] border border-[hsl(var(--border))] text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-[hsl(var(--muted-foreground))]">Operating Hours:</span>
-                  <span className="font-semibold text-[hsl(var(--foreground))]">Mon – Sat: 8:00 AM – 10:00 PM</span>
+                  <span className="text-[hsl(var(--muted-foreground))]">Send an inquiry:</span>
+                  <span className="font-semibold text-[hsl(var(--foreground))]">Use the form above</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[hsl(var(--muted-foreground))]">Typical Response:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Within 10 minutes</span>
+                  <span className="font-semibold text-[hsl(var(--foreground))]">Check My Tickets for updates</span>
                 </div>
               </div>
 
               <a
-                href="https://wa.me/"
-                target="_blank"
+                href={/^\d{7,15}$/.test(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '') ? `https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP}` : '#support-inquiry'}
+                target={/^\d{7,15}$/.test(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '') ? '_blank' : undefined}
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs text-white bg-[#25D366] hover:bg-[#20ba59] shadow-md shadow-[#25D366]/20 transition-all hover:scale-[1.01]"
+                className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-bold text-xs text-white bg-[#095F46] hover:bg-[#074c38] transition-colors"
               >
-                <Phone className="h-3.5 w-3.5" /> Message WhatsApp Coordinator <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+                <Phone className="h-3.5 w-3.5" /> {/^\d{7,15}$/.test(process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '') ? 'Message WhatsApp Coordinator' : 'Contact the support team'} <ExternalLink className="h-3.5 w-3.5 opacity-80" />
               </a>
             </div>
 
@@ -352,16 +357,16 @@ function LecturerSupportContent() {
                   </div>
                   <div>
                     <h3 className="font-bold text-sm text-[hsl(var(--foreground))]">Faculty Direct Hotline</h3>
-                    <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Toll-Free Telephone Line</p>
+                    <p className="text-[11px] text-[hsl(var(--muted-foreground))]">Telephone support</p>
                   </div>
                 </div>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
-                  Coming Soon
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-900 dark:text-amber-200 text-[10px] font-bold">
+                  Unavailable
                 </span>
               </div>
 
               <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-                Dedicated telephone lines for scholars will be published shortly. For immediate assistance right now, please reach out on WhatsApp.
+                Telephone support is currently unavailable. Send an inquiry using the form above or email the academic desk.
               </p>
 
               <div className="pt-2 border-t border-[hsl(var(--border))] flex items-center justify-between text-xs">
@@ -514,6 +519,7 @@ function LecturerSupportContent() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 onClick={(e) => e.stopPropagation()}
+                ref={ticketDialog} role="dialog" aria-modal="true" aria-label="Support ticket conversation" tabIndex={-1}
                 className="w-full max-w-2xl max-h-[85vh] bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-3xl shadow-2xl flex flex-col overflow-hidden my-auto"
               >
                 {/* Modal Header */}
@@ -540,6 +546,7 @@ function LecturerSupportContent() {
 
                 <button
                   onClick={() => setSelectedTicket(null)}
+                  aria-label="Close support conversation"
                   className="h-8 w-8 rounded-full hover:bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))] transition-colors"
                 >
                   <X className="h-4 w-4" />
@@ -615,6 +622,7 @@ function LecturerSupportContent() {
               {/* Reply Composer */}
               <div className="p-4 border-t border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.2)] space-y-3 shrink-0">
                 <textarea
+                  maxLength={10000} aria-label="Reply to support"
                   rows={2}
                   value={lecturerReply}
                   onChange={(e) => setLecturerReply(e.target.value)}

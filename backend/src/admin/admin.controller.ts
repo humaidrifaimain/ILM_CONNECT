@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Req, Header } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
-import { CreateLecturerDto, AssignLecturerDto } from './dto/create-lecturer.dto';
+import { CreateLecturerDto, AssignLecturerDto, UpdateLecturerDto, UpdateUserStatusDto } from './dto/create-lecturer.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -13,14 +13,17 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('waitlist')
+  @Header('Cache-Control', 'no-store')
   getWaitlist() { return this.adminService.getWaitlist(); }
 
   @Get('stats')
+  @Header('Cache-Control', 'no-store')
   getStats() {
     return this.adminService.getStats();
   }
 
   @Get('users')
+  @Header('Cache-Control', 'no-store')
   getUsers(@Query('role') role?: string, @Query('status') status?: string) {
     return this.adminService.getUsers(role, status);
   }
@@ -41,35 +44,39 @@ export class AdminController {
   }
 
   @Patch('lecturers/:id')
-  updateLecturer(@Param('id') id: string, @Body() dto: any) {
-    return this.adminService.updateLecturer(id, dto);
+  updateLecturer(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateLecturerDto) {
+    return this.adminService.updateLecturer(id, dto, req.user.id);
   }
 
   @Patch('users/:id/status')
-  updateUserStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.adminService.updateUserStatus(id, status);
+  updateUserStatus(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
+    return this.adminService.updateUserStatus(id, dto.status, req.user.id);
   }
 
   @Get('sessions')
+  @Header('Cache-Control', 'no-store')
   getSessions() {
     return this.adminService.getSessions();
   }
 
   @Get('finance')
+  @Header('Cache-Control', 'no-store')
   getFinanceOverview() {
     return this.adminService.getFinanceOverview();
   }
 
   @Get('feedback')
+  @Header('Cache-Control', 'no-store')
   getFeedback() { return this.adminService.getFeedback(); }
 
   @Get('audit-logs')
+  @Header('Cache-Control', 'no-store')
   getAuditLogs() {
     return this.adminService.getAuditLogs();
   }
 
   @Patch('payouts/:id/status')
-  updatePayoutStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.adminService.updatePayoutStatus(id, status);
+  updatePayoutStatus(@Req() req: any, @Param('id') id: string, @Body('status') status: string) {
+    return this.adminService.updatePayoutStatus(id, status, req.user.id);
   }
 }
