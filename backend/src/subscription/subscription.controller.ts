@@ -12,13 +12,6 @@ export class SubscriptionController {
   @Get('currencies')
   getCurrencies() { return this.subscriptionService.getCurrencies(); }
 
-  @Patch('currencies')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  updateCurrencies(@Request() req: any, @Body('rates') rates: unknown) {
-    return this.subscriptionService.updateCurrencies(rates, req.user.id);
-  }
-
   @Get('plans')
   getPlans() { return this.subscriptionService.getPlans(); }
 

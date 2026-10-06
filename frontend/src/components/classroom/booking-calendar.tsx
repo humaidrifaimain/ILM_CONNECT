@@ -84,7 +84,8 @@ export function BookingCalendar({
         bStart.getFullYear() === targetDate.getFullYear() &&
         bStart.getMonth() === targetDate.getMonth() &&
         bStart.getDate() === targetDate.getDate() &&
-        bStart.getHours() === targetDate.getHours()
+        bStart.getHours() === targetDate.getHours() &&
+        bStart.getMinutes() === targetDate.getMinutes()
       );
     });
   };
@@ -107,6 +108,7 @@ export function BookingCalendar({
               slotStart.getMonth() === targetDate.getMonth() &&
               slotStart.getDate() === targetDate.getDate() &&
               slotStart.getHours() === targetDate.getHours() &&
+              slotStart.getMinutes() === targetDate.getMinutes() &&
               slot.status === 'OPEN';
     });
   };
@@ -183,7 +185,7 @@ export function BookingCalendar({
   for (const slot of availabilitySlots) {
     const startsAt = new Date(slot.startsAt);
     const dateStr = localDateKey(startsAt);
-    const time = `${String(startsAt.getHours()).padStart(2, '0')}:00`;
+    const time = `${String(startsAt.getHours()).padStart(2, '0')}:${String(startsAt.getMinutes()).padStart(2, '0')}`;
     const key = `${dateStr}|${time}`;
     if (!isInTimeshift(time) || !isAvailable(dateStr, time) || getBookedSessionForSlot(dateStr, time) || startsAt.getTime() < today.getTime() + 12 * 3600000) continue;
     const status = getSlotStatus(key);

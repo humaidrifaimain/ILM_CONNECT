@@ -40,6 +40,7 @@ export interface DispatchBookingNotificationParams {
   sessionDate: Date;
   sessionTimeFormatted: string;
   previousTimeFormatted?: string;
+  previousStartsAt?: Date;
   subjectTopic?: string;
   reason?: string;
 }
@@ -75,11 +76,52 @@ export class NotificationService {
   }
 
   async getMyNotifications(userId: string) {
-    return this.prisma.notification.findMany({
+    const notifications = await this.prisma.notification.findMany({
       where: { userId, channel: 'IN_APP' },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+    const sessionIds = notifications.flatMap(notification => {
+      const payload = notification.payloadJson as any;
+      return typeof payload?.sessionId === 'string' ? [payload.sessionId] : [];
+    });
+    if (!sessionIds.length) return notifications;
+    const [sessions, profile] = await Promise.all([
+      this.prisma.session.findMany({
+        where: { id: { in: sessionIds }, OR: [{ studentId: userId }, { lecturerId: userId }] },
+        select: { id: true, startsAt: true, endsAt: true, status: true, lecturer: { select: { fullName: true } } },
+      }),
+      this.prisma.studentProfile.findUnique({ where: { userId }, select: { timezone: true } }),
+    ]);
+    const timezone = this.validTimezone(profile?.timezone);
+    const byId = new Map(sessions.map(session => [session.id, session]));
+    return notifications.map(notification => {
+      const payload = notification.payloadJson as any;
+      const session = byId.get(payload?.sessionId);
+      return session ? { ...notification, payloadJson: {
+        ...payload,
+        currentSession: {
+          startsAt: session.startsAt.toISOString(), endsAt: session.endsAt.toISOString(), status: session.status,
+          lecturerName: session.lecturer.fullName, timezone,
+          dateFormatted: this.formatDate(session.startsAt, timezone),
+          timeFormatted: this.formatTime(session.startsAt, session.endsAt, timezone),
+        },
+      } } : notification;
+    });
+  }
+
+  private validTimezone(value?: string | null) {
+    try { if (value) { new Intl.DateTimeFormat('en', { timeZone: value }); return value; } } catch {}
+    return 'Asia/Colombo';
+  }
+
+  private formatDate(date: Date, timeZone: string) {
+    return date.toLocaleDateString('en-US', { timeZone, weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  private formatTime(start: Date, end: Date, timeZone: string) {
+    const options: Intl.DateTimeFormatOptions = { timeZone, hour: '2-digit', minute: '2-digit' };
+    return `${start.toLocaleTimeString('en-US', options)} to ${end.toLocaleTimeString('en-US', options)} (${timeZone})`;
   }
 
   async markAsRead(userId: string, id: string) {
@@ -157,25 +199,30 @@ export class NotificationService {
       sessionId,
       actor,
       recipient,
-      sessionDate,
-      sessionTimeFormatted,
-      previousTimeFormatted,
       subjectTopic = 'Quran Lesson',
       reason,
     } = params;
 
-    const sessionDateFormatted = sessionDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { startsAt: true, endsAt: true, student: { select: { timezone: true } } },
     });
+    const timezone = this.validTimezone(recipient.role === 'STUDENT' ? session?.student.timezone : 'Asia/Colombo');
+    const sessionDate = session?.startsAt || params.sessionDate;
+    const sessionEndsAt = session?.endsAt || new Date(sessionDate.getTime() + 40 * 60000);
+    const sessionDateFormatted = this.formatDate(sessionDate, timezone);
+    const sessionTimeFormatted = this.formatTime(sessionDate, sessionEndsAt, timezone);
+    const previousTimeFormatted = params.previousStartsAt
+      ? `${this.formatDate(params.previousStartsAt, timezone)} at ${this.formatTime(params.previousStartsAt, new Date(+params.previousStartsAt + 40 * 60000), timezone)}`
+      : params.previousTimeFormatted;
 
     let title = '';
     let message = '';
     if (eventType === 'BOOKING_CONFIRMED') {
       title = 'New Session Booked';
-      message = `${actor.name} has scheduled a session with you on ${sessionDateFormatted} at ${sessionTimeFormatted}.`;
+      message = actor.id === recipient.id
+        ? `Your session is scheduled for ${sessionDateFormatted} at ${sessionTimeFormatted}.`
+        : `${actor.name} has scheduled a session with you on ${sessionDateFormatted} at ${sessionTimeFormatted}.`;
     } else if (eventType === 'BOOKING_CANCELLED') {
       title = 'Session Cancelled';
       message = `${actor.name} has cancelled the session scheduled for ${sessionDateFormatted} at ${sessionTimeFormatted}.${reason ? ` Reason: ${reason}` : ''}`;
@@ -208,6 +255,9 @@ export class NotificationService {
           actorRole: actor.role,
           recipientName: recipient.name,
           sessionDate: sessionDate.toISOString(),
+          sessionStartsAt: sessionDate.toISOString(),
+          sessionEndsAt: sessionEndsAt.toISOString(),
+          timezone,
           sessionDateFormatted,
           sessionTimeFormatted,
           previousTimeFormatted,
@@ -261,7 +311,8 @@ export class NotificationService {
     }
 
     // 3. WhatsApp Notification Dispatch
-    const recipientPhone = recipient.phone || '+94770000000'; // Default fallback if lecturer phone pending
+    const recipientPhone = recipient.phone;
+    if (!recipientPhone || !/^\+[1-9]\d{7,14}$/.test(recipientPhone)) return;
     try {
       const whatsAppText = this.whatsAppService.buildBookingMessage({
         eventType,

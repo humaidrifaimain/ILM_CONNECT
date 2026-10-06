@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 import * as bcrypt from 'bcrypt';
 import { LoginDto, RegisterDto, WaitlistDto } from './dto/auth.dto';
 import { Role, UserStatus } from '@prisma/client';
+import { validateStudentHours } from '../availability/student-hours';
 
 @Injectable()
 export class AuthService {
@@ -62,8 +63,24 @@ export class AuthService {
         if (typeof dto[field] !== 'string' || !dto[field].trim()) throw new BadRequestException(`Provide a valid ${field}`);
         dto[field] = dto[field].trim();
       }
+      if (dto.phone.startsWith('+')) {
+        dto.phone = dto.phone.replace(/[\s()-]/g, '');
+        if (!/^\+[1-9]\d{6,14}$/.test(dto.phone)) throw new BadRequestException('Enter a valid WhatsApp number with its country code');
+      }
       try { new Intl.DateTimeFormat('en', { timeZone: dto.timezone }); }
       catch { throw new BadRequestException('Choose a valid timezone, such as Asia/Colombo'); }
+      if (dto.gender !== undefined && !['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'].includes(dto.gender)) {
+        throw new BadRequestException('Choose a valid gender');
+      }
+      let dateOfBirth: Date | undefined;
+      if (dto.dateOfBirth !== undefined) {
+        const value = dto.dateOfBirth;
+        dateOfBirth = new Date(`${value}T00:00:00.000Z`);
+        if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(dateOfBirth.getTime()) || dateOfBirth.toISOString().slice(0, 10) !== value || value < '0001-01-01' || value > new Date().toISOString().slice(0, 10)) {
+          throw new BadRequestException('Enter a valid date of birth that is not in the future');
+        }
+      }
+      const preferredHours = dto.preferredHours === undefined ? [] : validateStudentHours(dto.preferredHours);
       const existingUser = await this.prisma.user.findUnique({
         where: { email: dto.email.toLowerCase() },
       });
@@ -86,6 +103,8 @@ export class AuthService {
           passwordHash,
           role,
           status,
+          gender: dto.gender,
+          dateOfBirth,
           emailVerifiedAt: role === Role.STUDENT ? new Date() : null, // Auto-verify student for local setup
         },
       });
@@ -115,6 +134,15 @@ export class AuthService {
             timezone: dto.timezone,
             preferredLanguage: dto.preferredLanguage || 'English',
             learningGoals: dto.learningGoals || 'Quran Recitation and Tajweed',
+            preferredHours,
+          },
+        });
+        await tx.supportTicket.create({
+          data: {
+            userId: user.id,
+            type: 'STUDENT_REGISTRATION',
+            reason: 'New student registration. Assign a lecturer using the student’s available time windows.',
+            status: 'PENDING',
           },
         });
       }

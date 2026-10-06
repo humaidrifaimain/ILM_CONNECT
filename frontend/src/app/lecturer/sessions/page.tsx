@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/toast';
 import { ScheduleCalendar } from '@/components/classroom/schedule-calendar';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
+import { getSessionStatus } from '@/lib/session-status';
 import {
   Search,
   Clock,
@@ -23,29 +24,24 @@ import {
 
 type StatusFilter = 'all' | 'scheduled' | 'completed' | 'no_show_student' | 'no_show_lecturer' | 'canceled';
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  canceled: { label: 'Canceled', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  no_show_student: { label: 'Conducted (Student Absent)', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-  no_show_lecturer: { label: 'No-Show (Lecturer)', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+type LecturerSession = {
+  id: string;
+  startsAt: string;
+  endsAt?: string;
+  status: string;
+  student?: { fullName: string };
+  tier?: string;
+  notes?: string | { sharedNotes?: string };
+  rescheduledAt?: string | null;
 };
 
-const TIME_OPTIONS = [
-  { value: '10:00 AM', label: '10:00 – 10:40 AM' },
-  { value: '11:00 AM', label: '11:00 – 11:40 AM' },
-  { value: '12:00 PM', label: '12:00 – 12:40 PM' },
-  { value: '01:00 PM', label: '01:00 – 01:40 PM' },
-  { value: '02:00 PM', label: '02:00 – 02:40 PM' },
-  { value: '03:00 PM', label: '03:00 – 03:40 PM' },
-  { value: '04:00 PM', label: '04:00 – 04:40 PM' },
-  { value: '05:00 PM', label: '05:00 – 05:40 PM' },
-  { value: '06:00 PM', label: '06:00 – 06:40 PM' },
-  { value: '07:00 PM', label: '07:00 – 07:40 PM' },
-  { value: '08:00 PM', label: '08:00 – 08:40 PM' },
-  { value: '09:00 PM', label: '09:00 – 09:40 PM' },
-];
+
+const TIME_OPTIONS = Array.from({ length: 69 }, (_, index) => {
+  const start = new Date(2000, 0, 1, 10, index * 10);
+  const end = new Date(start.getTime() + 40 * 60_000);
+  const format = (date: Date) => date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return { value: format(start), label: `${format(start)} to ${format(end)}` };
+});
 
 export default function LecturerSessionsPage() {
   const [mounted, setMounted] = useState(false);
@@ -68,6 +64,9 @@ export default function LecturerSessionsPage() {
     : [];
 
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const selectedSession = bookings.find((session: { id: string }) => session.id === selectedSessionId);
+  const sessionDialog = useDialogAccessibility(!!selectedSession, () => setSelectedSessionId(null));
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   // Notes Modal State
@@ -228,8 +227,167 @@ export default function LecturerSessionsPage() {
   };
 
   if (isError) return <div role="alert" className="space-y-3"><p>Unable to load your sessions.</p><button className="rounded-lg border px-4 py-2" onClick={() => void refetch()}>Retry</button></div>;
+  const renderSessionCard = (s: LecturerSession) => {
+    const startsAtDate = new Date(s.startsAt);
+    const endsAtDate = new Date(s.endsAt || new Date(startsAtDate.getTime() + 40 * 60 * 1000));
+    const now = new Date();
+    const startsAtTime = startsAtDate.getTime();
+    const endsAtTime = endsAtDate.getTime();
+    const nowTime = now.getTime();
+
+    const isPast = endsAtTime < nowTime;
+    const effectiveStatus = s.status;
+
+    const cfg = getSessionStatus(effectiveStatus, s.rescheduledAt);
+    const studentName = s.student?.fullName || 'Unknown Student';
+    const subject = s.tier || 'Session';
+    const isScheduled = effectiveStatus === 'SCHEDULED' && !isPast;
+
+    // Lecturer 6-hour policy:
+    // 1. Reschedule: Allowed at least 6 hours before start, OR within 6 hours after class ends.
+    const isBeforeRescheduleAllowed = startsAtTime - nowTime >= 6 * 60 * 60 * 1000;
+    const isAfterRescheduleAllowed = nowTime >= endsAtTime && (nowTime - endsAtTime) <= 6 * 60 * 60 * 1000;
+    const canReschedule = ['SCHEDULED', 'IN_PROGRESS', 'NO_SHOW_STUDENT'].includes(s.status) && (isBeforeRescheduleAllowed || isAfterRescheduleAllowed);
+
+    // 2. Pre-session lock indicator (< 6h before start, while still upcoming):
+    const isPreSessionLocked = !isPast && !isBeforeRescheduleAllowed && s.status !== 'CANCELED';
+
+    // 3. Cancellation: Allowed strictly >= 6 hours before start
+    const canCancel = isScheduled && isBeforeRescheduleAllowed;
+
+    return (
+      <div
+        key={s.id}
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-all hover:border-[hsl(var(--primary)/0.3)]"
+      >
+        <div className="flex items-start sm:items-center gap-4 min-w-0">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[hsl(168,80%,26%/0.2)] to-[hsl(168,60%,35%/0.1)] flex items-center justify-center flex-shrink-0 text-sm font-bold text-[hsl(var(--primary))] uppercase border border-[hsl(168,80%,26%/0.2)]">
+            {studentName.substring(0, 2)}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="break-words font-bold text-base text-[hsl(var(--foreground))]">{studentName}</span>
+              <span className={`px-2.5 py-0.5 text-[11px] font-semibold rounded-full ${cfg.color} whitespace-nowrap`}>
+                {cfg.label}
+              </span>
+            </div>
+            <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{subject}</div>
+            <div className="text-xs text-[hsl(var(--foreground)/0.8)] font-medium mt-1 flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
+              {mounted ? (
+                `${startsAtDate.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })} · ${startsAtDate.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })} – ${endsAtDate.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}`
+              ) : (
+                <span>Loading date...</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-[hsl(var(--border))]">
+          {['SCHEDULED', 'IN_PROGRESS'].includes(s.status) && (
+            <Link
+              href={`/lecturer/sessions/${s.id}/room`}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center gap-1.5"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" /> Join Class
+            </Link>
+          )}
+
+          {/* Reschedule button: available >= 6h before start OR <= 6h after completion */}
+          {canReschedule && (
+            <button
+              onClick={() => {
+                setSelectedSessionId(null);
+                setRescheduleModal(s);
+                const sessionStartDate = new Date(s.startsAt);
+                const todayStr = new Date().toISOString().split('T')[0];
+                const initialDate = sessionStartDate < new Date() ? todayStr : sessionStartDate.toISOString().split('T')[0];
+                setRescheduleDate(initialDate);
+                setRescheduleReason('');
+                setRescheduleError(null);
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400 transition-all flex items-center gap-1.5"
+              title={isAfterRescheduleAllowed ? 'Reschedule within 6-hour post-session window' : 'Reschedule Session (6+ hours before start)'}
+            >
+              <CalendarClock className="h-3.5 w-3.5 text-amber-500" />
+              {isAfterRescheduleAllowed ? 'Reschedule (6h window)' : 'Reschedule'}
+            </button>
+          )}
+
+          {startsAtTime <= nowTime && ['SCHEDULED', 'IN_PROGRESS'].includes(s.status) && (
+            <button
+              onClick={() => {
+                setSelectedSessionId(null);
+                setAbsentModal(s);
+                setAbsentReason('');
+                setAbsentError(null);
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400 transition-all flex items-center gap-1.5"
+              title="Mark Student Absent"
+            >
+              <UserX className="h-3.5 w-3.5" /> Absent
+            </button>
+          )}
+
+          {/* Cancel button: available strictly >= 6h before start */}
+          {canCancel && (
+            <button
+              onClick={() => {
+                setSelectedSessionId(null);
+                setCancelModal(s);
+                setCancelReason('');
+                setCancelError(null);
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-semibold border border-red-200 dark:border-red-900/40 bg-red-500/5 hover:bg-red-500/10 text-red-700 dark:text-red-400 transition-all flex items-center gap-1.5"
+              title="Cancel Session (Allowed up to 6 hours before start)"
+            >
+              <CalendarX className="h-3.5 w-3.5" /> Cancel
+            </button>
+          )}
+
+          {/* Locked notice within 6h of session start */}
+          {isPreSessionLocked && (
+            <Link
+              href="/lecturer/support?tab=contact"
+              className="px-3 py-2 rounded-xl text-xs font-medium border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-300 transition-colors flex items-center gap-1.5"
+              title="Locked within 6 hours before class. Contact Admin for emergency reschedule or cancel."
+            >
+              <Lock className="h-3.5 w-3.5 text-amber-500" /> Locked (&lt;6h) · Contact Support
+            </Link>
+          )}
+
+          {(effectiveStatus === 'COMPLETED' || effectiveStatus === 'NO_SHOW_STUDENT') && (
+            <button
+              onClick={() => {
+                setSelectedSessionId(null);
+                setNotesModal(s);
+                setNoteText(typeof s.notes === 'string' ? s.notes : s.notes?.sharedNotes || '');
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors flex items-center gap-1.5"
+              title="View/Add Notes"
+            >
+              <FileText className="h-3.5 w-3.5" /> Notes
+            </button>
+          )}
+        </div>
+      </div>
+    );
+
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in p-4 sm:p-6 lg:p-8">
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
@@ -270,13 +428,16 @@ export default function LecturerSessionsPage() {
       <div className="flex gap-1 rounded-lg bg-stone-100 p-1 w-fit">
         {(['calendar', 'list'] as const).map(item => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-md px-4 py-2 text-sm capitalize ${view === item ? 'bg-white font-bold shadow-sm' : 'text-stone-600'}`}>{item}</button>)}
       </div>
-      {view === 'calendar' && !isLoading && <ScheduleCalendar events={filtered.map((session: { id: string; startsAt: string; endsAt?: string; status: string; student?: { fullName: string }; tier?: string }) => ({
+      {view === 'calendar' && !isLoading && <ScheduleCalendar events={filtered.map((session: LecturerSession) => ({
         id: session.id, startsAt: session.startsAt, endsAt: session.endsAt,
         title: session.tier ? `${session.tier} session` : 'Quran session', subtitle: session.student?.fullName || 'Student',
         tone: session.status.toLowerCase() === 'completed' ? 'purple' as const : 'blue' as const,
-        onClick: () => { setNotesModal(session); const notes = (session as { notes?: string | { sharedNotes?: string } }).notes; setNoteText(typeof notes === 'string' ? notes : notes?.sharedNotes || ''); },
+        reserveBreak: session.status !== 'CANCELED',
+        status: session.status, rescheduledAt: session.rescheduledAt,
+        onClick: () => setSelectedSessionId(session.id),
       }))}
         visibleHours={shiftHours}
+        breakMinutes={10}
         isCellDisabled={(date) => date.getHours() < 10 || date.getHours() >= 22 || (shiftHours.length > 0 && !shiftHours.includes(date.getHours()))}
         getCellDisabledReason={(date) => date.getHours() < 10 || date.getHours() >= 22 || (shiftHours.length > 0 && !shiftHours.includes(date.getHours())) ? 'Outside your shift' : undefined}
         ariaLabel="Lecturer sessions calendar" />}
@@ -286,159 +447,7 @@ export default function LecturerSessionsPage() {
           <LoadingScreen message="Loading Sessions..." subtitle="Fetching your scheduled and upcoming classes" />
         )}
         {!isLoading && view === 'list' &&
-          filtered.map((s: any) => {
-            const startsAtDate = new Date(s.startsAt);
-            const endsAtDate = new Date(s.endsAt || new Date(startsAtDate.getTime() + 40 * 60 * 1000));
-            const now = new Date();
-            const startsAtTime = startsAtDate.getTime();
-            const endsAtTime = endsAtDate.getTime();
-            const nowTime = now.getTime();
-
-            const isPast = endsAtTime < nowTime;
-            const effectiveStatus = s.status;
-
-            const cfg = statusConfig[effectiveStatus.toLowerCase()] || statusConfig.scheduled;
-            const studentName = s.student?.fullName || 'Unknown Student';
-            const subject = s.tier || 'Session';
-            const isScheduled = effectiveStatus === 'SCHEDULED' && !isPast;
-
-            // Lecturer 6-hour policy:
-            // 1. Reschedule: Allowed at least 6 hours before start, OR within 6 hours after class ends.
-            const isBeforeRescheduleAllowed = startsAtTime - nowTime >= 6 * 60 * 60 * 1000;
-            const isAfterRescheduleAllowed = nowTime >= endsAtTime && (nowTime - endsAtTime) <= 6 * 60 * 60 * 1000;
-            const canReschedule = ['SCHEDULED', 'IN_PROGRESS', 'NO_SHOW_STUDENT'].includes(s.status) && (isBeforeRescheduleAllowed || isAfterRescheduleAllowed);
-
-            // 2. Pre-session lock indicator (< 6h before start, while still upcoming):
-            const isPreSessionLocked = !isPast && !isBeforeRescheduleAllowed && s.status !== 'CANCELED';
-
-            // 3. Cancellation: Allowed strictly >= 6 hours before start
-            const canCancel = isScheduled && isBeforeRescheduleAllowed;
-
-            return (
-              <div
-                key={s.id}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-all hover:border-[hsl(var(--primary)/0.3)]"
-              >
-                <div className="flex items-start sm:items-center gap-4 min-w-0">
-                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[hsl(168,80%,26%/0.2)] to-[hsl(168,60%,35%/0.1)] flex items-center justify-center flex-shrink-0 text-sm font-bold text-[hsl(var(--primary))] uppercase border border-[hsl(168,80%,26%/0.2)]">
-                    {studentName.substring(0, 2)}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-base text-[hsl(var(--foreground))] truncate">{studentName}</span>
-                      <span className={`px-2.5 py-0.5 text-[11px] font-semibold rounded-full ${cfg.color} whitespace-nowrap`}>
-                        {cfg.label}
-                      </span>
-                    </div>
-                    <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">{subject}</div>
-                    <div className="text-xs text-[hsl(var(--foreground)/0.8)] font-medium mt-1 flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
-                      {mounted ? (
-                        `${startsAtDate.toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                        })} · ${startsAtDate.toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })} – ${endsAtDate.toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}`
-                      ) : (
-                        <span>Loading date...</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-[hsl(var(--border))]">
-                  {['SCHEDULED', 'IN_PROGRESS'].includes(s.status) && (
-                    <Link
-                      href={`/lecturer/sessions/${s.id}/room`}
-                      className="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center gap-1.5"
-                    >
-                      <Play className="h-3.5 w-3.5 fill-current" /> Join Class
-                    </Link>
-                  )}
-
-                  {/* Reschedule button: available >= 6h before start OR <= 6h after completion */}
-                  {canReschedule && (
-                    <button
-                      onClick={() => {
-                        setRescheduleModal(s);
-                        const sessionStartDate = new Date(s.startsAt);
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const initialDate = sessionStartDate < new Date() ? todayStr : sessionStartDate.toISOString().split('T')[0];
-                        setRescheduleDate(initialDate);
-                        setRescheduleReason('');
-                        setRescheduleError(null);
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all flex items-center gap-1.5"
-                      title={isAfterRescheduleAllowed ? 'Reschedule within 6-hour post-session window' : 'Reschedule Session (6+ hours before start)'}
-                    >
-                      <CalendarClock className="h-3.5 w-3.5 text-amber-500" />
-                      {isAfterRescheduleAllowed ? 'Reschedule (6h window)' : 'Reschedule'}
-                    </button>
-                  )}
-
-                  {startsAtTime <= nowTime && ['SCHEDULED', 'IN_PROGRESS'].includes(s.status) && (
-                    <button
-                      onClick={() => {
-                        setAbsentModal(s);
-                        setAbsentReason('');
-                        setAbsentError(null);
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-all flex items-center gap-1.5"
-                      title="Mark Student Absent"
-                    >
-                      <UserX className="h-3.5 w-3.5" /> Absent
-                    </button>
-                  )}
-
-                  {/* Cancel button: available strictly >= 6h before start */}
-                  {canCancel && (
-                    <button
-                      onClick={() => {
-                        setCancelModal(s);
-                        setCancelReason('');
-                        setCancelError(null);
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-red-200 dark:border-red-900/40 bg-red-500/5 hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-all flex items-center gap-1.5"
-                      title="Cancel Session (Allowed up to 6 hours before start)"
-                    >
-                      <CalendarX className="h-3.5 w-3.5" /> Cancel
-                    </button>
-                  )}
-
-                  {/* Locked notice within 6h of session start */}
-                  {isPreSessionLocked && (
-                    <Link
-                      href="/lecturer/support?tab=contact"
-                      className="px-3 py-2 rounded-xl text-xs font-medium border border-amber-200 dark:border-amber-900/40 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-300 transition-colors flex items-center gap-1.5"
-                      title="Locked within 6 hours before class. Contact Admin for emergency reschedule or cancel."
-                    >
-                      <Lock className="h-3.5 w-3.5 text-amber-500" /> Locked (&lt;6h) · Contact Support
-                    </Link>
-                  )}
-
-                  {(effectiveStatus === 'COMPLETED' || effectiveStatus === 'NO_SHOW_STUDENT') && (
-                    <button
-                      onClick={() => {
-                        setNotesModal(s);
-                        setNoteText(s.notes?.sharedNotes || s.notes || '');
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors flex items-center gap-1.5"
-                      title="View/Add Notes"
-                    >
-                      <FileText className="h-3.5 w-3.5" /> Notes
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          filtered.map(renderSessionCard)}
 
         {view === 'list' && filtered.length === 0 && (
           <div className="p-12 rounded-2xl border border-dashed border-[hsl(var(--border))] text-center bg-[hsl(var(--card))]">
@@ -448,6 +457,18 @@ export default function LecturerSessionsPage() {
           </div>
         )}
       </div>
+
+      {selectedSession && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedSessionId(null)}>
+          <div ref={sessionDialog} role="dialog" aria-modal="true" aria-label="Session details" tabIndex={-1} className="w-full max-w-3xl max-h-[90dvh] overflow-y-auto rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 sm:p-6 shadow-xl" onClick={event => event.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold">Session details</h2>
+              <button type="button" aria-label="Close session details" onClick={() => setSelectedSessionId(null)} className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-[hsl(var(--muted))] focus-visible:outline-2 focus-visible:outline-[#095F46]"><X className="h-5 w-5" aria-hidden="true" /></button>
+            </div>
+            {renderSessionCard(selectedSession)}
+          </div>
+        </div>
+      )}
 
       {/* Reschedule Modal */}
       {rescheduleModal && (

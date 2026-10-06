@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { studentUi } from './student-dashboard-ui';
+import { AvailabilitySettings } from './availability-settings';
 
 interface Profile { fullName: string; country?: string; timezone?: string; bio?: string; qualifications?: string; languages?: string[]; specializations?: string[]; payoutMethod?: string; }
 export function ProfileSettings({ role }: { role: 'student' | 'lecturer' }) {
@@ -45,6 +46,7 @@ export function ProfileSettings({ role }: { role: 'student' | 'lecturer' }) {
       <button disabled={save.isPending} className={`${studentUi.primaryButton} mt-5`}>{save.isPending ? 'Saving…' : 'Save changes'}</button>
     </form>
     <div className="space-y-4">
+      {role === 'student' && <AvailabilitySettings />}
       {role === 'lecturer' && <section className="rounded-xl border border-[#d6e0db] bg-white p-5"><h2 className="font-semibold">Payout method</h2><p className="mt-2 text-sm text-[#56635c]">{profile.payoutMethod || 'No payout method configured'}</p><Link href="/lecturer/support?tab=contact" className="mt-3 inline-block text-sm text-[#095F46] underline">Update payout details through support</Link></section>}
       <section className="rounded-xl border border-[#d6e0db] bg-white p-5"><h2 className="font-semibold">Account security</h2><Link href="/auth/forgot-password" className="mt-3 inline-block text-sm text-[#095F46] underline">Reset your password</Link></section>
     </div>

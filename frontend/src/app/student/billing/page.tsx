@@ -71,7 +71,7 @@ function BillingContent() {
       <CurrencySelector />
       {selectedPlan && <StudentCard className="border-[#b9cac2] p-5">
         <h2 className="text-xl font-bold">{selectedPlan.course} · {selectedPlan.tier}</h2>
-        <p className="mt-2 text-sm text-[#56635c]">{format(selectedPlan.monthlyUsd)}/month · {selectedPlan.sessions} live sessions per month</p>
+        <p className="mt-2 text-sm text-[#56635c]">{format(selectedPlan)}/month · {selectedPlan.sessions} live sessions per month</p>
         <p className="mt-4 text-sm text-[#56635c]">Online payment is not connected yet. Contact subscription support to arrange activation. Selecting a plan does not activate access.</p>
         <Link href={`/student/support?tab=contact&plan=${selectedPlan.id}`} className={`${studentUi.primaryButton} mt-4`}>Contact subscription support</Link>
         <Link href="/student/dashboard" className="ml-4 text-sm font-semibold text-[#095F46] underline">Choose another plan</Link>

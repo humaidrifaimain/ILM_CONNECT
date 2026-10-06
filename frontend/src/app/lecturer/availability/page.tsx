@@ -8,6 +8,7 @@ import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { ScheduleCalendar, type ScheduleEvent } from '@/components/classroom/schedule-calendar';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { conflictsWithLecturerBreak, sessionFitsShift, SESSION_MINUTES } from '@/lib/session-timing';
 
 
 // Lecturer working hours: 10 to 2, 2 to 6, and 6 to 10 (10:00 AM to 10:00 PM)
@@ -43,7 +44,7 @@ function formatDateKey(date: Date): string {
 
 interface AvailabilitySlot { id: string; startsAt: string; endsAt: string; status: string; }
 interface AvailabilityProfile { userId?: string; hourlyAvailabilityJson?: number[]; }
-const getSlotKey = (dayStr: string, hour: number) => `${dayStr}@${hour}`;
+const getSlotKey = (dayStr: string, hour: number, minute: number) => `${dayStr}@${hour}:${minute}`;
 function shiftDate(instant: string) {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Colombo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(instant));
   const value = (name: string) => Number(parts.find(part => part.type === name)?.value);
@@ -80,7 +81,7 @@ export default function AvailabilityPage() {
         const d = shiftDate(slot.startsAt);
         const dayStr = formatDateKey(d);
         const hour = d.getHours();
-        map.set(getSlotKey(dayStr, hour), slot);
+        map.set(getSlotKey(dayStr, hour, d.getMinutes()), slot);
       });
     }
     return map;
@@ -89,6 +90,30 @@ export default function AvailabilityPage() {
   const isAvailable = (key: string) => {
     if (localSlots[key] !== undefined) return localSlots[key];
     return dbSlotsMap.has(key);
+  };
+
+  const slotStart = (key: string) => {
+    const [dayStr, time] = key.split('@');
+    const [year, month, day] = dayStr.split('-').map(Number);
+    const [hour, minute] = time.split(':').map(Number);
+    return new Date(year, month - 1, day, hour, minute);
+  };
+  const slotDisabledReason = (date: Date) => {
+    if (isSaving) return 'Saving changes';
+    if (shiftInstant(date) <= new Date()) return 'Past time';
+    if (!hours.includes(date.getHours()) || !sessionFitsShift(date, timeshift)) return 'Outside your shift';
+    const key = getSlotKey(formatDateKey(date), date.getHours(), date.getMinutes());
+    if (isAvailable(key)) return undefined;
+    const end = new Date(date.getTime() + SESSION_MINUTES * 60_000);
+    const activeKeys = new Set([...dbSlotsMap.keys(), ...Object.keys(localSlots)]);
+    for (const otherKey of activeKeys) {
+      if (!isAvailable(otherKey)) continue;
+      const otherStart = slotStart(otherKey);
+      const stored = dbSlotsMap.get(otherKey);
+      const otherEnd = stored ? shiftDate(stored.endsAt) : new Date(otherStart.getTime() + SESSION_MINUTES * 60_000);
+      if (conflictsWithLecturerBreak(date, end, otherStart, otherEnd)) return 'Session or 10-minute break';
+    }
+    return undefined;
   };
 
   const toggleSlot = (key: string) => {
@@ -103,19 +128,16 @@ export default function AvailabilityPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const creates: Promise<unknown>[] = [];
-      const deletes: Promise<unknown>[] = [];
+      const creates: Array<() => Promise<unknown>> = [];
+      const deletes: Array<() => Promise<unknown>> = [];
 
       Object.entries(localSlots).forEach(([key, active]) => {
         const hasInDb = dbSlotsMap.has(key);
         if (active && !hasInDb) {
-          const [dayStr, hourStr] = key.split('@');
-          const [year, month, dateNum] = dayStr.split('-').map(Number);
-          const hour = parseInt(hourStr, 10);
-          const startsAt = shiftInstant(new Date(year, month - 1, dateNum, hour, 0));
-          const endsAt = new Date(+startsAt + 40 * 60000);
+          const startsAt = shiftInstant(slotStart(key));
+          const endsAt = new Date(+startsAt + SESSION_MINUTES * 60000);
 
-          creates.push(apiFetch('/availability', {
+          creates.push(() => apiFetch('/availability', {
             method: 'POST',
             body: JSON.stringify({
               startsAt: startsAt.toISOString(),
@@ -126,7 +148,7 @@ export default function AvailabilityPage() {
         } else if (!active && hasInDb) {
           const slot = dbSlotsMap.get(key);
           if (slot && slot.status !== 'BOOKED') {
-            deletes.push(apiFetch(`/availability/${slot.id}`, { method: 'DELETE' }));
+            deletes.push(() => apiFetch(`/availability/${slot.id}`, { method: 'DELETE' }));
           }
         }
       });
@@ -138,7 +160,9 @@ export default function AvailabilityPage() {
       }
 
       const totalAttempts = creates.length + deletes.length;
-      const results = await Promise.allSettled([...creates, ...deletes]);
+      const deleted = await Promise.allSettled(deletes.map(remove => remove()));
+      const created = await Promise.allSettled(creates.map(create => create()));
+      const results = [...deleted, ...created];
       const rejected = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
 
       await queryClient.invalidateQueries({ queryKey: ['availabilitySlots'] });
@@ -175,9 +199,7 @@ export default function AvailabilityPage() {
   for (const key of keys) {
     if (!isAvailable(key)) continue;
     const dbSlot = dbSlotsMap.get(key);
-    const [dateStr, hourStr] = key.split('@');
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const startsAt = new Date(year, month - 1, day, Number(hourStr));
+    const startsAt = slotStart(key);
     const booked = dbSlot?.status === 'BOOKED';
     calendarEvents.push({
       id: key, startsAt: startsAt.toISOString(), endsAt: dbSlot ? shiftDate(dbSlot.endsAt).toISOString() : new Date(startsAt.getTime() + 40 * 60000).toISOString(),
@@ -200,6 +222,7 @@ export default function AvailabilityPage() {
 
       <div className="p-4 rounded-xl bg-[hsl(var(--primary-light))] text-[hsl(var(--primary))] text-sm">
         Click an empty time cell to add availability, or an available session to remove it. Booked sessions are locked. Save Changes to apply your edits.
+        <p className="mt-2">Classes last 40 minutes. Leave at least 10 minutes between classes. For example, 11:00 to 11:40 can be followed by 11:50 to 12:30.</p>
       </div>
 
       {/* Timeshift Info & Shift Change Notice */}
@@ -253,9 +276,11 @@ export default function AvailabilityPage() {
         events={calendarEvents}
         startHour={10}
         visibleHours={timeshift}
-        onCellClick={(date) => toggleSlot(getSlotKey(formatDateKey(date), date.getHours()))}
-        isCellDisabled={(date) => isSaving || shiftInstant(date) <= new Date() || !hours.includes(date.getHours()) || !timeshift.includes(date.getHours())}
-        getCellDisabledReason={(date) => shiftInstant(date) <= new Date() ? 'Past time' : !hours.includes(date.getHours()) || !timeshift.includes(date.getHours()) ? 'Outside your shift' : isSaving ? 'Saving changes' : undefined}
+        cellStepMinutes={10}
+        breakMinutes={10}
+        onCellClick={(date) => toggleSlot(getSlotKey(formatDateKey(date), date.getHours(), date.getMinutes()))}
+        isCellDisabled={(date) => !!slotDisabledReason(date)}
+        getCellDisabledReason={slotDisabledReason}
         timezoneLabel="Times shown in Asia/Colombo"
         ariaLabel="Lecturer availability calendar"
       />}

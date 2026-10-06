@@ -23,6 +23,7 @@ describe('SupportService', () => {
             supportTicketMessage: {
               create: jest.fn(),
             },
+            studentProfile: { findUnique: jest.fn() },
           },
         },
       ],
@@ -50,5 +51,13 @@ describe('SupportService', () => {
   it('rejects unsupported status values without updating the ticket', async () => {
     await expect(service.updateTicketStatus('ticket', 'UNKNOWN')).rejects.toThrow('Choose PENDING');
     expect(prisma.supportTicket.update).not.toHaveBeenCalled();
+  });
+  it('keeps a new student request open until a lecturer is assigned', async () => {
+    jest.spyOn(prisma.supportTicket, 'findUnique').mockResolvedValue({ id: 'request', userId: 'student', type: 'STUDENT_REGISTRATION' } as any);
+    jest.spyOn(prisma.studentProfile, 'findUnique').mockResolvedValue({ assignedLecturerId: null } as any);
+    await expect(service.updateTicketStatus('request', 'RESOLVED')).rejects.toThrow('Assign a lecturer');
+    expect(prisma.supportTicket.update).not.toHaveBeenCalled();
+    await expect(service.addTicketMessage('request', { id: 'admin', role: Role.ADMIN }, 'Reply', 'RESOLVED')).rejects.toThrow('Assign a lecturer');
+    expect(prisma.supportTicketMessage.create).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,47 @@ import { AdminService } from './admin.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, UserStatus } from '@prisma/client';
 
+describe('Lecturer matching by student availability', () => {
+  const prisma = {
+    user: { findUnique: jest.fn() },
+    lecturerProfile: { findUnique: jest.fn() },
+    studentProfile: { update: jest.fn() },
+    supportTicket: { findUnique: jest.fn(), update: jest.fn() },
+    auditLog: { create: jest.fn() },
+    $queryRaw: jest.fn(),
+    $transaction: jest.fn(),
+  };
+  const service = new AdminService(prisma as any);
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.$transaction.mockImplementation(callback => callback(prisma));
+    prisma.supportTicket.findUnique.mockResolvedValue({ id: 'request', userId: 'student', type: 'STUDENT_REGISTRATION', status: 'PENDING' });
+    prisma.user.findUnique.mockResolvedValue({ email: 'student@example.test', status: UserStatus.ACTIVE, role: Role.STUDENT, studentProfile: { preferredHours: [14, 15, 16, 17] } });
+    prisma.lecturerProfile.findUnique.mockResolvedValue({ status: UserStatus.ACTIVE, user: { role: Role.LECTURER, status: UserStatus.ACTIVE }, hourlyAvailabilityJson: [10, 11, 12, 13] });
+  });
+  it('rejects an active lecturer whose shift does not overlap', async () => {
+    await expect(service.assignLecturerForRequest('request', 'lecturer', 'admin')).rejects.toThrow('no shift');
+    expect(prisma.studentProfile.update).not.toHaveBeenCalled();
+    expect(prisma.supportTicket.update).not.toHaveBeenCalled();
+  });
+  it('allows a matching shift', async () => {
+    prisma.lecturerProfile.findUnique.mockResolvedValue({ status: UserStatus.ACTIVE, user: { role: Role.LECTURER, status: UserStatus.ACTIVE }, hourlyAvailabilityJson: [14, 15, 16, 17] });
+    await service.assignLecturerForRequest('request', 'lecturer', 'admin');
+    expect(prisma.studentProfile.update).toHaveBeenCalledWith(expect.objectContaining({ data: { assignedLecturerId: 'lecturer' } }));
+    expect(prisma.supportTicket.update).toHaveBeenCalledWith({ where: { id: 'request' }, data: { status: 'RESOLVED', resolvedAt: expect.any(Date) } });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ details: { studentUserId: 'student', lecturerUserId: 'lecturer', requestId: 'request' } }) }));
+  });
+  it.each([{ type: 'GENERAL_SUPPORT', status: 'PENDING' }, { type: 'STUDENT_REGISTRATION', status: 'RESOLVED' }])('rejects requests that cannot be assigned: %p', request => {
+    prisma.supportTicket.findUnique.mockResolvedValue({ ...request, userId: 'student' });
+    return expect(service.assignLecturerForRequest('request', 'lecturer', 'admin')).rejects.toThrow();
+  });
+  it('rejects registration reassignment after a lecturer was already assigned', async () => {
+    prisma.user.findUnique.mockResolvedValue({ role: Role.STUDENT, status: UserStatus.ACTIVE, studentProfile: { assignedLecturerId: 'existing' } });
+    await expect(service.assignLecturerForRequest('request', 'lecturer', 'admin')).rejects.toThrow('already has a lecturer');
+    expect(prisma.studentProfile.update).not.toHaveBeenCalled();
+  });
+});
+
 describe('Finance overview', () => {
   const prisma = { payment: { findMany: jest.fn() }, payout: { findMany: jest.fn() } };
   const service = new AdminService(prisma as unknown as PrismaService);
@@ -9,7 +50,7 @@ describe('Finance overview', () => {
   it('returns an empty breakdown when no successful payments exist', async () => {
     prisma.payment.findMany.mockResolvedValue([]);
     prisma.payout.findMany.mockResolvedValue([]);
-    await expect(service.getFinanceOverview()).resolves.toEqual({ payments: [], payouts: [], revenueByPlan: [] });
+    await expect(service.getFinanceOverview()).resolves.toEqual({ payments: [], payouts: [], revenueByPlan: [], exchangeRates: [], pricing: [] });
   });
   it('uses successful monthly payments and counts each paying student once per plan', async () => {
     prisma.payment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([

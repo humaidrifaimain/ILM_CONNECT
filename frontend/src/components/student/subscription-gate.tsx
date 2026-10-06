@@ -72,27 +72,26 @@ function SubscriptionCourseCard({ standard, fastTrack }: {
   standard: SubscriptionPlan;
   fastTrack: SubscriptionPlan;
 }) {
-  const { format } = usePricingCurrency();
+  const { format, difference } = usePricingCurrency();
   const [accelerated, setAccelerated] = useState(false);
   const plan = accelerated ? fastTrack : standard;
-  const extra = Math.round((fastTrack.monthlyUsd - standard.monthlyUsd) * 100) / 100;
   return <article className="flex flex-col rounded-xl border border-[#d6e0db] bg-white p-4">
     <span className="text-xs font-semibold text-[#095F46]">{plan.tier}</span>
     <h3 className="mt-1 min-h-12 text-lg font-semibold">{plan.course}</h3>
-    <p className="mt-3"><span className="text-2xl font-bold">{format(plan.monthlyUsd)}</span><span className="text-sm text-[#56635c]"> / month</span></p>
+    <p className="mt-3"><span className="text-2xl font-bold">{format(plan)}</span><span className="text-sm text-[#56635c]"> / month</span></p>
     <p className="mt-1 text-sm text-[#56635c]">{accelerated ? 3 : 2} classes a week · {plan.sessions} per month</p>
     <fieldset className="mt-6 flex-1 border-t border-[#d6e0db] pt-4">
       <legend className="sr-only">Learning pace for {plan.course}</legend>
       <label className="flex cursor-pointer items-center gap-3 py-2">
         <input type="radio" name={`pace-${standard.id}`} checked={!accelerated} onChange={() => setAccelerated(false)} className="h-4 w-4 shrink-0 accent-[#095F46]" />
         <span className="flex-1 text-sm font-semibold">Standard<span className="block text-xs font-normal text-[#56635c]">2 classes a week</span></span>
-        <span className="text-xs text-[#56635c]">{format(standard.monthlyUsd)}/mo</span>
+        <span className="text-xs text-[#56635c]">{format(standard)}/mo</span>
       </label>
       <p className="mb-1 mt-3 text-xs text-[#56635c]">Want an extra class each week?</p>
       <label className="flex cursor-pointer items-center gap-3 py-2">
         <input type="radio" name={`pace-${standard.id}`} checked={accelerated} onChange={() => setAccelerated(true)} className="h-4 w-4 shrink-0 accent-[#095F46]" />
         <span className="flex-1 text-sm font-semibold">Fast Track<span className="block text-xs font-normal text-[#56635c]">3 classes a week</span></span>
-        <span className="text-xs font-semibold text-[#095F46]">+{format(extra)}/mo</span>
+        <span className="text-xs font-semibold text-[#095F46]">+{difference(fastTrack, standard)}/mo</span>
       </label>
     </fieldset>
     <Link href={`/student/billing?plan=${plan.id}`} className="mt-5 block rounded-full bg-[#095F46] px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#074c38] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#095F46]" aria-label={`Continue with ${plan.course}, ${plan.tier}`}>Select {plan.tier}</Link>

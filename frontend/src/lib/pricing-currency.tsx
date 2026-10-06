@@ -3,8 +3,9 @@ import { useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from './api';
 import { useAuth } from './auth-context';
+import type { SubscriptionPlan } from './subscription-plans';
 
-export interface PricingCurrency { code: string; region: string; lkrPerUnit: number; rateDate: string; }
+export interface PricingCurrency { code: string; region: string; lkrPerUnit: number; rateDate: string; source: string | null; fetchedAt: string | null; available: boolean; stale: boolean; }
 export function usePricingCurrencies() {
   return useQuery<PricingCurrency[]>({ queryKey: ['pricingCurrencies'], queryFn: () => apiFetch('/subscriptions/currencies'), staleTime: 0, refetchOnWindowFocus: 'always' });
 }
@@ -30,14 +31,15 @@ export function usePricingCurrency() {
   const code = ['LKR', 'USD', 'GBP', 'EUR', 'AUD'].includes(chosen || '') ? chosen! : inferred;
   const { data: currencies = [], isPending, isError } = usePricingCurrencies();
   const currency = currencies.find(item => item.code === code);
-  const usdRate = currencies.find(item => item.code === 'USD')?.lkrPerUnit;
-  const amount = (usd: number) => currency && usdRate ? Math.round(usd * usdRate / currency.lkrPerUnit * 100) / 100 : null;
-  const format = (usd: number) => {
-    const value = amount(usd);
-    return value === null ? '—' : new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'symbol' }).format(value);
+  const amount = (plan: SubscriptionPlan) => plan.prices?.[code] ?? null;
+  const formatAmount = (value: number | null) => value === null ? 'Price unavailable' : new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'symbol' }).format(value);
+  const format = (plan: SubscriptionPlan) => formatAmount(amount(plan));
+  const difference = (higher: SubscriptionPlan, lower: SubscriptionPlan) => {
+    const high = amount(higher), low = amount(lower);
+    return formatAmount(high === null || low === null ? null : Math.round((high - low) * 100) / 100);
   };
   const select = (value: string) => { localStorage.setItem(key, value); window.dispatchEvent(new Event('ilm-currency')); };
-  return { code, currency, currencies, format, amount, select, isPending, isError };
+  return { code, currency, currencies, format, amount, difference, select, isPending, isError };
 }
 export function CurrencySelector() {
   const { code, currencies, select, isPending, isError } = usePricingCurrency();

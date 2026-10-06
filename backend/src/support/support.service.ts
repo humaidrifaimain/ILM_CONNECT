@@ -82,6 +82,9 @@ export class SupportService {
                 country: true,
                 phone: true,
                 currentTier: true,
+                preferredHours: true,
+                assignedLecturerId: true,
+                assignedLecturer: { select: { userId: true, fullName: true } },
               },
             },
             lecturerProfile: {
@@ -115,6 +118,9 @@ export class SupportService {
                 country: true,
                 phone: true,
                 currentTier: true,
+                preferredHours: true,
+                assignedLecturerId: true,
+                assignedLecturer: { select: { userId: true, fullName: true } },
               },
             },
             lecturerProfile: {
@@ -157,6 +163,7 @@ export class SupportService {
     if (!isAdmin && ticket.userId !== user.id) {
       throw new ForbiddenException('You cannot reply to this ticket');
     }
+    await this.requireAssignmentToResolve(ticket, newStatus);
 
     let senderName = 'Support Desk';
     if (isAdmin) {
@@ -204,6 +211,7 @@ export class SupportService {
     this.validateStatus(status);
     const ticket = await this.prisma.supportTicket.findUnique({ where: { id } });
     if (!ticket) throw new NotFoundException('Ticket not found');
+    await this.requireAssignmentToResolve(ticket, status);
 
     return this.prisma.supportTicket.update({
       where: { id },
@@ -224,5 +232,11 @@ export class SupportService {
         },
       },
     });
+  }
+
+  private async requireAssignmentToResolve(ticket: { type: string; userId: string }, status?: string) {
+    if (ticket.type !== 'STUDENT_REGISTRATION' || status !== 'RESOLVED') return;
+    const profile = await this.prisma.studentProfile.findUnique({ where: { userId: ticket.userId }, select: { assignedLecturerId: true } });
+    if (!profile?.assignedLecturerId) throw new BadRequestException('Assign a lecturer from this request before resolving it');
   }
 }

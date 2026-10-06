@@ -1,48 +1,49 @@
 import { Injectable, NotFoundException, BadRequestException, NotImplementedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ExchangeRateService } from '../pricing/exchange-rate.service';
 
 @Injectable()
 export class SubscriptionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private exchange?: ExchangeRateService) {}
 
   async getCurrencies() {
-    return this.prisma.pricingCurrency.findMany({ orderBy: { region: 'asc' } });
-  }
-
-  async updateCurrencies(input: unknown, actorId: string) {
-    if (!Array.isArray(input) || input.length !== 5 || new Set(input.map(row => row?.code)).size !== 5) throw new BadRequestException('Provide all five currencies');
-    const codes = ['LKR', 'USD', 'GBP', 'EUR', 'AUD'];
-    for (const row of input) {
-      if (!codes.includes(row?.code) || typeof row.lkrPerUnit !== 'number' || !Number.isFinite(row.lkrPerUnit) || row.lkrPerUnit <= 0 || row.lkrPerUnit > 1000000 || (row.code === 'LKR' && row.lkrPerUnit !== 1) || typeof row.rateDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(row.rateDate) || (!Number.isFinite(Date.parse(row.rateDate)) || new Date(row.rateDate).toISOString().slice(0, 10) !== row.rateDate)) throw new BadRequestException('Invalid currency rate or date. LKR must remain 1.');
-    }
-    await this.prisma.$transaction(async tx => {
-      for (const row of input) await tx.pricingCurrency.update({ where: { code: row.code }, data: { lkrPerUnit: row.lkrPerUnit, rateDate: row.rateDate } });
-      await tx.auditLog.create({ data: { actorId, action: 'CURRENCY_RATES_UPDATED', entity: 'PRICING_CURRENCIES', entityId: 'catalog', details: { rates: input } } });
-    });
-    return this.getCurrencies();
+    return this.exchange!.snapshot();
   }
 
   async getPlans() {
-    return this.prisma.subscriptionPlan.findMany({ orderBy: [{ courseId: 'asc' }, { sessions: 'asc' }] });
+    const plans = await this.prisma.subscriptionPlan.findMany({ orderBy: [{ courseId: 'asc' }, { sessions: 'asc' }] });
+    if (!this.exchange) return plans;
+    const rates = await this.exchange.snapshot();
+    const usd = rates.find(row => row.code === 'USD');
+    return plans.map(plan => {
+      const prices: Record<string, number | null> = { LKR: plan.monthlyLkr, USD: plan.monthlyUsd };
+      for (const code of ['GBP', 'EUR', 'AUD']) {
+        const rate = rates.find(row => row.code === code);
+        prices[code] = usd?.available && !usd.stale && rate?.available && !rate.stale
+          ? Math.round(plan.monthlyUsd * usd.lkrPerUnit / rate.lkrPerUnit * 100) / 100 : null;
+      }
+      return { ...plan, prices, internationalLkr: usd?.available && !usd.stale ? Math.round(plan.monthlyUsd * usd.lkrPerUnit * 100) / 100 : null };
+    });
   }
 
   async updatePlans(input: unknown, actorId: string) {
     if (!Array.isArray(input) || input.length !== 6) throw new BadRequestException('Provide prices for all six plans');
-    const updates: { id: string; monthlyUsd: number }[] = [];
+    const updates: { id: string; monthlyUsd: number; monthlyLkr: number }[] = [];
     for (const row of input) {
-      if (!row || typeof row.id !== 'string' || typeof row.monthlyUsd !== 'number' || !Number.isFinite(row.monthlyUsd) || row.monthlyUsd <= 0 || row.monthlyUsd > 10000 || Math.abs(row.monthlyUsd * 100 - Math.round(row.monthlyUsd * 100)) > 0.000001) {
+      if (!row || typeof row.id !== 'string' || ![row.monthlyUsd, row.monthlyLkr].every(value => typeof value === 'number' && Number.isFinite(value) && value > 0 && Math.abs(value * 100 - Math.round(value * 100)) <= 0.000001) || row.monthlyUsd > 10000 || row.monthlyLkr > 10000000) {
         throw new BadRequestException('Prices must be positive amounts with at most two decimal places');
       }
-      updates.push({ id: row.id, monthlyUsd: row.monthlyUsd });
+      updates.push({ id: row.id, monthlyUsd: row.monthlyUsd, monthlyLkr: row.monthlyLkr });
     }
     const current = await this.getPlans();
     if (new Set(updates.map(row => row.id)).size !== current.length || updates.some(row => !current.some(plan => plan.id === row.id))) throw new BadRequestException('Unknown or duplicate plan');
     for (const standard of current.filter(plan => plan.tier === 'Standard')) {
       const fastTrack = current.find(plan => plan.courseId === standard.courseId && plan.tier === 'Fast Track')!;
       if (updates.find(row => row.id === fastTrack.id)!.monthlyUsd < updates.find(row => row.id === standard.id)!.monthlyUsd) throw new BadRequestException('Fast Track must cost at least as much as Standard');
+      if (updates.find(row => row.id === fastTrack.id)!.monthlyLkr < updates.find(row => row.id === standard.id)!.monthlyLkr) throw new BadRequestException('Sri Lankan Fast Track must cost at least as much as Standard');
     }
     await this.prisma.$transaction(async tx => {
-      for (const row of updates) await tx.subscriptionPlan.update({ where: { id: row.id }, data: { monthlyUsd: row.monthlyUsd } });
+      for (const row of updates) await tx.subscriptionPlan.update({ where: { id: row.id }, data: { monthlyUsd: row.monthlyUsd, monthlyLkr: row.monthlyLkr } });
       await tx.auditLog.create({ data: { actorId, action: 'PRICING_UPDATED', entity: 'SUBSCRIPTION_PLANS', entityId: 'catalog', details: { prices: updates } } });
     });
     return this.getPlans();

@@ -38,8 +38,8 @@ describe('Subscription access', () => {
 
 describe('Plan price configuration', () => {
   const plans = ['one', 'two', 'three'].flatMap(courseId => [
-    { id: `${courseId}-standard`, courseId, tier: 'Standard', monthlyUsd: 59 },
-    { id: `${courseId}-fast-track`, courseId, tier: 'Fast Track', monthlyUsd: 89 },
+    { id: `${courseId}-standard`, courseId, tier: 'Standard', monthlyUsd: 59, monthlyLkr: 5000 },
+    { id: `${courseId}-fast-track`, courseId, tier: 'Fast Track', monthlyUsd: 89, monthlyLkr: 8000 },
   ]);
   const tx = { subscriptionPlan: { update: jest.fn() }, auditLog: { create: jest.fn() } };
   const prisma = { subscriptionPlan: { findMany: jest.fn() }, $transaction: jest.fn() };
@@ -50,12 +50,20 @@ describe('Plan price configuration', () => {
     prisma.$transaction.mockImplementation(fn => fn(tx));
   });
   it('saves all prices atomically and records the admin action', async () => {
-    await service.updatePlans(plans.map(plan => ({ id: plan.id, monthlyUsd: plan.monthlyUsd + 1 })), 'admin');
+    await service.updatePlans(plans.map(plan => ({ id: plan.id, monthlyLkr: plan.monthlyLkr, monthlyUsd: plan.monthlyUsd + 1 })), 'admin');
     expect(tx.subscriptionPlan.update).toHaveBeenCalledTimes(6);
     expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ actorId: 'admin', action: 'PRICING_UPDATED' }) }));
   });
   it.each([0, -1, NaN, 12.345, 10001])('rejects invalid price %s without saving', async monthlyUsd => {
-    await expect(service.updatePlans(plans.map((plan, i) => ({ id: plan.id, monthlyUsd: i === 0 ? monthlyUsd : plan.monthlyUsd })), 'admin')).rejects.toThrow();
+    await expect(service.updatePlans(plans.map((plan, i) => ({ id: plan.id, monthlyLkr: plan.monthlyLkr, monthlyUsd: i === 0 ? monthlyUsd : plan.monthlyUsd })), 'admin')).rejects.toThrow();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it.each([0, -1, NaN, 12.345, 10000001, undefined])('rejects invalid local price %s', async monthlyLkr => {
+    await expect(service.updatePlans(plans.map((plan, i) => ({ ...plan, monthlyLkr: i === 0 ? monthlyLkr : plan.monthlyLkr })), 'admin')).rejects.toThrow();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it('rejects local Fast Track below Standard independently of USD', async () => {
+    await expect(service.updatePlans(plans.map(plan => ({ ...plan, monthlyLkr: plan.tier === 'Fast Track' ? 100 : 5000 })), 'admin')).rejects.toThrow();
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
   it('rejects duplicate plan IDs and incomplete updates', async () => {
@@ -64,28 +72,7 @@ describe('Plan price configuration', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
   it('rejects Fast Track pricing below Standard', async () => {
-    await expect(service.updatePlans(plans.map(plan => ({ id: plan.id, monthlyUsd: plan.tier === 'Fast Track' ? 10 : 59 })), 'admin')).rejects.toThrow();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-  });
-});
-
-describe('Regional currencies', () => {
-  const rates = ['LKR', 'USD', 'GBP', 'EUR', 'AUD'].map(code => ({ code, lkrPerUnit: code === 'LKR' ? 1 : 330, rateDate: '2026-09-29' }));
-  const tx = { pricingCurrency: { update: jest.fn() }, auditLog: { create: jest.fn() } };
-  const prisma = { pricingCurrency: { findMany: jest.fn() }, $transaction: jest.fn() };
-  const service = new SubscriptionService(prisma as unknown as PrismaService);
-  beforeEach(() => { jest.resetAllMocks(); prisma.$transaction.mockImplementation(fn => fn(tx)); });
-  it('persists all country currencies together with an audit record', async () => {
-    await service.updateCurrencies(rates, 'admin');
-    expect(tx.pricingCurrency.update).toHaveBeenCalledTimes(5);
-    expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: 'CURRENCY_RATES_UPDATED' }) }));
-  });
-  it.each([0, -1, NaN, 1000001])('rejects invalid currency rate %s', async lkrPerUnit => {
-    await expect(service.updateCurrencies(rates.map(row => row.code === 'GBP' ? { ...row, lkrPerUnit } : row), 'admin')).rejects.toThrow();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-  });
-  it('rejects duplicate codes, unknown currencies, and a modified LKR base', async () => {
-    for (const input of [rates.map(() => rates[0]), rates.map(row => ({ ...row, code: 'XYZ' })), rates.map(row => ({ ...row, lkrPerUnit: 2 }))]) await expect(service.updateCurrencies(input, 'admin')).rejects.toThrow();
+    await expect(service.updatePlans(plans.map(plan => ({ id: plan.id, monthlyLkr: plan.monthlyLkr, monthlyUsd: plan.tier === 'Fast Track' ? 10 : 59 })), 'admin')).rejects.toThrow();
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

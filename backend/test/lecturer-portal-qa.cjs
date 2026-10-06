@@ -43,7 +43,7 @@ async function slot(lecturer,startsAt,status='OPEN',minutes=40){return db.availa
 async function progress(student,course,lesson=course.modules[0].lessons[0]){return db.studentProgress.upsert({where:{studentId:student.id},create:{studentId:student.id,currentLearningPathId:course.id,currentModuleId:lesson.moduleId,currentLessonId:lesson.id,progressPercentage:25},update:{currentLearningPathId:course.id,currentModuleId:lesson.moduleId,currentLessonId:lesson.id,progressPercentage:25}});}
 async function setup(){
  await fs.mkdir(out,{recursive:true});dir=await fs.mkdtemp(path.join(os.tmpdir(),'ilm-lecturer-files-'));process.env.MATERIAL_UPLOAD_DIR=dir;
- const mod=await Test.createTestingModule({imports:[AppModule]}).overrideProvider(LivekitService).useValue({getRoomName:id=>'qa-room-'+id,generateToken:async()=>({token:'sim_qa',wsUrl:'',isSimulation:true})}).compile();
+ const mod=await Test.createTestingModule({imports:[AppModule]}).overrideProvider(LivekitService).useValue({getRoomName:id=>'qa-room-'+id,endRoom:async()=>undefined,generateToken:async()=>({token:'sim_qa',wsUrl:'',isSimulation:true})}).compile();
  mod.get(EmailNotificationService).sendEmail=async()=>({success:true});mod.get(WhatsAppNotificationService).sendWhatsApp=async()=>true;
  app=mod.createNestApplication({logger:false});app.setGlobalPrefix('api/v1');app.use(require('cookie-parser')());app.enableCors({origin:[process.env.LECTURER_QA_WEB_URL||'http://localhost:3003'],credentials:true});app.useGlobalPipes(new ValidationPipe({whitelist:true,transform:true,forbidNonWhitelisted:true,transformOptions:{enableImplicitConversion:true}}));db=app.get(PrismaService);await app.listen(Number(process.env.LECTURER_QA_API_PORT||3012));
  const lecturer=await person('primary'),other=await person('other'),empty=await person('empty'),student=await person('assigned','STUDENT'),fresh=await person('no-sessions','STUDENT'),foreign=await person('foreign','STUDENT'),admin=await person('admin','ADMIN');
@@ -101,7 +101,7 @@ async function run(){const {lecturer:l,other:o,student:s,fresh:f,foreign:x,admin
  await check('Availability duplicate idempotent','/availability','POST',body,l.token,201,d=>d.id===sl.id);
  for(const patch of [{startsAt:'bad'},{endsAt:'bad'},{endsAt:body.startsAt},{startsAt:body.endsAt},{startsAt:null},{endsAt:null},{status:'BOOKED'}])await check('Availability invalid '+JSON.stringify(patch),'/availability','POST',{...body,...patch},l.token,400);
  await check('Availability overlap rejected','/availability','POST',{startsAt:new Date(+start+60000).toISOString(),endsAt:new Date(+end+60000).toISOString()},l.token,400);
- const adjacent=await check('Availability adjacent allowed','/availability','POST',{startsAt:body.endsAt,endsAt:new Date(+end+40*60000).toISOString()},l.token,201);
+ const adjacent=await check('Availability ten-minute break allowed','/availability','POST',{startsAt:new Date(+end+10*60000).toISOString(),endsAt:new Date(+end+50*60000).toISOString()},l.token,201);
  await check('Availability cannot target other lecturer','/availability','POST',{...body,startsAt:shiftTime(192).toISOString(),endsAt:new Date(+shiftTime(192)+40*60000).toISOString(),lecturerId:o.id},l.token,201,d=>d.lecturerId===l.id);
  await check('Foreign slot deletion no change','/availability/'+sl.id,'DELETE',{},o.token,200,async()=>!!await db.availabilitySlot.findUnique({where:{id:sl.id}}));
  const booked=await db.availabilitySlot.findFirst({where:{lecturerId:l.id,status:'BOOKED'}});

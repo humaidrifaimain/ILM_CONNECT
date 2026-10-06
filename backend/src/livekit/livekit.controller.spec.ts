@@ -8,7 +8,7 @@ describe('Classroom admission', () => {
     notification: { findFirst: jest.fn() },
   };
   const livekit = { generateToken: jest.fn() };
-  const controller = new LivekitController(livekit as any, prisma as any, {} as any);
+  const controller = new LivekitController(livekit as any, prisma as any, {} as any, { finishExpired: jest.fn() } as any);
   const session = {
     id: 'session-1', studentId: 'student-1', lecturerId: 'lecturer-1',
     student: { fullName: 'Student' }, lecturer: { fullName: 'Lecturer' },
@@ -54,6 +54,13 @@ describe('Classroom admission', () => {
   it('still requires an active student subscription', async () => {
     prisma.subscription.findFirst.mockResolvedValue(null);
     await expect(controller.getToken({ user: { id: session.studentId, role: 'STUDENT' } }, session.id)).rejects.toThrow(ForbiddenException);
+    expect(livekit.generateToken).not.toHaveBeenCalled();
+  });
+
+  it.each(['STUDENT', 'LECTURER'])('rejects a %s reconnect after the saved 45-minute deadline', async role => {
+    prisma.session.findUnique.mockResolvedValue({ ...session, status: 'IN_PROGRESS', meetingStartedAt: new Date(Date.now() - 45 * 60_000) });
+    const id = role === 'STUDENT' ? session.studentId : session.lecturerId;
+    await expect(controller.getToken({ user: { id, role } }, session.id)).rejects.toThrow('45-minute');
     expect(livekit.generateToken).not.toHaveBeenCalled();
   });
 });

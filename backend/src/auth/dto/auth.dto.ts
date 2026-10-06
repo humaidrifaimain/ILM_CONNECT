@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, Length, MaxLength, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, Length, MaxLength, IsNotEmpty, IsOptional, IsString, MinLength, IsDateString, Matches } from 'class-validator';
 import { Role } from '@prisma/client';
 
 export class RegisterDto {
@@ -17,6 +17,15 @@ export class RegisterDto {
   @IsString()
   @IsNotEmpty()
   fullName: string;
+
+  @IsOptional()
+  @IsIn(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'])
+  gender?: string;
+
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsDateString({ strict: true })
+  dateOfBirth?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -38,6 +47,9 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   learningGoals?: string;
+
+  @IsOptional()
+  preferredHours?: number[];
 
   @IsString()
   @IsOptional()

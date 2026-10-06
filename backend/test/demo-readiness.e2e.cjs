@@ -27,7 +27,8 @@ async function run() {
   userIds.push(user.id); const login = await api(`${suffix} login`, 'POST', '/auth/login', null, { email, password }, 201); return { ...user, token: login.token };
  }
  const lecturer = await account('LECTURER', 'lecturer'), student = await account('STUDENT', 'student'), outsider = await account('STUDENT', 'outsider'), admin = await account('ADMIN', 'admin'), superadmin = await account('SUPER_ADMIN', 'superadmin');
- await api('Assign lecturer', 'POST', `/admin/students/${student.id}/assign-lecturer`, admin.token, { lecturerId: lecturer.id }, 201);
+ const assignmentRequest = await db.supportTicket.create({ data: { userId: student.id, type: 'STUDENT_REGISTRATION', reason: 'QA student awaiting lecturer assignment' } });
+ await api('Assign lecturer from request', 'POST', `/admin/requests/${assignmentRequest.id}/assign-lecturer`, admin.token, { lecturerId: lecturer.id }, 201);
  const trial = await api('Claim trial', 'POST', '/subscriptions/trial', student.token, {}, 201);
  await api('Duplicate trial rejected', 'POST', '/subscriptions/trial', student.token, {}, 400);
  await api('Profile settings persist', 'PUT', '/profile/student', student.token, { fullName: 'QA Student Updated', country: 'United Kingdom', timezone: 'Europe/London' });
@@ -67,10 +68,10 @@ async function run() {
  await api('Admin records completed external payout', 'PATCH', `/admin/payouts/${retry.id}/status`, admin.token, { status:'SUCCESSFUL' });
  await api('Repeated payout processing rejected', 'PATCH', `/admin/payouts/${retry.id}/status`, admin.token, { status:'SUCCESSFUL' }, 400);
  const rates = await api('Public country currencies', 'GET', '/subscriptions/currencies'); assert(rates.length===5, 'Missing supported country');
- await api('Admin currency save', 'PATCH', '/subscriptions/currencies', admin.token, { rates: rates.map(({code,lkrPerUnit,rateDate})=>({code,lkrPerUnit,rateDate})) });
- await api('Student cannot edit currencies', 'PATCH', '/subscriptions/currencies', student.token, { rates }, 403);
+ await api('Manual currency editor removed', 'PATCH', '/subscriptions/currencies', admin.token, { rates: [] },404);
+ await api('Removed currency editor unavailable to student', 'PATCH', '/subscriptions/currencies', student.token, { rates }, 404);
  const plans = await api('Public plans', 'GET', '/subscriptions/plans');
- await api('Super admin saves connected prices', 'PATCH', '/subscriptions/plans', superadmin.token, { prices: plans.map(({id,monthlyUsd})=>({id,monthlyUsd})) });
+ await api('Super admin saves connected prices', 'PATCH', '/subscriptions/plans', superadmin.token, { prices: plans.map(({id,monthlyUsd,monthlyLkr})=>({id,monthlyUsd,monthlyLkr:monthlyLkr??5000})) });
  await api('Payment intentionally disabled', 'POST', '/subscriptions', student.token, {tier:'Standard',lkrAmount:1},501);
  await api('Payment history', 'GET', '/subscriptions/payments', student.token);
  const enquiry={fullName:'QA enquiry',email:`${prefix}-waitlist@example.test`,phone:'',country:'United Kingdom',course:'Noorani Qaida',pace:'standard',notes:'QA flow'}; emails.push(enquiry.email);
@@ -96,7 +97,7 @@ async function run() {
  const registered=await api('Student registration creates profile atomically','POST','/auth/register',null,{email:`${prefix}-registration@example.test`,password,role:'STUDENT',fullName:'QA New Student',phone:'0000',country:'United States',timezone:'America/New_York'},201); userIds.push(registered.id);
  console.log(JSON.stringify({result:'PASS',checks:checks.length,workflows:checks,externalMessagesSent:0,realPayments:0},null,2));
 }
-run().catch(error=>{console.error(error.message);process.exitCode=1}).finally(async()=>{
+run().catch(error=>{console.error(error.stack || error);process.exitCode=1}).finally(async()=>{
  if(db){ await db.message.deleteMany({where:{OR:[{senderId:{in:userIds}},{recipientId:{in:userIds}}]}}); await db.supportTicketMessage.deleteMany({where:{senderId:{in:userIds}}}); await db.user.deleteMany({where:{id:{in:userIds}}}); await db.waitlistEntry.deleteMany({where:{email:{in:emails}}}); }
  if(app) await app.close(); if(directory) await fs.rm(directory,{recursive:true,force:true});
 });

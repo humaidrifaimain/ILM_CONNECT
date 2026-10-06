@@ -8,15 +8,12 @@ import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 import { toast } from '@/components/ui/toast';
 import { TableSkeleton } from '@/components/ui/loading-screen';
 
-interface UserRecord { id: string; email: string; role: string; status: string; studentProfile?: { fullName: string; assignedLecturer?: { fullName: string } | null }; lecturerProfile?: { fullName: string; specializations: string[]; hourlyAvailabilityJson: number[] }; }
+interface UserRecord { id: string; email: string; role: string; status: string; studentProfile?: { fullName: string; preferredHours?: number[]; assignedLecturer?: { fullName: string } | null }; lecturerProfile?: { fullName: string; specializations: string[]; hourlyAvailabilityJson: number[] }; }
 interface DisplayUser extends UserRecord { name: string; roleLower: string; statusLower: string; assignedScholar?: string; specializations?: string[]; timeshift: number[]; }
-interface LecturerRecord { userId: string; fullName: string; specializations: string[]; user?: { email: string }; }
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<DisplayUser | null>(null);
-  const [assignmentSuccess, setAssignmentSuccess] = useState(false);
   const [showAddLecturerModal, setShowAddLecturerModal] = useState(false);
   const [addLecturerSuccess, setAddLecturerSuccess] = useState(false);
 
@@ -32,10 +29,9 @@ export default function AdminUsersPage() {
   const [specializations, setSpecializations] = useState('Tajweed, Hifz, Fiqh');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const dialogRef = useDialogAccessibility(showAddLecturerModal || !!selectedStudentForAssignment || !!selectedLecturerForEdit, () => {
+  const dialogRef = useDialogAccessibility(showAddLecturerModal || !!selectedLecturerForEdit, () => {
     if (isSubmitting) return;
     setShowAddLecturerModal(false);
-    setSelectedStudentForAssignment(null);
     setSelectedLecturerForEdit(null);
   });
 
@@ -111,27 +107,19 @@ export default function AdminUsersPage() {
     queryFn: () => apiFetch('/admin/users'),
   });
 
-  // Fetch real lecturers from database for assignment
-  const { data: dbLecturers = [] } = useQuery<LecturerRecord[]>({
-    queryKey: ['profileLecturers'],
-    queryFn: () => apiFetch('/profile/lecturers'),
-  });
-
-  const closeModal = useCallback(() => setSelectedStudentForAssignment(null), []);
   const closeEditModal = useCallback(() => setSelectedLecturerForEdit(null), []);
 
   useEffect(() => {
-    if (!selectedStudentForAssignment && !selectedLecturerForEdit) return;
+    if (!selectedLecturerForEdit) return;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => { 
       if (e.key === 'Escape') {
-        closeModal(); 
         closeEditModal();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
-  }, [selectedStudentForAssignment, selectedLecturerForEdit, closeModal, closeEditModal]);
+  }, [selectedLecturerForEdit, closeEditModal]);
 
   const handleCreateLecturer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,24 +179,6 @@ export default function AdminUsersPage() {
       toast.error('Creation Failed', msg);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleAssignLecturer = async (lecturerUserId: string) => {
-    if (!selectedStudentForAssignment) return;
-    try {
-      await apiFetch(`/admin/students/${selectedStudentForAssignment.id}/assign-lecturer`, {
-        method: 'POST',
-        body: JSON.stringify({ lecturerId: lecturerUserId }),
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
-      setAssignmentSuccess(true);
-      toast.success('Lecturer Assigned', 'Student has been assigned to the selected lecturer.');
-      closeModal();
-      setTimeout(() => setAssignmentSuccess(false), 3000);
-    } catch (err: unknown) {
-      toast.error('Assignment Failed', (err instanceof Error ? err.message : '') || 'Failed to assign lecturer');
     }
   };
 
@@ -431,16 +401,6 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="py-3 px-5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {u.role === 'STUDENT' && (
-                          <button
-                            onClick={() => setSelectedStudentForAssignment(u)}
-                            className="p-1.5 rounded-lg bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.2)] transition-colors flex items-center gap-1.5 px-3 mr-1"
-                            title={u.assignedScholar ? "Reassign Scholar" : "Assign Lecturer"}
-                          >
-                            <UserPlus className="h-3.5 w-3.5" />
-                            <span className="text-xs font-semibold hidden md:block">{u.assignedScholar ? "Reassign Scholar" : "Assign Scholar"}</span>
-                          </button>
-                        )}
                         {u.role === 'LECTURER' && (
                           <button
                             onClick={() => {
@@ -483,72 +443,6 @@ export default function AdminUsersPage() {
           )}
         </div>
       </div>
-
-      {/* Assign Lecturer Modal */}
-      {selectedStudentForAssignment && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          onClick={closeModal}
-        >
-          <div
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="assignment-title"
-            tabIndex={-1}
-            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="assignment-title" className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">{selectedStudentForAssignment.assignedScholar ? "Reassign Scholar" : "Assign Scholar"}</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
-              Select a vetted scholar for <strong className="text-[hsl(var(--foreground))]">{selectedStudentForAssignment.name}</strong>.
-            </p>
-
-            <div className="space-y-2.5 mb-6 max-h-[320px] overflow-y-auto pr-1">
-              {dbLecturers.length === 0 ? (
-                <div className="text-center py-6 text-sm text-[hsl(var(--muted-foreground))]">
-                  No lecturers registered yet. Click &quot;Add Lecturer&quot; first.
-                </div>
-              ) : (
-                dbLecturers.map((l) => (
-                  <button
-                    key={l.userId}
-                    onClick={() => handleAssignLecturer(l.userId)}
-                    className="w-full flex items-center justify-between p-3 rounded-xl border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.05)] transition-all text-left group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-[#095F46] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {l.fullName?.slice(0, 2).toUpperCase() || 'LC'}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-sm group-hover:text-[hsl(var(--primary))] transition-colors">
-                          {l.fullName}
-                        </div>
-                        <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                          {Array.isArray(l.specializations)
-                            ? l.specializations.join(', ')
-                            : l.user?.email || 'Scholar'}
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-semibold text-[hsl(var(--primary))] opacity-0 group-hover:opacity-100 transition-opacity">
-                      Select →
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-
-            <button
-              onClick={closeModal}
-              className="w-full py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Add Lecturer Modal */}
       {showAddLecturerModal && (
@@ -900,15 +794,6 @@ export default function AdminUsersPage() {
       )}
 
       {/* Success Toasts */}
-      {assignmentSuccess && (
-        <div className="fixed bottom-6 right-6 z-[100] animate-fade-in">
-          <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-emerald-500/30 shadow-lg flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-            <CheckCircle className="h-4 w-4" />
-            Scholar assigned to student successfully in database!
-          </div>
-        </div>
-      )}
-
       {addLecturerSuccess && (
         <div className="fixed bottom-6 right-6 z-[100] animate-fade-in">
           <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-emerald-500/30 shadow-lg flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">

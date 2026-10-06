@@ -140,7 +140,7 @@ export default function PricingPage() {
   const { data: plans = [], isPending: pricesLoading, isError: pricesError } = useSubscriptionPlans();
   const { user } = useAuth();
   const { format } = usePricingCurrency();
-  const priceFor = (courseId: string, tier: string) => plans.find(plan => plan.courseId === courseId && plan.tier === tier)?.monthlyUsd;
+  const priceFor = (courseId: string, tier: string) => plans.find(plan => plan.courseId === courseId && plan.tier === tier);
   const [openFaqs, setOpenFaqs] = useState<number[]>([]);
   const shouldReduceMotion = useReducedMotion();
 

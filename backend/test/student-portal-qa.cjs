@@ -14,7 +14,7 @@ const { EmailNotificationService } = require('../dist/src/notification/email-not
 const { WhatsAppNotificationService } = require('../dist/src/notification/whatsapp-notification.service.js');
 const { LivekitService } = require('../dist/src/livekit/livekit.service.js');
 const bcrypt = require('bcrypt');
-const output = path.resolve(root, '../output/playwright/student-qa');
+const output = path.resolve(root, process.env.STUDENT_QA_OUTPUT || '../output/playwright/student-qa');
 const port = Number(process.env.STUDENT_QA_PORT || 3002);
 const prefix = `qa-student-${crypto.randomUUID()}`;
 const userIds = [];
@@ -73,7 +73,7 @@ async function run() {
   directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ilm-student-qa-'));
   process.env.MATERIAL_UPLOAD_DIR = directory;
   const module = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(LivekitService).useValue({ getRoomName: id => `qa-room-${id}`, generateToken: async () => ({ token: 'sim_qa', wsUrl: '', isSimulation: true }) })
+    .overrideProvider(LivekitService).useValue({ getRoomName: id => `qa-room-${id}`, endRoom: async () => {}, generateToken: async () => ({ token: 'sim_qa', wsUrl: '', isSimulation: true }) })
     .compile();
   module.get(EmailNotificationService).sendEmail = async () => ({ success: true });
   module.get(WhatsAppNotificationService).sendWhatsApp = async () => ({ success: true });

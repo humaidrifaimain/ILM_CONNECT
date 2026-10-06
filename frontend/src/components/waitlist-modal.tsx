@@ -34,7 +34,7 @@ export default function WaitlistModal({
   const [phone, setPhone] = useState('');
   const [phoneCountry, setPhoneCountry] = useState<CountryCallingCode>(() => getCountryCallingCode('LK'));
   const [course, setCourse] = useState(defaultCourse);
-  const price = (tier: string) => { const plan = plans.find(item => item.course === course && item.tier === tier); return plan ? format(plan.monthlyUsd) : '—'; };
+  const price = (tier: string) => { const plan = plans.find(item => item.course === course && item.tier === tier); return plan ? format(plan) : 'Price unavailable'; };
   const [pace, setPace] = useState<'standard' | 'fast-track'>('standard');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

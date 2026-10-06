@@ -1,5 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 
 export interface LivekitTokenResult {
   token: string;
@@ -38,6 +38,21 @@ export class LivekitService {
    */
   getRoomName(sessionId: string): string {
     return `ilm-session-${sessionId}`;
+  }
+
+  async endRoom(roomName: string) {
+    if (!this.isConfigured()) {
+      if (process.env.NODE_ENV === 'production') throw new ServiceUnavailableException('Live video service is not configured');
+      return;
+    }
+    const url = (process.env.LIVEKIT_URL || this.wsUrl)!.replace(/^ws/, 'http');
+    const client = new RoomServiceClient(url, process.env.LIVEKIT_API_KEY || this.apiKey, process.env.LIVEKIT_API_SECRET || this.apiSecret);
+    try {
+      await client.deleteRoom(roomName);
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'not_found') return;
+      throw error;
+    }
   }
 
   /**

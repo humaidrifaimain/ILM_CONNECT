@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SessionStatus } from '@prisma/client';
+import { MeetingClockService, MEETING_MS } from './meeting-clock.service';
 
 @Controller('livekit')
 @UseGuards(JwtAuthGuard)
@@ -14,7 +15,14 @@ export class LivekitController {
     private readonly livekitService: LivekitService,
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly meetingClock: MeetingClockService,
   ) {}
+
+  @Get('clock/:sessionId')
+  getClock(@Req() req: any, @Param('sessionId') sessionId: string) { return this.meetingClock.snapshot(req.user, sessionId); }
+
+  @Post('start/:sessionId')
+  startClock(@Req() req: any, @Param('sessionId') sessionId: string) { return this.meetingClock.start(req.user, sessionId); }
 
   /**
    * POST /livekit/reopen/:sessionId
@@ -51,7 +59,7 @@ export class LivekitController {
     for (const key of [`lecturer:${session.lecturerId}`, `student:${session.studentId}`].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
     const overlap = await tx.session.findFirst({ where: { id: { not: sessionId }, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, startsAt: { lt: session.endsAt }, endsAt: { gt: session.startsAt }, OR: [{ lecturerId: session.lecturerId }, { studentId: session.studentId }] } });
     if (overlap) throw new BadRequestException('Another session occupies this time');
-    const changed = await tx.session.updateMany({ where: { id: sessionId, status: session.status }, data: { status: newStatus } });
+    const changed = await tx.session.updateMany({ where: { id: sessionId, status: session.status }, data: { status: newStatus, meetingStartedAt: null } });
     if (changed.count !== 1) throw new BadRequestException('The session status has changed. Refresh and try again');
     await tx.availabilitySlot.updateMany({ where: { lecturerId: session.lecturerId, startsAt: { lte: session.startsAt }, endsAt: { gte: session.endsAt } }, data: { status: 'BOOKED' } });
     return tx.session.findUniqueOrThrow({
@@ -139,6 +147,11 @@ export class LivekitController {
           },
         });
       }
+    }
+
+    if (session.meetingStartedAt && Date.now() >= +session.meetingStartedAt + MEETING_MS) {
+      await this.meetingClock.finishExpired(sessionId);
+      throw new BadRequestException('This meeting has reached its 45-minute limit');
     }
 
     if (session.status === SessionStatus.SCHEDULED && now >= startsAt) {

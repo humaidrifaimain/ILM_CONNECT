@@ -8,7 +8,8 @@ type AuthShellProps = {
   children: ReactNode;
   footer: ReactNode;
   quote: string;
-  attribution: string;
+  attribution?: string;
+  compact?: boolean;
 };
 
 export function AuthShell({
@@ -18,12 +19,13 @@ export function AuthShell({
   footer,
   quote,
   attribution,
+  compact = false,
 }: AuthShellProps) {
   return (
     <main className="min-h-dvh bg-[#f7faf8] text-stone-950">
       <div className="grid min-h-dvh w-full lg:grid-cols-[1fr_1.06fr]">
         <section
-          className="relative flex overflow-hidden border-t-[6px] border-[#095F46] bg-[#f7faf8] px-6 py-7 sm:border-t-0 sm:px-12 sm:py-8 sm:pl-24 lg:px-14 lg:pl-28 xl:px-20 xl:pl-32"
+          className={`relative flex overflow-hidden border-t-[6px] border-[#095F46] bg-[#f7faf8] px-6 sm:border-t-0 sm:px-12 sm:pl-24 lg:px-14 lg:pl-28 xl:px-20 xl:pl-32 ${compact ? 'py-3' : 'py-7 sm:py-8'}`}
           aria-labelledby="auth-title"
         >
           <div className="pattern-islamic pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
@@ -43,18 +45,18 @@ export function AuthShell({
           </div>
 
           <div className="relative mx-auto flex w-full max-w-[29rem] flex-col">
-            <div className="flex items-center gap-5 pb-5">
-              <Logo size="md" />
+            <div className={`flex items-center gap-5 ${compact ? 'pb-2' : 'pb-5'}`}>
+              <Logo size={compact ? 'sm' : 'md'} />
               <span className="h-px flex-1 bg-[#095F46]/15" aria-hidden="true" />
             </div>
 
-            <div className="my-auto py-10 sm:py-12">
+            <div className={`my-auto ${compact ? 'py-2' : 'py-10 sm:py-12'}`}>
               <header className="max-w-md">
-                <div className="mb-5 flex items-center gap-3" aria-hidden="true">
+                {!compact && <div className="mb-5 flex items-center gap-3" aria-hidden="true">
                   <span className="h-px w-10 bg-[#0B8663]" />
                   <span className="h-2 w-2 rotate-45 border border-[#10BF8D]" />
                   <span className="h-px w-4 bg-[#0B8663]" />
-                </div>
+                </div>}
                 <h1
                   id="auth-title"
                   className="font-display text-[2rem] font-bold leading-[1.12] tracking-[-0.035em] text-stone-950 sm:text-[2.45rem]"
@@ -66,18 +68,18 @@ export function AuthShell({
                 </p>
               </header>
 
-              <div className="mt-7">{children}</div>
+              <div className={compact ? 'mt-4' : 'mt-7'}>{children}</div>
 
-              <div className="mt-6 flex items-center gap-4 text-sm text-stone-600">
+              <div className={`${compact ? 'mt-4' : 'mt-6'} flex items-center gap-4 text-sm text-stone-600`}>
                 <span className="h-px flex-1 bg-[#095F46]/15" aria-hidden="true" />
                 <div>{footer}</div>
                 <span className="h-px w-8 bg-[#095F46]/15" aria-hidden="true" />
               </div>
             </div>
 
-            <p className="text-xs leading-5 text-stone-500">
+            {!compact && <p className="text-xs leading-5 text-stone-500">
               Structured, one-to-one Islamic education.
-            </p>
+            </p>}
           </div>
         </section>
 
@@ -96,9 +98,9 @@ export function AuthShell({
             <blockquote className="mx-auto max-w-2xl text-4xl font-bold leading-tight tracking-[-0.03em] drop-shadow-[0_4px_18px_rgba(0,0,0,0.65)]">
               &ldquo;{quote}&rdquo;
             </blockquote>
-            <p className="mt-5 text-lg font-semibold text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.65)]">
+            {attribution && <p className="mt-5 text-lg font-semibold text-white drop-shadow-[0_3px_14px_rgba(0,0,0,0.65)]">
               {attribution}
-            </p>
+            </p>}
           </div>
         </aside>
       </div>

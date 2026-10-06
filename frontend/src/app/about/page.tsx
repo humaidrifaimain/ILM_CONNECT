@@ -156,7 +156,7 @@ export default function AboutPage() {
   const [waitlistPhoneCountry, setWaitlistPhoneCountry] = useState<CountryCallingCode>(() => getCountryCallingCode('LK'));
   const [waitlistCourse, setWaitlistCourse] = useState('Tajweed Quran Recitation');
   const [waitlistPace, setWaitlistPace] = useState<'standard' | 'fast-track'>('standard');
-  const price = (tier: string) => { const plan = plans.find(item => item.course === waitlistCourse && item.tier === tier); return plan ? format(plan.monthlyUsd) : '—'; };
+  const price = (tier: string) => { const plan = plans.find(item => item.course === waitlistCourse && item.tier === tier); return plan ? format(plan) : 'Price unavailable'; };
   const [waitlistNotes, setWaitlistNotes] = useState('');
   const [waitlistError, setWaitlistError] = useState('');
   const [isWaitlistSubmitting, setIsWaitlistSubmitting] = useState(false);

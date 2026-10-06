@@ -12,18 +12,9 @@ import { ScheduleCalendar } from '@/components/classroom/schedule-calendar';
 import { BookingCalendar } from '@/components/classroom/booking-calendar';
 import { StudentIconTile, StudentPageHeader, studentUi } from '@/components/student/student-dashboard-ui';
 import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
+import { getSessionStatus } from '@/lib/session-status';
 
 type ViewMode = 'list' | 'calendar';
-
-const statusConfig: Record<string, { label: string; color: string }> = {
-  scheduled: { label: 'Scheduled', color: 'bg-[#e8f0ed] text-[#095F46]' },
-  completed: { label: 'Completed', color: 'bg-[#10BF8D]/12 text-[#095F46]' },
-  canceled: { label: 'Canceled', color: 'bg-rose-100 text-rose-700' },
-  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700' },
-  no_show_student: { label: 'Conducted (Absent)', color: 'bg-amber-100 text-amber-800 border border-amber-300/60' },
-  no_show_lecturer: { label: 'Lecturer No-show', color: 'bg-rose-100 text-rose-700' },
-};
-
 
 const LOCK_HOURS = 12;
 
@@ -39,7 +30,7 @@ export default function StudentSessionsPage() {
   const queryClient = useQueryClient();
 
   const [view, setView] = useState<ViewMode>('list');
-  const [selectedSession, setSelectedSession] = useState<any | null>(null);
+  const [sessionSelection, setSelectedSession] = useState<any | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
 
@@ -86,6 +77,7 @@ export default function StudentSessionsPage() {
         id: b.id,
         subject: b.subject || 'Quran Session',
         status: effectiveStatus,
+        rescheduledAt: b.rescheduledAt,
         isPast,
         startsAt: b.startsAt,
         endsAt: b.endsAt || endsAtDate.toISOString(),
@@ -97,6 +89,7 @@ export default function StudentSessionsPage() {
       };
     });
   }, [rawBookings]);
+  const selectedSession = sessions.find((session: { id: string }) => session.id === sessionSelection?.id) || null;
 
   useEffect(() => {
     if (showReschedule && selectedSession) {
@@ -197,6 +190,41 @@ export default function StudentSessionsPage() {
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
   }, [selectedSession, closeDetail]);
 
+  const renderSessionActions = (s: (typeof sessions)[number]) => (
+    <div className="flex flex-wrap items-center gap-2">
+      {s.status === 'scheduled' && !s.isPast && !isWithinLockWindow(s.startsAt) && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setSelectedSession(s); setShowReschedule(true); }}
+          className={studentUi.secondaryButton}
+        >
+          <Edit className="h-3 w-3" /> Reschedule
+        </button>
+      )}
+
+      {s.status === 'scheduled' && !s.isPast && !isWithinLockWindow(s.startsAt) && (
+        <button type="button" onClick={() => { setSelectedSession(s); setShowCancelConfirm(true); }} className={studentUi.secondaryButton}>
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Cancel
+        </button>
+      )}
+      {(s.status === 'scheduled' || s.status === 'in_progress') && (
+        <Link
+          href={`/student/courses/${courseId}/sessions/${s.id}/room`}
+          className={studentUi.primaryButton}
+        >
+          <Play className="h-3 w-3 fill-current" /> Join Class
+        </Link>
+      )}
+      {s.canReview && (
+        <Link
+          href={`/student/courses/${courseId}/feedback?sessionId=${s.id}`}
+          className={studentUi.secondaryButton}
+        >
+          <MessageSquareText className="h-3.5 w-3.5" /> {s.rating ? 'Edit Review' : 'Write Review'}
+        </Link>
+      )}
+    </div>
+  );
+
   return (
     <>
     <div className={studentUi.page}>
@@ -230,8 +258,7 @@ export default function StudentSessionsPage() {
               <Link href={`/student/courses/${courseId}/sessions/book`} className="text-sm font-bold text-[#095F46] hover:underline">Book a session now</Link>
             </div>
           ) : sessions.map((s: any) => {
-            const cfg = statusConfig[s.status] || statusConfig.scheduled;
-            const canJoin = s.status === 'scheduled' || s.status === 'in_progress';
+            const cfg = getSessionStatus(s.status, s.rescheduledAt);
             return (
               <div
                 key={s.id}
@@ -242,36 +269,13 @@ export default function StudentSessionsPage() {
                   <div className="min-w-0">
                     <div className="truncate text-sm font-bold text-[#202823]">{s.subject}</div>
                     <div className="text-xs text-[#56635c]">with {s.lecturerName} · {new Date(s.startsAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                    <div className="text-xs text-[#56635c]">{new Date(s.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — {new Date(s.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div className="text-xs text-[#56635c]">{new Date(s.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} to {new Date(s.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                 </button>
 
-                <div className="flex items-center gap-2.5 self-end sm:self-center flex-shrink-0">
+                <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
                   <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${cfg.color}`}>{cfg.label}</span>
-                  {s.status === 'scheduled' && !s.isPast && !isWithinLockWindow(s.startsAt) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedSession(s); setShowReschedule(true); }}
-                      className={studentUi.secondaryButton}
-                    >
-                      <Edit className="h-3 w-3" /> Reschedule
-                    </button>
-                  )}
-                  {canJoin && (
-                    <Link
-                      href={`/student/courses/${courseId}/sessions/${s.id}/room`}
-                      className={studentUi.primaryButton}
-                    >
-                      <Play className="h-3 w-3 fill-current" /> Join Class
-                    </Link>
-                  )}
-                  {s.canReview && (
-                    <Link
-                      href={`/student/courses/${courseId}/feedback?sessionId=${s.id}`}
-                      className={studentUi.secondaryButton}
-                    >
-                      <MessageSquareText className="h-3.5 w-3.5" /> {s.rating ? 'Edit Review' : 'Write Review'}
-                    </Link>
-                  )}
+                  {renderSessionActions(s)}
                 </div>
               </div>
             );
@@ -282,9 +286,10 @@ export default function StudentSessionsPage() {
 
       {/* Calendar View */}
       {!bookingsError && view === 'calendar' && (
-        <ScheduleCalendar events={sessions.map((session: { id: string; startsAt: string; endsAt: string; subject: string; lecturerName: string; status: string }) => ({
+        <ScheduleCalendar events={sessions.map((session: { id: string; startsAt: string; endsAt: string; subject: string; lecturerName: string; status: string; rescheduledAt?: string }) => ({
           id: session.id, startsAt: session.startsAt, endsAt: session.endsAt, title: session.subject,
           subtitle: session.lecturerName, tone: session.status === 'completed' ? 'purple' as const : 'blue' as const,
+          status: session.status, rescheduledAt: session.rescheduledAt,
           onClick: () => setSelectedSession(session),
         }))} visibleHours={calendarShiftHours} ariaLabel="Student sessions calendar" />
       )}
@@ -293,13 +298,16 @@ export default function StudentSessionsPage() {
       {/* Session Detail Modal */}
       {selectedSession && !showCancelConfirm && !showReschedule && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4" onClick={closeDetail}>
-          <div ref={detailDialog} role="dialog" aria-modal="true" aria-label="Session details" tabIndex={-1} className="w-full max-w-sm rounded-xl border border-[#d6e0db] bg-white p-5 shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-4">{selectedSession.subject}</h3>
+          <div ref={detailDialog} role="dialog" aria-modal="true" aria-label="Session details" tabIndex={-1} className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-xl border border-[#d6e0db] bg-white p-5 shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="font-bold text-lg">{selectedSession.subject}</h3>
+              <button type="button" aria-label="Close session details" onClick={closeDetail} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-[#095F46]"><X className="h-5 w-5" aria-hidden="true" /></button>
+            </div>
             <div className="space-y-2.5 text-sm mb-5">
               <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Lecturer</span><span className="font-medium">{selectedSession.lecturerName}</span></div>
               <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Date</span><span className="font-medium">{new Date(selectedSession.startsAt).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span></div>
-              <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Time</span><span className="font-medium">{new Date(selectedSession.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — {new Date(selectedSession.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span></div>
-              <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Status</span><span className={`px-2 py-0.5 text-xs rounded-full font-medium ${(statusConfig[selectedSession.status] || statusConfig.scheduled).color}`}>{(statusConfig[selectedSession.status] || statusConfig.scheduled).label}</span></div>
+              <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Time</span><span className="font-medium">{new Date(selectedSession.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} to {new Date(selectedSession.endsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span></div>
+              <div className="flex justify-between"><span className="text-[hsl(var(--muted-foreground))]">Status</span><span className={`px-2 py-0.5 text-xs rounded-full font-medium ${getSessionStatus(selectedSession.status, selectedSession.rescheduledAt).color}`}>{getSessionStatus(selectedSession.status, selectedSession.rescheduledAt).label}</span></div>
             </div>
 
             {selectedSession.status === 'no_show_student' && (
@@ -324,10 +332,7 @@ export default function StudentSessionsPage() {
               </div>
             )}
 
-            {/* Active upcoming scheduled session controls */}
-            {selectedSession.status === 'scheduled' && !selectedSession.isPast && (
-              <>
-                {isWithinLockWindow(selectedSession.startsAt) ? (
+            {selectedSession.status === 'scheduled' && !selectedSession.isPast && isWithinLockWindow(selectedSession.startsAt) && (
                   <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-bold">
                       <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
@@ -343,37 +348,8 @@ export default function StudentSessionsPage() {
                       <HelpCircle className="h-3.5 w-3.5" /> Contact Admin & Support
                     </Link>
                   </div>
-                ) : (
-                  <div className="flex gap-2 mb-4">
-                    <button
-                      onClick={() => setShowReschedule(true)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--primary)/0.3)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.05)] transition-colors"
-                    >
-                      <Edit className="h-4 w-4" /> Reschedule
-                    </button>
-                    <button
-                      onClick={() => setShowCancelConfirm(true)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-colors bg-[hsl(var(--destructive)/0.1)] text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.15)]"
-                    >
-                      <Trash2 className="h-4 w-4" /> Cancel
-                    </button>
-                  </div>
-                )}
-              </>
             )}
-
-            <div className="flex gap-2 mt-2">
-              {selectedSession.canReview && (
-                <Link href={`/student/courses/${courseId}/feedback?sessionId=${selectedSession.id}`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--primary)/0.07)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.12)] transition-colors flex items-center justify-center gap-1.5">
-                  <MessageSquareText className="h-4 w-4" /> {selectedSession.rating ? 'Edit Review' : 'Write Review'}
-                </Link>
-              )}
-              {(selectedSession.status === 'scheduled' || selectedSession.status === 'in_progress') && (
-                <Link href={`/student/courses/${courseId}/sessions/${selectedSession.id}/room`} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:shadow-md transition-all flex items-center justify-center gap-1.5">
-                  <Play className="h-4 w-4 fill-current" /> Join Session
-                </Link>
-              )}
-            </div>
+            {renderSessionActions(selectedSession)}
           </div>
         </div>
       )}

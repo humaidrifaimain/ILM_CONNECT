@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ExchangeRateService } from '../pricing/exchange-rate.service';
 import { Role, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { CreateLecturerDto, UpdateLecturerDto } from './dto/create-lecturer.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private exchange?: ExchangeRateService) {}
 
   async getWaitlist() { return this.prisma.waitlistEntry.findMany({ orderBy: { createdAt: 'desc' } }); }
 
@@ -107,6 +108,8 @@ export class AdminService {
             phone: true,
             country: true,
             currentTier: true,
+            preferredHours: true,
+            timezone: true,
             assignedLecturer: {
               select: {
                 userId: true,
@@ -197,62 +200,56 @@ export class AdminService {
     };
   }
 
-  async assignLecturer(studentUserId: string, lecturerUserId: string, adminUserId?: string) {
-    const studentUser = await this.prisma.user.findUnique({
-      where: { id: studentUserId },
-      include: { studentProfile: true },
-    });
-    if (!studentUser) {
-      throw new NotFoundException('Student user not found');
-    }
-    if (studentUser.role !== Role.STUDENT || studentUser.deletedAt) throw new BadRequestException('Choose a student account');
+  async assignLecturerForRequest(requestId: string, lecturerUserId: string, adminUserId: string) {
+    return this.prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'assignment-request:' + requestId}))::text`;
+      const request = await tx.supportTicket.findUnique({ where: { id: requestId } });
+      if (!request) throw new NotFoundException('Assignment request not found');
+      if (!['STUDENT_REGISTRATION', 'LECTURER_CHANGE', 'STUDENT_REASSIGNMENT'].includes(request.type)) throw new BadRequestException('This request does not require lecturer assignment');
+      if (request.status === 'RESOLVED') throw new BadRequestException('This request has already been resolved');
+      const studentUserId = request.userId;
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'student:' + studentUserId}))::text`;
+      const studentUser = await tx.user.findUnique({
+        where: { id: studentUserId },
+        include: { studentProfile: true },
+      });
+      if (!studentUser) throw new NotFoundException('Student user not found');
+      if (studentUser.role !== Role.STUDENT || studentUser.status !== UserStatus.ACTIVE || studentUser.deletedAt) throw new BadRequestException('Choose an active student account');
+      if (!studentUser.studentProfile) throw new NotFoundException('Student profile not found');
+      if (request.type === 'STUDENT_REGISTRATION' && studentUser.studentProfile.assignedLecturerId) throw new BadRequestException('This student already has a lecturer. Use a lecturer change request to reassign.');
 
-    const lecturerProfile = await this.prisma.lecturerProfile.findUnique({
-      where: { userId: lecturerUserId },
-      include: { user: { select: { status: true, deletedAt: true, role: true } } },
-    });
-    if (!lecturerProfile) {
-      throw new NotFoundException('Lecturer profile not found');
-    }
-    if (lecturerProfile.user.role !== Role.LECTURER || lecturerProfile.user.status !== UserStatus.ACTIVE || lecturerProfile.user.deletedAt || lecturerProfile.status !== UserStatus.ACTIVE) throw new BadRequestException('Choose an active lecturer');
+      const lecturerProfile = await tx.lecturerProfile.findUnique({
+        where: { userId: lecturerUserId },
+        include: { user: { select: { status: true, deletedAt: true, role: true } } },
+      });
+      if (!lecturerProfile) throw new NotFoundException('Lecturer profile not found');
+      if (lecturerProfile.user.role !== Role.LECTURER || lecturerProfile.user.status !== UserStatus.ACTIVE || lecturerProfile.user.deletedAt || lecturerProfile.status !== UserStatus.ACTIVE) throw new BadRequestException('Choose an active lecturer');
 
-    const updated = await this.prisma.studentProfile.upsert({
-      where: { userId: studentUserId },
-      update: { assignedLecturerId: lecturerUserId },
-      create: {
-        userId: studentUserId,
-        fullName: studentUser.email.split('@')[0],
-        phone: 'Not provided',
-        country: 'Sri Lanka',
-        timezone: 'Asia/Colombo',
-        preferredLanguage: 'English',
-        learningGoals: 'Quran Studies',
-        currentTier: 'STANDARD',
-        assignedLecturerId: lecturerUserId,
-      },
-      include: {
-        assignedLecturer: {
-          select: {
-            userId: true,
-            fullName: true,
-          },
-        },
-      },
-    });
+      const preferredHours = studentUser.studentProfile.preferredHours;
+      const lecturerHours = lecturerProfile.hourlyAvailabilityJson;
+      if (Array.isArray(preferredHours) && preferredHours.length > 0 &&
+          (!Array.isArray(lecturerHours) || !preferredHours.some(hour => lecturerHours.includes(hour)))) {
+        throw new BadRequestException('This lecturer has no shift in the student’s available time windows (Asia/Colombo)');
+      }
 
-    if (adminUserId) {
-      await this.prisma.auditLog.create({
+      const updated = await tx.studentProfile.update({
+        where: { userId: studentUserId },
+        data: { assignedLecturerId: lecturerUserId },
+        include: { assignedLecturer: { select: { userId: true, fullName: true } } },
+      });
+      await tx.supportTicket.update({ where: { id: requestId }, data: { status: 'RESOLVED', resolvedAt: new Date() } });
+      await tx.auditLog.create({
         data: {
           action: 'ADMIN_ASSIGNED_LECTURER',
           actorId: adminUserId,
           entity: 'STUDENT_PROFILE',
           entityId: studentUserId,
-          details: { studentUserId, lecturerUserId },
+          details: { studentUserId, lecturerUserId, requestId },
         },
-      }).catch(() => null);
-    }
+      });
 
-    return updated;
+      return updated;
+    });
   }
 
   async updateLecturer(id: string, dto: UpdateLecturerDto, actorId?: string) {
@@ -338,7 +335,11 @@ export class AdminService {
       grouped.set(tier, row);
     }
     const revenueByPlan = Array.from(grouped, ([tier, row]) => ({ tier, revenue: row.revenue, students: row.students.size }));
-    return { payments, payouts, revenueByPlan };
+    const exchangeRates = this.exchange ? await this.exchange.snapshot() : [];
+    const usd = exchangeRates.find(row => row.code === 'USD');
+    const plans = this.exchange ? await this.prisma.subscriptionPlan.findMany({ orderBy: [{ courseId: 'asc' }, { sessions: 'asc' }] }) : [];
+    const pricing = plans.map(plan => ({ ...plan, internationalLkr: usd?.available && !usd.stale ? Math.round(plan.monthlyUsd * usd.lkrPerUnit * 100) / 100 : null }));
+    return { payments, payouts, revenueByPlan, exchangeRates, pricing };
   }
 
   async getFeedback() {

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSlotDto } from './dto/availability.dto';
+import { lecturerConflictWindow } from './session-timing';
 
 @Injectable()
 export class AvailabilityService {
@@ -85,23 +86,21 @@ export class AvailabilityService {
         return existingSame;
       }
 
-      // Check for overlap: existing starts before new ends AND existing ends after new starts
       const overlap = await tx.availabilitySlot.findFirst({
         where: {
           lecturerId: targetId,
-          startsAt: { lt: endsAt },
-          endsAt: { gt: startsAt },
+          ...lecturerConflictWindow(startsAt, endsAt),
         },
       });
 
       if (overlap) {
         if (overlap.status === 'BOOKED') {
           throw new BadRequestException(
-            'Slot overlaps with an already booked student session',
+            'Leave at least 10 minutes before and after a booked session',
           );
         }
         throw new BadRequestException(
-          'Slot overlaps with an existing availability slot',
+          'Leave at least 10 minutes between availability sessions',
         );
       }
 

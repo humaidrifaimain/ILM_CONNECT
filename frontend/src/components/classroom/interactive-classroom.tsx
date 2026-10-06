@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
+import { MeetingTimer } from './meeting-timer';
 
 interface SessionInfo {
   id: string;
@@ -297,19 +298,6 @@ export function InteractiveClassroom({
     }
   };
 
-  // Timer
-  const [elapsed, setElapsed] = useState('00:00:00');
-  useEffect(() => {
-    const start = new Date(sessionInfo.startsAt).getTime();
-    const interval = setInterval(() => {
-      const diff = Math.max(0, Date.now() - start);
-      const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
-      const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
-      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-      setElapsed(`${h}:${m}:${s}`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [sessionInfo.startsAt]);
 
   const activeLesson = QAIDA_LESSONS[activeSlideIdx];
 
@@ -345,7 +333,7 @@ export function InteractiveClassroom({
             </span>
           </h1>
           <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-white/10 text-white/70 flex items-center gap-1.5">
-            <Clock className="h-3 w-3 text-emerald-400" /> {elapsed}
+            <Clock className="h-3 w-3 text-emerald-300" aria-hidden="true" /> <MeetingTimer sessionId={sessionInfo.id} userRole={userRole} onExpire={onLeave} />
           </span>
         </div>
 

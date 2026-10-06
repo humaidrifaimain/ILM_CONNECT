@@ -20,6 +20,7 @@ interface Notification {
     senderName?: string;
     preview?: string;
     messageId?: string;
+    currentSession?: { dateFormatted: string; timeFormatted: string; lecturerName: string; status: string };
     [key: string]: unknown;
   };
   readAt: string | null;
@@ -102,7 +103,7 @@ export function DashboardTopbar() {
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ['notifications'],
     queryFn: () => apiFetch('/notifications'),
-    refetchInterval: 30000,
+    refetchInterval: 7000,
     enabled: !!user && isInDashboard,
   });
 
@@ -296,6 +297,12 @@ export function DashboardTopbar() {
                                 {previewText}
                               </p>
                             )}
+                            {notif.payloadJson.currentSession && <div className="mt-2 text-xs text-[hsl(var(--foreground))]">
+                              <p className="font-semibold">{notif.payloadJson.currentSession.status === 'SCHEDULED' ? 'Scheduled lesson' : notif.payloadJson.currentSession.status.replace(/_/g, ' ').toLowerCase()}</p>
+                              <p>{notif.payloadJson.currentSession.dateFormatted}</p>
+                              <p>{notif.payloadJson.currentSession.timeFormatted}</p>
+                              <p className="text-[hsl(var(--muted-foreground))]">Lecturer: {notif.payloadJson.currentSession.lecturerName}</p>
+                            </div>}
                           </div>
                           {!notif.readAt && (
                             <div className="flex-shrink-0 mt-2 h-2 w-2 rounded-full bg-[hsl(var(--primary))]" />

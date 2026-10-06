@@ -51,7 +51,7 @@ const revealViewport = {
 export default function HomePage() {
   const { data: plans = [] } = useSubscriptionPlans();
   const { format } = usePricingCurrency();
-  const price = (id: string) => { const plan = plans.find(item => item.id === id); return plan ? format(plan.monthlyUsd) : '—'; };
+  const price = (id: string) => { const plan = plans.find(item => item.id === id); return plan ? format(plan) : 'Price unavailable'; };
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   return (

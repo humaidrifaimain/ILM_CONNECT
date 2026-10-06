@@ -80,9 +80,10 @@ async function run() {
   const block = await db.sessionBlock.create({ data: { studentId: student.id, lecturerId: lecturer.id, status: 'COMPLETED' } });
   const payout = await db.payout.create({ data: { lecturerId: lecturer.id, amountLkr: 2500, sessionBlocksIncluded: [block.id], method: 'bank_transfer' } });
   const failedPayout = await db.payout.create({ data: { lecturerId: lecturer.id, amountLkr: 2500, sessionBlocksIncluded: [], method: 'bank_transfer' } });
-  for (const [index, course] of ['Noorani Qaida','Quran Recitation','Quran Memorization'].entries()) for (const tier of ['Standard','Fast Track']) await db.subscriptionPlan.upsert({ where: { id: `qa-plan-${index}-${tier.replace(' ','-')}` }, update: {}, create: { id: `qa-plan-${index}-${tier.replace(' ','-')}`, courseId: `qa-course-${index}`, course, tier, monthlyUsd: tier === 'Standard' ? 30 : 45, sessions: tier === 'Standard' ? 8 : 12 } });
+  for (const [index, course] of ['Noorani Qaida','Quran Recitation','Quran Memorization'].entries()) for (const tier of ['Standard','Fast Track']) await db.subscriptionPlan.upsert({ where: { id: `qa-plan-${index}-${tier.replace(' ','-')}` }, update: {}, create: { id: `qa-plan-${index}-${tier.replace(' ','-')}`, courseId: `qa-course-${index}`, course, tier, monthlyUsd: tier === 'Standard' ? 30 : 45, monthlyLkr: tier === 'Standard' ? 5000 : 8000, sessions: tier === 'Standard' ? 8 : 12 } });
   for (const [code, rate] of [['LKR',1],['USD',300],['GBP',400],['EUR',350],['AUD',200]]) await db.pricingCurrency.upsert({ where: { code }, update: {}, create: { code, region: code, lkrPerUnit: rate, rateDate: '2026-10-05' } });
   const ticket = await db.supportTicket.create({ data: { userId: student.id, type: 'GENERAL_SUPPORT', reason: 'QA admin request <script>alert(1)</script> العربية' } });
+  await db.supportTicket.create({ data: { userId: student.id, type: 'LECTURER_CHANGE', reason: 'QA lecturer assignment request' } });
   await db.supportTicket.create({ data: { userId: lecturer.id, type: 'GENERAL_SUPPORT', reason: 'QA lecturer request' } });
   await fs.writeFile(path.join(output, 'fixtures.json'), JSON.stringify({ password, admin, owner, student, lecturer, otherLecturer, otherAdmin, future, past, completed, canceled, noShow, payout, ticket }, null, 2), { mode: 0o600 });
   if (process.argv.includes('--serve')) {
@@ -114,15 +115,20 @@ async function baselineCases(f) {
   for (const [index, change] of invalids.entries()) await check(`invalid lecturer input ${index}`,'/admin/lecturers','POST',{...create,email:`qa-invalid-${index}@example.test`,...change},a.token,400);
   await check('lecturer unicode accepted','/admin/lecturers','POST',{...create,email:'qa-unicode@example.test',fullName:'أحمد 李 😀'},a.token,201,d=>d.lecturerProfile.fullName==='أحمد 李 😀');
   await check('student cannot create lecturer','/admin/lecturers','POST',create,s.token,403);
-  await check('valid assignment',`/admin/students/${s.id}/assign-lecturer`,'POST',{lecturerId:l.id},a.token,201,d=>d.assignedLecturerId===l.id);
-  await check('valid reassignment',`/admin/students/${s.id}/assign-lecturer`,'PATCH',{lecturerId:l2.id},a.token,200,d=>d.assignedLecturerId===l2.id);
-  await check('assignment invalid student',`/admin/students/missing/assign-lecturer`,'POST',{lecturerId:l.id},a.token,404);
-  await check('assignment invalid lecturer',`/admin/students/${s.id}/assign-lecturer`,'POST',{lecturerId:'missing'},a.token,404);
-  await check('assignment empty lecturer',`/admin/students/${s.id}/assign-lecturer`,'POST',{lecturerId:''},a.token,400);
-  await check('assignment admin as student rejected',`/admin/students/${a2.id}/assign-lecturer`,'POST',{lecturerId:l.id},a.token,400);
+  async function assignmentRequest(userId) {
+    const request = await db.supportTicket.create({ data: { userId, type: 'LECTURER_CHANGE', reason: 'QA lecturer assignment request' } });
+    return `/admin/requests/${request.id}/assign-lecturer`;
+  }
+  await check('valid assignment from request',await assignmentRequest(s.id),'POST',{lecturerId:l.id},a.token,201,d=>d.assignedLecturerId===l.id);
+  await check('valid reassignment from request',await assignmentRequest(s.id),'POST',{lecturerId:l2.id},a.token,201,d=>d.assignedLecturerId===l2.id);
+  await check('assignment invalid request','/admin/requests/missing/assign-lecturer','POST',{lecturerId:l.id},a.token,404);
+  const pendingAssignment = await assignmentRequest(s.id);
+  await check('assignment invalid lecturer',pendingAssignment,'POST',{lecturerId:'missing'},a.token,404);
+  await check('assignment empty lecturer',pendingAssignment,'POST',{lecturerId:''},a.token,400);
+  await check('assignment admin as student rejected',await assignmentRequest(a2.id),'POST',{lecturerId:l.id},a.token,400);
   await check('suspend lecturer',`/admin/users/${l2.id}/status`,'PATCH',{status:'SUSPENDED'},a.token,200,d=>!d.passwordHash);
   await check('suspended lecturer stale token denied','/admin/stats','GET',undefined,l2.token,401);
-  await check('assignment suspended lecturer rejected',`/admin/students/${s.id}/assign-lecturer`,'POST',{lecturerId:l2.id},a.token,400);
+  await check('assignment suspended lecturer rejected',pendingAssignment,'POST',{lecturerId:l2.id},a.token,400);
   await check('lecturer profile status sync',`/admin/users?role=LECTURER`,'GET',undefined,a.token,200,d=>d.find(u=>u.id===l2.id)?.lecturerProfile.status==='SUSPENDED');
   await check('status invalid enum',`/admin/users/${l2.id}/status`,'PATCH',{status:'INVALID'},a.token,400);
   await check('status missing',`/admin/users/${l2.id}/status`,'PATCH',{},a.token,400);
@@ -163,17 +169,15 @@ async function baselineCases(f) {
   const concurrent = await db.payout.create({data:{lecturerId:l.id,amountLkr:100,sessionBlocksIncluded:[],method:'bank_transfer'}});
   const race = await Promise.all([request(`/admin/payouts/${concurrent.id}/status`,'PATCH',{status:'SUCCESSFUL'},a.token),request(`/admin/payouts/${concurrent.id}/status`,'PATCH',{status:'SUCCESSFUL'},a.token)]);
   checks.push({name:'concurrent payout processing exactly once',at:new Date().toISOString(),passed:race.filter(r=>r.status===200).length===1&&race.filter(r=>r.status===400).length===1,response:race.map(r=>({status:r.status}))});
-  const plans = (await request('/subscriptions/plans')).data.map(({id,monthlyUsd})=>({id,monthlyUsd}));
+  const plans = (await request('/subscriptions/plans')).data.map(({id,monthlyUsd,monthlyLkr})=>({id,monthlyUsd,monthlyLkr:monthlyLkr??5000}));
   const rates = (await request('/subscriptions/currencies')).data.map(({code,lkrPerUnit,rateDate})=>({code,lkrPerUnit,rateDate}));
-  for (const endpoint of ['/subscriptions/plans','/subscriptions/currencies']) for (const user of [s,l]) await check(`${user.role} config write denied ${endpoint}`,endpoint,'PATCH',endpoint.endsWith('plans')?{prices:plans}:{rates},user.token,403);
+  for (const user of [s,l]) await check(`${user.role} config write denied`,'/subscriptions/plans','PATCH',{prices:plans},user.token,403);
   await check('save valid prices','/subscriptions/plans','PATCH',{prices:plans},a.token,200,d=>d.length===6);
   for (const price of [0,-1,0.001,10000.01,'30',null]) await check(`invalid price ${price}`,'/subscriptions/plans','PATCH',{prices:plans.map((p,i)=>i===0?{...p,monthlyUsd:price}:p)},a.token,400);
   await check('duplicate plans','/subscriptions/plans','PATCH',{prices:Array(6).fill(plans[0])},a.token,400);
   await check('missing plans','/subscriptions/plans','PATCH',{prices:plans.slice(1)},a.token,400);
-  await check('valid currencies','/subscriptions/currencies','PATCH',{rates},a.token,200,d=>d.length===5);
-  for (const change of [{lkrPerUnit:0},{lkrPerUnit:-1},{lkrPerUnit:1000001},{rateDate:'2026-02-30'},{rateDate:'invalid'}]) await check(`invalid currency ${JSON.stringify(change)}`,'/subscriptions/currencies','PATCH',{rates:rates.map(p=>p.code==='USD'?{...p,...change}:p)},a.token,400);
-  await check('LKR fixed at one','/subscriptions/currencies','PATCH',{rates:rates.map(p=>p.code==='LKR'?{...p,lkrPerUnit:2}:p)},a.token,400);
-  await check('audit creation and assignment recorded','/admin/audit-logs','GET',undefined,a.token,200,d=>['ADMIN_CREATED_LECTURER','ADMIN_ASSIGNED_LECTURER','PRICING_UPDATED','CURRENCY_RATES_UPDATED'].every(action=>d.some(r=>r.action===action)));
+  await check('manual currency editing removed','/subscriptions/currencies','PATCH',{rates},a.token,404);
+  await check('audit creation and assignment recorded','/admin/audit-logs','GET',undefined,a.token,200,d=>['ADMIN_CREATED_LECTURER','ADMIN_ASSIGNED_LECTURER','PRICING_UPDATED'].every(action=>d.some(r=>r.action===action)));
   await check('audit suspension and payout recorded','/admin/audit-logs','GET',undefined,a.token,200,d=>d.some(r=>/SUSPEND|STATUS/.test(r.action))&&d.some(r=>/PAYOUT/.test(r.action)));
   await check('pending admin not authorized',`/admin/users/${a2.id}/status`,'PATCH',{status:'PENDING'},a.token,200);
   await check('pending admin token denied','/admin/stats','GET',undefined,a2.token,401);
@@ -189,7 +193,7 @@ async function cases(f) {
 }
 async function extendedCases(f) {
  const {admin:a,owner:staff,student:s,lecturer:l,otherAdmin:a2,ticket}=f;
- const writes=[['/admin/lecturers','POST',{}],[`/admin/students/${s.id}/assign-lecturer`,'PATCH',{lecturerId:l.id}],[`/admin/lecturers/${l.id}`,'PATCH',{hourlyAvailabilityJson:[10,11,12,13]}],[`/admin/users/${a2.id}/status`,'PATCH',{status:'ACTIVE'}],[`/admin/payouts/${f.payout.id}/status`,'PATCH',{status:'FAILED'}],['/subscriptions/plans','PATCH',{prices:[]}],['/subscriptions/currencies','PATCH',{rates:[]}],[`/support/tickets/${ticket.id}/status`,'PATCH',{status:'PENDING'}]];
+ const writes=[['/admin/lecturers','POST',{}],[`/admin/requests/${ticket.id}/assign-lecturer`,'POST',{lecturerId:l.id}],[`/admin/lecturers/${l.id}`,'PATCH',{hourlyAvailabilityJson:[10,11,12,13]}],[`/admin/users/${a2.id}/status`,'PATCH',{status:'ACTIVE'}],[`/admin/payouts/${f.payout.id}/status`,'PATCH',{status:'FAILED'}],['/subscriptions/plans','PATCH',{prices:[]}],['/subscriptions/currencies','PATCH',{rates:[]}],[`/support/tickets/${ticket.id}/status`,'PATCH',{status:'PENDING'}]];
  for(const [endpoint,method,body] of writes) for(const person of [null,s,l]) await check(`${person?.role||'anonymous'} write boundary ${endpoint}`,endpoint,method,body,person?.token,person?403:401);
  await check('super admin auth identity','/auth/me','GET',undefined,a.token,200,d=>d.role==='SUPER_ADMIN'&&!d.passwordHash);
  const forged=app.get(JwtService).sign({sub:s.id,role:'SUPER_ADMIN',version:0});
@@ -205,7 +209,7 @@ async function extendedCases(f) {
  await check('support overlong reply rejected',`/support/tickets/${ticket.id}/messages`,'POST',{message:'x'.repeat(10001)},a.token,400);
  await check('support student status update denied',`/support/tickets/${ticket.id}/status`,'PATCH',{status:'RESOLVED'},s.token,403);
  await check('support cross-account read denied',`/support/tickets/${ticket.id}`,'GET',undefined,l.token,403);
- const plans=(await request('/subscriptions/plans')).data.map(({id,monthlyUsd})=>({id,monthlyUsd}));
+ const plans=(await request('/subscriptions/plans')).data.map(({id,monthlyUsd,monthlyLkr})=>({id,monthlyUsd,monthlyLkr:monthlyLkr??5000}));
  for(const price of [0.01,10000]) await check('price inclusive boundary '+price,'/subscriptions/plans','PATCH',{prices:plans.map(p=>({...p,monthlyUsd:price}))},a.token,200);
  await check('plans unknown ID atomic rejection','/subscriptions/plans','PATCH',{prices:plans.map((p,i)=>i?{...p,monthlyUsd:42}:{...p,id:'missing'})},a.token,400);
  await check('plans invalid request no partial write','/subscriptions/plans','GET',undefined,a.token,200,d=>d.every(p=>p.monthlyUsd===10000));

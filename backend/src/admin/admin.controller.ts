@@ -33,14 +33,9 @@ export class AdminController {
     return this.adminService.createLecturer(dto, req.user?.id);
   }
 
-  @Post('students/:id/assign-lecturer')
+  @Post('requests/:id/assign-lecturer')
   assignLecturer(@Req() req: any, @Param('id') id: string, @Body() dto: AssignLecturerDto) {
-    return this.adminService.assignLecturer(id, dto.lecturerId, req.user?.id);
-  }
-
-  @Patch('students/:id/assign-lecturer')
-  assignLecturerPatch(@Req() req: any, @Param('id') id: string, @Body() dto: AssignLecturerDto) {
-    return this.adminService.assignLecturer(id, dto.lecturerId, req.user?.id);
+    return this.adminService.assignLecturerForRequest(id, dto.lecturerId, req.user.id);
   }
 
   @Patch('lecturers/:id')

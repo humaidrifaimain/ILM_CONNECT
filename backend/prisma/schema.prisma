@@ -74,6 +74,8 @@ enum PayoutStatus {
 model User {
   id                String            @id @default(uuid())
   email             String            @unique
+  gender            String?
+  dateOfBirth       DateTime?         @db.Date @map("date_of_birth")
   passwordHash      String            @map("password_hash")
   role              Role              @default(STUDENT)
   status            UserStatus        @default(PENDING)
@@ -114,6 +116,7 @@ model StudentProfile {
   learningGoals     String            @map("learning_goals")
   currentTier       String            @default("FREE") @map("current_tier")
   assignedLecturerId String?          @map("assigned_lecturer_id")
+  preferredHours    Json             @default("[]") @map("preferred_hours")
 
   // Relations
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -228,6 +231,8 @@ model Session {
   endsAt        DateTime           @map("ends_at")
   status        SessionStatus      @default(SCHEDULED)
   livekitRoomName String?           @map("livekit_room_name")
+  meetingStartedAt DateTime?        @map("meeting_started_at")
+  rescheduledAt DateTime?           @map("rescheduled_at")
   recordingUrl  String?            @map("recording_url")
 
   // Relations
@@ -247,6 +252,7 @@ model Session {
   @@index([lecturerId])
   @@index([studentId, startsAt])
   @@index([lecturerId, startsAt])
+  @@index([status, meetingStartedAt])
   @@map("sessions")
 }
 
@@ -572,6 +578,7 @@ model SubscriptionPlan {
   course     String
   tier       String
   monthlyUsd Float    @map("monthly_usd")
+  monthlyLkr Float?   @map("monthly_lkr")
   sessions   Int
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -583,6 +590,8 @@ model PricingCurrency {
   region String
   lkrPerUnit Float @map("lkr_per_unit")
   rateDate String @map("rate_date")
+  source String? @map("source")
+  fetchedAt DateTime? @map("fetched_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   @@map("pricing_currencies")
 }

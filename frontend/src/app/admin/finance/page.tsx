@@ -6,12 +6,14 @@ import { apiFetch } from '@/lib/api';
 import { downloadCsv } from '@/lib/download';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { ExchangeRatesPanel } from '@/components/admin/exchange-rates-panel';
 
 export default function AdminFinancePage() {
   const queryClient = useQueryClient();
   const { data: finance, isLoading, isError: financeError } = useQuery({
     queryKey: ['adminFinance'],
     queryFn: () => apiFetch('/admin/finance'),
+    refetchInterval: 30000,
   });
 
   const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
@@ -50,7 +52,7 @@ export default function AdminFinancePage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <button
           onClick={() => downloadCsv([['Monthly summary', 'Amount LKR'], ['Revenue', stats.revenueThisMonth], ['Payouts', stats.payoutsThisMonth], ['Net before fees', stats.profitThisMonth], [], ['Plan', 'Paying students', 'Revenue LKR'], ...finance.revenueByPlan.map((row: { tier: string; students: number; revenue: number }) => [row.tier, row.students, row.revenue]), [], ['Payout ID', 'Lecturer ID', 'Date', 'Amount LKR', 'Status'], ...finance.payouts.map((p: { id: string; lecturerId: string; initiatedAt: string; amountLkr: number; status: string }) => [p.id, p.lecturerId, p.initiatedAt, p.amountLkr, p.status])], 'finance-summary.csv')}
@@ -73,6 +75,8 @@ export default function AdminFinancePage() {
           </div>
         ))}
       </div>
+
+      <ExchangeRatesPanel rates={finance.exchangeRates ?? []} plans={finance.pricing ?? []} />
 
       {/* Revenue breakdown chart */}
       <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">

@@ -23,6 +23,7 @@ import { TableSkeleton } from '@/components/ui/loading-screen';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Portal } from '@/components/ui/portal';
 import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
+import { RequestLecturerAssignment } from '@/components/admin/request-lecturer-assignment';
 
 interface TicketMessage {
   id: string;
@@ -51,6 +52,9 @@ interface SupportTicket {
       country?: string;
       phone?: string;
       currentTier?: string;
+      preferredHours?: number[];
+      assignedLecturerId?: string | null;
+      assignedLecturer?: { userId: string; fullName: string } | null;
     } | null;
     lecturerProfile?: {
       fullName?: string;
@@ -68,7 +72,8 @@ export default function AdminRequestsPage() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
-  const dialogRef = useDialogAccessibility(!!selectedTicket, () => { if (!sendingReply) setSelectedTicket(null); });
+  const [assigning, setAssigning] = useState(false);
+  const dialogRef = useDialogAccessibility(!!selectedTicket, () => { if (!sendingReply && !assigning) setSelectedTicket(null); });
 
   // Fetch tickets with 10-second silent background polling
   const { data: tickets = [], isLoading, isError, refetch } = useQuery<SupportTicket[]>({
@@ -325,7 +330,9 @@ export default function AdminRequestsPage() {
                       <td className="py-3.5 px-5">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
-                            {req.type === 'LECTURER_CHANGE' ? (
+                            {req.type === 'STUDENT_REGISTRATION' ? (
+                              <span className="text-sm font-semibold">New student registration</span>
+                            ) : req.type === 'LECTURER_CHANGE' ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 font-semibold text-xs">
                                 <RefreshCw className="h-3 w-3" /> Lecturer Change
                               </span>
@@ -390,11 +397,12 @@ export default function AdminRequestsPage() {
                             onClick={() => setSelectedTicket(req)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.08)] hover:bg-[hsl(var(--primary)/0.18)] transition-all"
                           >
-                            <MessageSquare className="h-3.5 w-3.5" /> View & Reply
+                            <MessageSquare className="h-3.5 w-3.5" /> {['STUDENT_REGISTRATION', 'LECTURER_CHANGE', 'STUDENT_REASSIGNMENT'].includes(req.type) && req.user.role === 'STUDENT' ? 'View & assign' : 'View & Reply'}
                           </button>
 
                           {req.status !== 'RESOLVED' ? (
                             <button
+                              disabled={req.type === 'STUDENT_REGISTRATION' && !req.user.studentProfile?.assignedLecturerId}
                               onClick={() => handleStatusUpdate(req.id, 'RESOLVED')}
                               className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-600 border border-emerald-500/30 hover:bg-emerald-500/10 transition-colors"
                               title="Mark Resolved"
@@ -441,7 +449,7 @@ export default function AdminRequestsPage() {
           {currentSelectedTicket && (
             <div
               className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm"
-              onClick={() => setSelectedTicket(null)}
+              onClick={() => { if (!assigning && !sendingReply) setSelectedTicket(null); }}
             >
               <motion.div
                 ref={dialogRef}
@@ -501,6 +509,7 @@ export default function AdminRequestsPage() {
                     {currentSelectedTicket.status}
                   </span>
                   <button
+                    disabled={assigning || sendingReply}
                     onClick={() => setSelectedTicket(null)}
                     aria-label="Close request conversation"
                     className="h-8 w-8 rounded-full hover:bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))] transition-colors"
@@ -535,6 +544,7 @@ export default function AdminRequestsPage() {
                 </div>
 
                 {/* Original Request Box */}
+                {currentSelectedTicket.user.role === 'STUDENT' && ['STUDENT_REGISTRATION', 'LECTURER_CHANGE', 'STUDENT_REASSIGNMENT'].includes(currentSelectedTicket.type) && <RequestLecturerAssignment key={currentSelectedTicket.id} request={currentSelectedTicket} onBusyChange={setAssigning} />}
                 <div className="space-y-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                     Original Submitted Request
@@ -623,6 +633,7 @@ export default function AdminRequestsPage() {
                     <button
                       type="button"
                       onClick={() => handleStatusUpdate(currentSelectedTicket.id, 'IN_REVIEW')}
+                      disabled={assigning}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                         currentSelectedTicket.status === 'IN_REVIEW'
                           ? 'bg-blue-600 text-white'
@@ -633,6 +644,7 @@ export default function AdminRequestsPage() {
                     </button>
                     <button
                       type="button"
+                      disabled={assigning || (currentSelectedTicket.type === 'STUDENT_REGISTRATION' && !currentSelectedTicket.user.studentProfile?.assignedLecturerId)}
                       onClick={() => handleStatusUpdate(currentSelectedTicket.id, 'RESOLVED')}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                         currentSelectedTicket.status === 'RESOLVED'
@@ -647,7 +659,7 @@ export default function AdminRequestsPage() {
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                     <button
                       type="button"
-                      disabled={sendingReply || !replyText.trim()}
+                      disabled={assigning || sendingReply || !replyText.trim() || (currentSelectedTicket.type === 'STUDENT_REGISTRATION' && !currentSelectedTicket.user.studentProfile?.assignedLecturerId)}
                       onClick={() => handleSendReply('RESOLVED')}
                       className="px-3.5 py-2 rounded-xl font-bold text-xs border border-emerald-600/30 text-emerald-600 hover:bg-emerald-600/10 transition-all disabled:opacity-50"
                     >
@@ -656,7 +668,7 @@ export default function AdminRequestsPage() {
 
                     <button
                       type="button"
-                      disabled={sendingReply || !replyText.trim()}
+                      disabled={assigning || sendingReply || !replyText.trim()}
                       onClick={() => handleSendReply()}
                       className="px-4 py-2 rounded-xl font-bold text-xs text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
                     >

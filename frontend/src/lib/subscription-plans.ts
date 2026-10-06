@@ -8,13 +8,16 @@ export interface SubscriptionPlan {
   course: string;
   tier: string;
   monthlyUsd: number;
+  monthlyLkr: number | null;
+  prices: Record<string, number | null>;
   sessions: number;
 }
-export function useSubscriptionPlans() {
+export function useSubscriptionPlans(live = true) {
   return useQuery<SubscriptionPlan[]>({
     queryKey: ['subscriptionPlans'],
     queryFn: () => apiFetch('/subscriptions/plans'),
     staleTime: 0,
-    refetchOnWindowFocus: 'always',
+    refetchOnWindowFocus: live ? 'always' : false,
+    refetchInterval: live ? 30000 : false,
   });
 }

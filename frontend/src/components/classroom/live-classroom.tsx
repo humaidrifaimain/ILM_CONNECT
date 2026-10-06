@@ -7,8 +7,11 @@ import {
   useLocalParticipant,
   useParticipants,
   useTracks,
+  useChat,
+  useRoomContext,
+  useConnectionState,
 } from '@livekit/components-react';
-import { Track } from 'livekit-client';
+import { ConnectionState, Track } from 'livekit-client';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -29,10 +32,14 @@ import {
   Maximize2,
   Minimize2,
   Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 
 import { toast } from '@/components/ui/toast';
 import { apiFetch } from '@/lib/api';
+import { MeetingChat } from './meeting-chat';
+import { MeetingReactions, useMeetingReactions } from './meeting-reactions';
+import { MeetingTimer } from './meeting-timer';
 
 interface SessionInfo {
   id: string;
@@ -50,7 +57,7 @@ interface LiveClassroomProps {
   onLeave: () => void;
 }
 
-type SidePanel = 'materials' | 'participants' | null;
+type SidePanel = 'materials' | 'participants' | 'chat' | null;
 type LayoutMode = 'split' | 'spotlight';
 
 interface ClassroomSlide {
@@ -82,15 +89,9 @@ interface StudentProfile {
 
 
 
-function formatElapsed(startsAt: string, now: number) {
-  const elapsed = Math.max(0, now - new Date(startsAt).getTime());
-  const hours = Math.floor(elapsed / 3_600_000);
-  const minutes = Math.floor((elapsed % 3_600_000) / 60_000);
-  const seconds = Math.floor((elapsed % 60_000) / 1_000);
-  return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
-}
-
 export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: LiveClassroomProps) {
+  const room = useRoomContext();
+  const connectionState = useConnectionState();
   const endDialog = useRef<HTMLDialogElement>(null);
   const [ending, setEnding] = useState(false);
   const { data: sessionStatus } = useQuery<string>({ queryKey: ['roomSessionStatus', sessionInfo.id], queryFn: async () => { const sessions = await apiFetch(`/bookings/${userRole}`); return sessions.find((session: { id: string; status: string }) => session.id === sessionInfo.id)?.status || sessionInfo.status; }, refetchInterval: 5000 });
@@ -105,16 +106,28 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
   const { isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled, localParticipant } = useLocalParticipant();
 
   const [panel, setPanel] = useState<SidePanel>(null);
+  const chat = useChat();
+  const meetingReactions = useMeetingReactions();
+  const [lastReadMessageCount, setLastReadMessageCount] = useState(0);
+  const chatButton = useRef<HTMLButtonElement>(null);
+  const panelClose = useRef<HTMLButtonElement>(null);
+  const unreadCount = panel === 'chat' ? 0 : chat.chatMessages.slice(lastReadMessageCount).filter((message) => !message.from?.isLocal).length;
+  useEffect(() => {
+    if (panel === 'chat' || chat.chatMessages.length < lastReadMessageCount) setLastReadMessageCount(chat.chatMessages.length);
+  }, [panel, chat.chatMessages.length, lastReadMessageCount]);
+  useEffect(() => {
+    if (!panel) return;
+    if (panel !== 'chat') panelClose.current?.focus();
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !endDialog.current?.open) { setPanel(null); chatButton.current?.focus(); }
+    };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
+  }, [panel]);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('split');
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [showMaterialsOnStage, setShowMaterialsOnStage] = useState(false);
   const [isSelfViewMinimized, setIsSelfViewMinimized] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   const { data: paths = [] } = useQuery<CurriculumPath[]>({
     queryKey: ['curriculumPaths'],
@@ -210,8 +223,8 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
                 </span>
-                <span className="hidden items-center gap-1 font-mono text-xs text-white/50 sm:flex">
-                  <Clock3 className="h-3 w-3 text-emerald-400/80" /> {formatElapsed(sessionInfo.startsAt, now)}
+                <span className="flex items-center gap-1 text-xs text-white/90">
+                  <Clock3 className="h-3 w-3 text-emerald-300" aria-hidden="true" /> <MeetingTimer sessionId={sessionInfo.id} userRole={userRole} active={connectionState === ConnectionState.Connected} onExpire={async () => { try { await room.disconnect(); } finally { onLeave(); } }} />
                 </span>
               </div>
               <p className="text-xs text-white/60 truncate flex items-center gap-1.5">
@@ -289,7 +302,10 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
         </header>
 
         {/* Main Minimalist Stage */}
-        <main className="relative min-h-0 flex-1 overflow-hidden p-3 sm:p-5 pb-24 sm:pb-24">
+        <main className="relative isolate min-h-0 flex-1 overflow-hidden p-3 pb-36 sm:p-5 sm:pb-36 lg:pb-24">
+          <div role="status" aria-live="polite" aria-label="Meeting reactions" className="pointer-events-none absolute left-6 top-6 z-40 flex max-w-[calc(100%-3rem)] flex-wrap gap-2">
+            {meetingReactions.active.map((reaction) => <div key={reaction.identity} className="flex max-w-48 items-center gap-2 rounded-lg border border-white/20 bg-[#0a130f] px-3 py-2 text-sm text-white"><span className="text-2xl">{reaction.emoji}</span><span className="truncate">{reaction.name}</span></div>)}
+          </div>
           <div className="relative flex h-full w-full min-h-0 flex-col overflow-hidden rounded-3xl border border-white/[0.08] bg-[#070d0a] shadow-[0_30px_90px_rgba(0,0,0,0.85)]">
             
             {/* Viewport Area */}
@@ -547,7 +563,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
 
         {/* Minimal Luxury Floating Control Dock */}
         <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex min-h-24 items-center justify-center px-4 pb-5">
-          <div className="pointer-events-auto flex items-center gap-2.5 sm:gap-3 rounded-full border border-white/10 bg-[#09120e]/90 p-2 sm:p-2.5 shadow-[0_20px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+          <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 sm:gap-3 rounded-2xl border border-white/10 bg-[#09120e]/90 p-2 sm:p-2.5 shadow-[0_20px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
             {/* Microphone Button */}
             <button
               type="button"
@@ -593,6 +609,12 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               <MonitorUp className="h-5 w-5" />
             </button>
 
+            <button ref={chatButton} type="button" onClick={() => togglePanel('chat')} aria-label={unreadCount ? `Chat, ${unreadCount} unread messages` : 'Chat'} aria-expanded={panel === 'chat'} aria-controls="classroom-side-panel" className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 ${panel === 'chat' ? 'border-emerald-300 bg-emerald-800' : 'border-white/20 bg-white/[0.06] hover:bg-white/15'}`}>
+              <MessageSquare className="h-5 w-5" />
+              {unreadCount > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 rounded-full bg-emerald-200 px-1.5 text-[11px] font-bold text-emerald-950">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+            </button>
+            <MeetingReactions publish={meetingReactions.publish} disabled={meetingReactions.disabled} />
+
             {/* Materials Quick Toggle Button */}
             <button
               type="button"
@@ -601,7 +623,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                 if (!showMaterialsOnStage) setPanel('materials');
               }}
               title={showMaterialsOnStage ? 'Hide materials from stage' : 'Open Noorani Qaida materials'}
-              className={`flex h-12 items-center gap-2 px-4 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 active:scale-95 border ${
+              className={`hidden sm:flex h-12 items-center gap-2 px-4 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 active:scale-95 border ${
                 showMaterialsOnStage
                   ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
                   : 'bg-white/[0.06] border-white/10 text-white/80 hover:bg-white/10 hover:text-white'
@@ -641,26 +663,27 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
           />
           <aside
             id="classroom-side-panel"
-            className="absolute inset-y-0 right-0 z-40 flex w-[min(22rem,calc(100vw-1rem))] flex-col border-l border-white/10 bg-[#0a130f]/95 shadow-2xl md:relative md:z-20 md:w-80 backdrop-blur-xl"
+            className="absolute inset-y-0 right-0 z-40 flex min-h-0 w-[min(22rem,calc(100vw-1rem))] shrink-0 flex-col border-l border-white/10 bg-[#0a130f] shadow-2xl md:relative md:z-20 md:w-80"
           >
             {/* Drawer Header */}
             <div className="flex min-h-16 items-center justify-between border-b border-white/10 px-5 bg-white/[0.02]">
               <div>
-                <p className="font-bold text-sm text-white">{panel === 'materials' ? 'Quran & Tajweed Materials' : 'Participants'}</p>
-                <p className="text-xs text-white/50">{panel === 'materials' ? 'Select a slide to study' : `${participants.length} connected to room`}</p>
+                <p className="font-bold text-sm text-white">{panel === 'materials' ? 'Quran & Tajweed Materials' : panel === 'chat' ? 'Meeting chat' : 'Participants'}</p>
+                <p className="text-xs text-white/75">{panel === 'materials' ? 'Select a slide to study' : panel === 'chat' ? 'Everyone in this meeting' : `${participants.length} connected to room`}</p>
               </div>
               <button
+                ref={panelClose}
                 type="button"
-                onClick={() => setPanel(null)}
+                onClick={() => { setPanel(null); chatButton.current?.focus(); }}
                 aria-label="Close panel"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Drawer Content */}
-            {panel === 'materials' ? (
+            {panel === 'chat' ? <MeetingChat {...chat} /> : panel === 'materials' ? (
               <div className="flex-1 space-y-2 overflow-y-auto p-3.5">
                 <div className="mb-3 flex items-center gap-2 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.08] p-3 text-xs leading-5 text-emerald-200">
                   <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-300" />

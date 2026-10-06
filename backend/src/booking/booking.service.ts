@@ -5,6 +5,7 @@ import { SessionStatus, SlotStatus, Role } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
 import { publicLecturerSelect } from '../profile/profile.service';
 import { Prisma } from '@prisma/client';
+import { lecturerConflictWindow, SESSION_MINUTES } from '../availability/session-timing';
 
 @Injectable()
 export class BookingService {
@@ -34,7 +35,7 @@ export class BookingService {
 
     const startsAt = new Date(dto.startsAt);
     if (!Number.isFinite(startsAt.getTime())) throw new BadRequestException('Choose a valid session date');
-    const endsAt = new Date(startsAt.getTime() + 40 * 60 * 1000);
+    const endsAt = new Date(startsAt.getTime() + SESSION_MINUTES * 60 * 1000);
     const session = await this.prisma.$transaction(async tx => {
     for (const key of [`lecturer:${lecturerId}`, `student:${studentId}`].sort()) {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
@@ -117,26 +118,17 @@ export class BookingService {
       throw new BadRequestException('Lecturer is not available at the requested time');
     }
 
-    // Check if lecturer has any overlapping session
+    // The lecturer lock also serializes bookings in the surrounding break window.
     const overlappingSession = await tx.session.findFirst({
       where: {
         lecturerId,
         status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] },
-        OR: [
-          {
-            startsAt: { lte: startsAt },
-            endsAt: { gt: startsAt },
-          },
-          {
-            startsAt: { lt: endsAt },
-            endsAt: { gte: endsAt },
-          },
-        ],
+        ...lecturerConflictWindow(startsAt, endsAt),
       },
     });
 
     if (overlappingSession) {
-      throw new BadRequestException('Lecturer already has a scheduled session at this time');
+      throw new BadRequestException('Leave at least 10 minutes before and after the lecturer’s other sessions');
     }
 
     // Create session ID first so we can build the LiveKit room name
@@ -198,15 +190,14 @@ export class BookingService {
         minute: '2-digit',
       });
 
-      if (isLecturer) {
-        // Lecturer booked session -> Student is the recipient!
+      if (isLecturer || isStudent) {
         await this.notificationService.dispatchBookingNotification({
           eventType: 'BOOKING_CONFIRMED',
           sessionId: session.id,
           actor: {
-            id: lecturerId,
-            name: lecturerName,
-            role: 'LECTURER',
+            id: isLecturer ? lecturerId : studentId,
+            name: isLecturer ? lecturerName : studentName,
+            role: isLecturer ? 'LECTURER' : 'STUDENT',
           },
           recipient: {
             id: studentId,
@@ -218,7 +209,8 @@ export class BookingService {
           sessionDate: startsAt,
           sessionTimeFormatted,
         });
-      } else {
+      }
+      if (!isLecturer) {
         // Student booked session -> Lecturer is the recipient!
         if (lecturerUser) {
           await this.notificationService.dispatchBookingNotification({
@@ -737,7 +729,7 @@ export class BookingService {
 
     const newStartsAt = new Date(newStartsAtISO);
     if (typeof newStartsAtISO !== 'string' || !Number.isFinite(newStartsAt.getTime())) throw new BadRequestException('Choose a valid reschedule date');
-    const newEndsAt = new Date(newStartsAt.getTime() + 40 * 60 * 1000); // 40 minutes session
+    const newEndsAt = new Date(newStartsAt.getTime() + SESSION_MINUTES * 60 * 1000);
 
     if (newStartsAt <= new Date()) {
       throw new BadRequestException('Cannot reschedule to a past time');
@@ -754,8 +746,14 @@ export class BookingService {
     }, orderBy: { currentPeriodEnd: 'desc' } });
     if (!subscription || newStartsAt < subscription.currentPeriodStart || newEndsAt > subscription.currentPeriodEnd) throw new BadRequestException('Choose a session within your active subscription period');
     await this.validateBookingAllowance(session.studentId, newStartsAt, subscription.tier, tx, sessionId);
-    const overlap = await tx.session.findFirst({ where: { id: { not: sessionId }, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, startsAt: { lt: newEndsAt }, endsAt: { gt: newStartsAt }, OR: [{ lecturerId: session.lecturerId }, { studentId: session.studentId }] } });
-    if (overlap) throw new BadRequestException('A student or lecturer session already occupies this time');
+    const overlap = await tx.session.findFirst({ where: {
+      id: { not: sessionId }, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] },
+      OR: [
+        { lecturerId: session.lecturerId, ...lecturerConflictWindow(newStartsAt, newEndsAt) },
+        { studentId: session.studentId, startsAt: { lt: newEndsAt }, endsAt: { gt: newStartsAt } },
+      ],
+    } });
+    if (overlap) throw new BadRequestException('Choose a free time with at least a 10-minute lecturer break before and after');
     const newSlot = await tx.availabilitySlot.findFirst({
       where: {
         lecturerId: session.lecturerId,
@@ -794,6 +792,8 @@ export class BookingService {
       data: {
         startsAt: newStartsAt,
         endsAt: newEndsAt,
+        meetingStartedAt: null,
+        rescheduledAt: new Date(),
         status: SessionStatus.SCHEDULED,
       },
       include: { lecturer: { select: publicLecturerSelect }, student: true },
@@ -850,19 +850,19 @@ export class BookingService {
           sessionDate: newStartsAt,
           sessionTimeFormatted,
           previousTimeFormatted,
+          previousStartsAt: oldStartsAt,
           reason,
         });
       }
 
-      // If Lecturer rescheduled -> Student is recipient
-      if (isLecturer || isAdmin) {
+      if (isLecturer || isAdmin || isStudent) {
         await this.notificationService.dispatchBookingNotification({
           eventType: 'BOOKING_RESCHEDULED',
           sessionId,
           actor: {
             id: user.id,
-            name: lecturerName,
-            role: 'LECTURER',
+            name: isStudent ? studentName : lecturerName,
+            role: isStudent ? 'STUDENT' : 'LECTURER',
           },
           recipient: {
             id: session.studentId,
@@ -874,6 +874,7 @@ export class BookingService {
           sessionDate: newStartsAt,
           sessionTimeFormatted,
           previousTimeFormatted,
+          previousStartsAt: oldStartsAt,
           reason,
         });
       }

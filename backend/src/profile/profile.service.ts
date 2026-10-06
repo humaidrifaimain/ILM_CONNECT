@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { validateStudentHours } from '../availability/student-hours';
 
 export const publicLecturerSelect = {
   userId: true, fullName: true, bio: true, qualifications: true,
@@ -15,7 +16,10 @@ export class ProfileService {
     const result: Record<string, any> = {};
     for (const [key, value] of Object.entries(data)) {
       if (!allowed.includes(key)) throw new BadRequestException(`Field ${key} cannot be edited here`);
-      if (['languages', 'specializations'].includes(key)) {
+      if (key === 'preferredHours') {
+        result[key] = validateStudentHours(value);
+        continue;
+      } else if (['languages', 'specializations'].includes(key)) {
         if (!Array.isArray(value) || value.length > 20 || value.some(item => typeof item !== 'string' || item.length > 100)) throw new BadRequestException('Invalid language or specialization list');
       } else if (typeof value !== 'string' || value.length > 5000 || (key === 'fullName' && !value.trim())) throw new BadRequestException(`Invalid ${key}`);
       result[key] = value;
@@ -43,7 +47,7 @@ export class ProfileService {
   }
 
   async updateStudentProfile(userId: string, data: any) {
-    data = this.editableFields(data, ['fullName', 'phone', 'country', 'timezone', 'preferredLanguage', 'learningGoals']);
+    data = this.editableFields(data, ['fullName', 'phone', 'country', 'timezone', 'preferredLanguage', 'learningGoals', 'preferredHours']);
     if (data.timezone) { try { new Intl.DateTimeFormat('en', { timeZone: data.timezone }); } catch { throw new BadRequestException('Choose a valid timezone, such as Asia/Colombo'); } }
     return this.prisma.studentProfile.update({
       where: { userId },
