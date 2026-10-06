@@ -115,7 +115,9 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
 
       const isLecturer = user?.role === 'LECTURER';
       let actionUrl = undefined;
-      if (type.startsWith('BOOKING_') || type === 'SESSION_STUDENT_NO_SHOW') {
+      if (type.startsWith('COURSE_REQUEST')) {
+        actionUrl = isLecturer ? '/lecturer/courses' : '/student/courses';
+      } else if (type.startsWith('BOOKING_') || type === 'SESSION_STUDENT_NO_SHOW') {
         actionUrl = isLecturer ? '/lecturer/sessions' : '/student/dashboard';
       } else if (type === 'NEW_MESSAGE') {
         actionUrl = isLecturer ? '/lecturer/messages' : '/student/messages';

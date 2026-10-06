@@ -38,6 +38,17 @@ export default function AdminFinancePage() {
   if (isLoading || statsLoading || !finance || !stats) {
     return <LoadingScreen message="Loading Financial Data..." subtitle="Calculating revenues, profit margins, and payouts" fullScreen />;
   }
+
+  if (
+    !Array.isArray(finance.revenueByPlan) ||
+    !Array.isArray(finance.payouts) ||
+    ![stats.revenueThisMonth, stats.payoutsThisMonth, stats.profitThisMonth].every(
+      (value) => typeof value === 'number' && Number.isFinite(value),
+    )
+  ) {
+    return <p role="alert">Financial data is incompatible with this dashboard. Check that the frontend API URL points to the matching backend deployment.</p>;
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">

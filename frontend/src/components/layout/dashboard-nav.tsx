@@ -244,7 +244,9 @@ export function DashboardTopbar() {
                       const isConfirmed = notif.type === 'BOOKING_CONFIRMED';
                       const threadId = notif.payloadJson?.threadId;
 
-                      const href = isMsg
+                      const href = notif.type.startsWith('COURSE_REQUEST')
+                        ? (pathname.startsWith('/lecturer') ? '/lecturer/courses' : '/student/courses')
+                        : isMsg
                         ? (threadId ? `${messagesHref}?threadId=${encodeURIComponent(threadId)}` : messagesHref)
                         : (pathname.startsWith('/admin') ? '/admin/sessions' : pathname.startsWith('/lecturer') ? '/lecturer/sessions' : '/student/dashboard');
 

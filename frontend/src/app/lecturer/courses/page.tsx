@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
+import { LecturerCourseRequests } from '@/components/lecturer/course-requests';
 import {
   Library,
   BookOpen,
@@ -49,6 +50,7 @@ export default function LecturerCoursesPage() {
   if (pathsError || studentsError) return <div role="alert" className="space-y-3"><p>Unable to load courses and student access.</p><button className="rounded-lg border px-4 py-2" onClick={() => { void refetchPaths(); void refetchStudents(); }}>Retry</button></div>;
   return (
     <div className="space-y-6 animate-fade-in w-full mx-auto">
+      <LecturerCourseRequests />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mt-0.5">

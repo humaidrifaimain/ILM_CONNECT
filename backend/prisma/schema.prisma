@@ -93,6 +93,7 @@ model User {
   receivedMessages  Message[]         @relation("RecipientMessages")
   auditLogs         AuditLog[]        @relation("ActorAuditLogs")
   notifications     Notification[]
+  courseRequests    CourseRequest[] @relation("CourseRequestLecturer")
   supportTickets    SupportTicket[]
   supportTicketMessages SupportTicketMessage[]
 
@@ -103,6 +104,7 @@ model User {
 }
 
 model StudentProfile {
+  courseRequests CourseRequest[]
   userId            String            @id @map("user_id")
   fullName          String            @map("full_name") // Encrypted PII
   phone             String            @map("phone")     // Encrypted PII
@@ -407,6 +409,7 @@ model AuditLog {
 // -------------------------------------------------------------------------
 
 model LearningPath {
+  courseRequests CourseRequest[]
   id             String   @id @default(uuid())
   title          String
   level          String
@@ -485,6 +488,29 @@ model Certificate {
   @@index([studentId])
   @@index([learningPathId])
   @@map("certificates")
+}
+
+enum CourseRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model CourseRequest {
+  id String @id @default(uuid())
+  studentId String @map("student_id")
+  lecturerId String @map("lecturer_id")
+  learningPathId String @map("learning_path_id")
+  status CourseRequestStatus @default(PENDING)
+  createdAt DateTime @default(now()) @map("created_at")
+  reviewedAt DateTime? @map("reviewed_at")
+  student StudentProfile @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+  lecturer User @relation("CourseRequestLecturer", fields: [lecturerId], references: [id], onDelete: Cascade)
+  learningPath LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, learningPathId])
+  @@index([lecturerId, status])
+  @@map("course_requests")
 }
 
 model Notification {

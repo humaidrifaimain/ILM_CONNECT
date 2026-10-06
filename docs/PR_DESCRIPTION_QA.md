@@ -1,44 +1,27 @@
-## Description
+Students without an assigned learning path previously saw only a message telling them to contact a lecturer. They can now browse the course catalogue, request a course from their assigned lecturer, and track the review status. The lecturer receives a portal notification, reviews the request on Courses, and accepts or declines it. Acceptance assigns the course at 0% progress and notifies the student.
 
-This pull request delivers a comprehensive pass of Quality Assurance (QA), security hardening, access control enforcement, and bug fixes across the Super Admin, Admin, Lecturer, and Student portals, along with core backend services.
+This PR also includes the existing QA fixes across the student, lecturer, admin, and super-admin portals: account-status enforcement, authenticated logout, booking concurrency checks, attendance rules, role checks, audit records, CSV escaping, and dialog/mobile fixes.
 
----
+## Course requests and compatibility
 
-### Key Fixes & Improvements
+- Persist request status and notifications in database transactions. Duplicate requests do not duplicate notifications; concurrent reviews allow one successful decision.
+- Restrict review to the student's currently assigned lecturer. Acceptance preserves existing course progress and does not mark lessons complete.
+- Keep the catalogue and assigned course visible if the request API is unavailable during rollout. Disable request controls until the API responds.
+- Validate the finance response before rendering or exporting it, so an older backend missing `revenueByPlan` produces an error message instead of crashing the page.
 
-#### 1. Authentication, Sessions & Security
-- **Account Status Enforcement**: Enforced strict `ACTIVE` account checks in the JWT authentication strategy and signin flow to immediately reject suspended or soft-deleted users.
-- **Registration Input Validation**: Sanitized and validated all registration inputs (full name, phone number, country, and verified IANA timezone identifiers).
-- **Secure Authenticated Logout**: Added authenticated `POST /api/v1/auth/logout` endpoint that increments `tokenVersion` to immediately invalidate active JWTs and records an audit log entry.
-- **Sensitive Data Scrubbing**: Stripped password hashes and private credentials from user and lecturer administrative status responses.
+## Deployment preparation
 
-#### 2. Booking, Availability & Attendance
-- **Slot Locking & Concurrency Protection**: Added transactional locking (`FOR UPDATE`) to prevent race conditions and duplicate bookings for the same time slot.
-- **Lecturer Assignment Requirement**: Enforced validation ensuring a student has an assigned lecturer before booking a trial or regular session.
-- **Attendance Resolution**: Prohibited attendance updates on future or terminal sessions. Differentiated lecturer absence (`No-Show (Lecturer)`) from student absence (`No-Show (Student)`) with proper audit log tracking.
-- **Real-Time Availability**: Enforced strict boundary conditions and schedule validations for slot creation and updates.
+- Add the course-request schema migration and repair unsupported PostgreSQL syntax in the September 11 support-ticket migration using guarded constraint creation.
+- Add `npm run deploy:prepare` in `backend` to apply pending migrations and then compile. Fix production startup to use `dist/src/main.js`; compile without incremental state so clean builds emit all required files.
+- Run preparation against the intended database before releasing the backend, then rebuild the frontend with the matching API URL. Preparation does not deploy the application or change hosting settings.
+- A database that previously recorded a failed migration still needs its state inspected before recovery. No automatic migration reset or forced migration resolution is included.
 
-#### 3. Super Admin & Admin Portals
-- **Audit Trails**: Added automatic audit logging for user status modifications, lecturer assignments, and administrative payout executions.
-- **CSV Export Security**: Secured session CSV exports against formula injection (`=`, `@`, `+`, `-`) with formula escaping and standard RFC formatting.
-- **Modal Dialog Accessibility**: Integrated `useDialogAccessibility` hook across admin dialogs for keyboard focus trapping, `Escape` key dismissal, and focus restoration to trigger buttons.
-- **Mobile Responsiveness**: Fixed navigation and layout overflow across all admin routes, ensuring clean display down to 320px viewports without horizontal scrolling.
+## Validation
 
-#### 4. Lecturer & Student Portals
-- **Support & Ticket Role Checks**: Prevented students and lecturers from escalating administrative ticket statuses during discussion replies.
-- **Classroom & Video Conferencing**: Improved LiveKit room token generation, verified role permissions, and stabilized classroom controls.
-- **Student Portal Polish**: Corrected star rating accessibility labels, improved course materials pagination, and streamlined session rescheduling flows.
+- All 18 existing backend suites and 114 tests pass.
+- All nine migrations apply to fresh PostgreSQL 16; a repeat preparation reports no pending migrations. Replaying the repaired support-ticket SQL also succeeds.
+- Course-request API lifecycle tests pass against the migrated local database, including permissions, validation, duplicate submissions, concurrent review, decline/re-request, and assignment at 0%.
+- Browser checks pass for student request, lecturer notification/acceptance, student notification and assigned course, mobile overflow, API-unavailable catalogue fallback, and the older finance-response crash.
+- Backend production startup/database-health smoke check, frontend TypeScript/lint checks, and production builds pass.
 
-#### 5. Tests & QA Documentation
-- Added unit tests for `MessageService` (`backend/src/message/message.service.spec.ts`).
-- Created automated portal QA test scripts under `backend/test/`.
-- Documented comprehensive QA findings and resolution reports under `docs/`.
-
----
-
-### Verification & Test Results
-
-- **Backend Test Suite**: All 18 suites / 114 unit & integration tests passing (`npm test`).
-- **Backend Build**: Successfully compiled with `prisma generate && nest build`.
-- **Frontend Typecheck**: TypeScript check passed with 0 errors (`npx tsc --noEmit`).
-- **Frontend Build**: Production Turbopack build passed cleanly (`next build`, all 38 routes static/dynamic).
+Deployment instructions and test commands: [`docs/course-request-deployment.md`](docs/course-request-deployment.md).
