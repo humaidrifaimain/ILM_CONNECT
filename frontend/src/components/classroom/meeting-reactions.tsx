@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useConnectionState, useDataChannel, useLocalParticipant } from '@livekit/components-react';
 import { ConnectionState } from 'livekit-client';
 import { Smile } from 'lucide-react';
+import styles from './classroom.module.css';
 
 const reactions = [
   { emoji: '👍', label: 'Thumbs up' },
@@ -14,14 +15,16 @@ const reactions = [
   { emoji: '😮', label: 'Surprised' },
 ] as const;
 
-type Reaction = { identity: string; name: string; emoji: string; expiresAt: number };
+type Reaction = { id: number; identity: string; name: string; emoji: string; expiresAt: number };
 
 export function useMeetingReactions() {
   const [active, setActive] = useState<Reaction[]>([]);
+  const sequence = useRef(0);
   const { localParticipant } = useLocalParticipant();
   const connected = useConnectionState() === ConnectionState.Connected;
   const add = useCallback((identity: string, name: string, emoji: string) => {
-    setActive((current) => [...current.filter((item) => item.identity !== identity).slice(-7), { identity, name, emoji, expiresAt: Date.now() + 5000 }]);
+    const reaction = { id: ++sequence.current, identity, name, emoji, expiresAt: Date.now() + 3200 };
+    setActive((current) => [...current.filter((item) => item.identity !== identity).slice(-7), reaction]);
   }, []);
   const receive = useCallback((message: { payload: Uint8Array; from?: { identity: string; name?: string } }) => {
     if (!message.from || message.payload.byteLength > 64) return;
@@ -36,10 +39,24 @@ export function useMeetingReactions() {
   }, [active]);
 
   const publish = async (emoji: string) => {
-    await send(new TextEncoder().encode(emoji), { reliable: true });
+    if (!connected || !reactions.some((reaction) => reaction.emoji === emoji)) return;
     add(localParticipant.identity, 'You', emoji);
+    await send(new TextEncoder().encode(emoji), { reliable: true });
   };
   return { active: connected ? active : [], publish, disabled: !connected || isSending };
+}
+
+export function MeetingReactionEffects({ active }: { active: Reaction[] }) {
+  return <div className={styles.reactionEffects} aria-label="Meeting reactions" role="status" aria-live="polite">
+    {active.map((reaction) => <div key={reaction.id} className={styles.reactionBurst} style={{ left: `${20 + (reaction.id % 4) * 20}%` }}>
+      <span className="sr-only">{reaction.name} reacted {reaction.emoji}</span>
+      <div aria-hidden="true" className={styles.reactionParticles}>
+        <span className={styles.reactionMain}>{reaction.emoji}</span>
+        {[-2, -1, 1, 2].map((offset, particle) => <span key={offset} className={styles.reactionParticle} style={{ '--reaction-drift': `${offset * 36}px`, animationDelay: `${particle * 90}ms` } as React.CSSProperties}>{reaction.emoji}</span>)}
+      </div>
+      <span aria-hidden="true" className={styles.reactionName}>{reaction.name}</span>
+    </div>)}
+  </div>;
 }
 
 export function MeetingReactions({ publish, disabled }: Pick<ReturnType<typeof useMeetingReactions>, 'publish' | 'disabled'>) {

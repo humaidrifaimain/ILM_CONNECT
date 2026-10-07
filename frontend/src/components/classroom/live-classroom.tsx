@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useRef } from 'react';
+import Image from 'next/image';
 import {
   ParticipantTile,
   RoomAudioRenderer,
@@ -31,15 +32,15 @@ import {
   LayoutGrid,
   Maximize2,
   Minimize2,
-  Sparkles,
   MessageSquare,
 } from 'lucide-react';
 
 import { toast } from '@/components/ui/toast';
 import { apiFetch } from '@/lib/api';
 import { MeetingChat } from './meeting-chat';
-import { MeetingReactions, useMeetingReactions } from './meeting-reactions';
+import { MeetingReactionEffects, MeetingReactions, useMeetingReactions } from './meeting-reactions';
 import { MeetingTimer } from './meeting-timer';
+import styles from './classroom.module.css';
 
 interface SessionInfo {
   id: string;
@@ -208,26 +209,22 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
   };
 
   return (
-    <div className="relative flex h-full w-full overflow-hidden bg-[#050907] text-white select-none" data-lk-theme="default">
+    <div className={`${styles.room} relative flex h-full w-full overflow-hidden bg-[#0b100e] text-white select-none`} data-lk-theme="default">
       <div className="relative flex min-w-0 flex-1 flex-col">
-        {/* Luxury Minimal Header */}
-        <header className="z-20 flex min-h-16 items-center justify-between gap-3 border-b border-white/[0.08] bg-[#070e0a]/90 px-4 backdrop-blur-xl sm:px-6">
-          {/* Top Left: Official IlmConnect Icon & Branding */}
+        <header className="z-20 flex min-h-20 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#101a15] px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,60%,35%)] shadow-md shadow-emerald-950/50 border border-emerald-400/25">
-              <BookOpen className="h-5 w-5 text-white" strokeWidth={2.5} />
-            </div>
+            <Image src="/images/ilmbit-logo-white.png" alt="ILMBIT" width={38} height={49} className="h-11 w-auto shrink-0 object-contain" priority />
             <div className="min-w-0 flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold tracking-tight text-white">IlmConnect</span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="text-sm font-semibold text-white">ILMBIT</span>
+                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-200">
+                  <span className={`h-1.5 w-1.5 rounded-full ${connectionState === ConnectionState.Connected ? 'bg-emerald-300' : 'bg-amber-300'}`} /> {connectionState === ConnectionState.Connected ? 'Live' : 'Connecting'}
                 </span>
                 <span className="flex items-center gap-1 text-xs text-white/90">
                   <Clock3 className="h-3 w-3 text-emerald-300" aria-hidden="true" /> <MeetingTimer sessionId={sessionInfo.id} userRole={userRole} active={connectionState === ConnectionState.Connected} onExpire={async () => { try { await room.disconnect(); } finally { onLeave(); } }} />
                 </span>
               </div>
-              <p className="text-xs text-white/60 truncate flex items-center gap-1.5">
+              <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-[#b5c5bc]">
                 <span>{userRole === 'student' ? '1:1 Tajweed Lesson with' : 'Teaching'} <strong className="font-semibold text-white/95">{counterpart}</strong></span>
                 <span className="text-[10px] rounded px-1.5 py-0.2 bg-white/[0.08] text-emerald-300 uppercase font-medium">
                   {counterpartRole}
@@ -244,7 +241,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                 type="button"
                 onClick={() => setLayoutMode((m) => (m === 'split' ? 'spotlight' : 'split'))}
                 title={layoutMode === 'split' ? 'Switch to Spotlight focus' : 'Switch to 1:1 Side-by-Side view'}
-                className="hidden md:inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-3.5 text-xs font-medium text-white/80 transition-colors"
+                className="hidden md:inline-flex h-11 items-center gap-1.5 rounded-lg border border-white/20 bg-white/[0.04] hover:bg-white/[0.08] px-3.5 text-xs font-medium text-white/80 transition-colors"
               >
                 <LayoutGrid className="h-3.5 w-3.5 text-emerald-400" />
                 <span>{layoutMode === 'split' ? 'Side-by-Side' : 'Spotlight'}</span>
@@ -261,7 +258,8 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                 togglePanel('materials');
               }}
               aria-expanded={panel === 'materials'}
-              className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition-all ${
+              aria-label="Materials"
+              className={`inline-flex h-11 items-center gap-2 rounded-lg border px-3.5 text-xs font-medium transition-colors ${
                 panel === 'materials' || showMaterialsOnStage
                   ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200 shadow-sm shadow-emerald-950/40'
                   : 'border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white'
@@ -279,7 +277,8 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               type="button"
               onClick={() => togglePanel('participants')}
               aria-expanded={panel === 'participants'}
-              className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition-all ${
+              aria-label="Participants"
+              className={`inline-flex h-11 items-center gap-2 rounded-lg border px-3.5 text-xs font-medium transition-colors ${
                 panel === 'participants'
                   ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200 shadow-sm shadow-emerald-950/40'
                   : 'border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white'
@@ -301,15 +300,12 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
           </div>
         </header>
 
-        {/* Main Minimalist Stage */}
         <main className="relative isolate min-h-0 flex-1 overflow-hidden p-3 pb-36 sm:p-5 sm:pb-36 lg:pb-24">
-          <div role="status" aria-live="polite" aria-label="Meeting reactions" className="pointer-events-none absolute left-6 top-6 z-40 flex max-w-[calc(100%-3rem)] flex-wrap gap-2">
-            {meetingReactions.active.map((reaction) => <div key={reaction.identity} className="flex max-w-48 items-center gap-2 rounded-lg border border-white/20 bg-[#0a130f] px-3 py-2 text-sm text-white"><span className="text-2xl">{reaction.emoji}</span><span className="truncate">{reaction.name}</span></div>)}
-          </div>
-          <div className="relative flex h-full w-full min-h-0 flex-col overflow-hidden rounded-3xl border border-white/[0.08] bg-[#070d0a] shadow-[0_30px_90px_rgba(0,0,0,0.85)]">
+          <div className="relative flex h-full w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#101a15]">
+            <MeetingReactionEffects active={meetingReactions.active} />
             
             {/* Viewport Area */}
-            <div className="relative min-h-0 flex-1 overflow-hidden bg-black/95">
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0c1410]">
               
               {/* 1. Screen Share View */}
               {hasScreenShare ? (
@@ -319,8 +315,8 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                 /* 2. Interactive Study Materials View */
                 <div className="flex h-full flex-col bg-[#fbf9f4] text-[#141e19]">
                   <div className="flex flex-1 flex-col items-center justify-center px-6 py-8 text-center sm:px-14 overflow-y-auto">
-                    <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-900/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-emerald-900">
-                      <Sparkles className="h-3.5 w-3.5 text-emerald-700" /> Lesson Slide {activeSlide.slideNumber}
+                    <span className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-emerald-900">
+                      <BookOpen className="h-4 w-4" aria-hidden="true" /> Lesson slide {activeSlide.slideNumber}
                     </span>
                     <h1 className="max-w-3xl text-2xl sm:text-4xl font-bold tracking-tight text-emerald-950 mb-4">
                       {activeSlide.title}
@@ -371,32 +367,26 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                 </div>
               ) : isWaitingForCounterpart ? (
                 
-                /* 3. Luxury Minimal Waiting Room Standby */
-                <div className="relative flex h-full w-full flex-col items-center justify-center p-6 text-center overflow-hidden">
-                  {/* Atmospheric Glow */}
-                  <div className="absolute h-96 w-96 rounded-full bg-emerald-500/10 blur-[130px] pointer-events-none" />
-                  
-                  <div className="relative z-10 max-w-md w-full rounded-3xl border border-emerald-500/20 bg-[#0c1511]/85 p-8 sm:p-10 shadow-[0_30px_100px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
-                    {/* Breathing Avatar */}
-                    <div className="relative mx-auto mb-6 flex h-24 w-24 items-center justify-center">
-                      <div className="absolute inset-0 rounded-full bg-emerald-400/15 animate-ping opacity-60" />
-                      <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-emerald-400/40 bg-gradient-to-br from-emerald-700/80 via-emerald-800/90 to-emerald-950 text-2xl font-bold text-white shadow-xl shadow-emerald-950/60">
+                <div className="relative flex h-full min-h-0 w-full flex-col items-center justify-start overflow-y-auto p-4 text-center sm:justify-center sm:p-6 sm:pb-40 lg:pb-6">
+                  <div className="relative z-10 w-full max-w-md shrink-0 rounded-2xl border border-white/15 bg-[#15241c] p-5 sm:p-8">
+                    <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-200/30 bg-[#24533e] text-2xl font-semibold text-white">
                         {counterpart.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'ILM'}
                       </div>
                     </div>
 
-                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-300 mb-3.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <div className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-emerald-200">
+                      <Clock3 className="h-4 w-4" aria-hidden="true" />
                       Waiting for {counterpartRole}
                     </div>
 
                     <h2 className="text-2xl font-bold tracking-tight text-white mb-2">
                       {counterpart}
                     </h2>
-                    <p className="text-xs leading-relaxed text-white/55 mb-7">
+                    <p className="mb-6 text-sm leading-relaxed text-[#b5c5bc]">
                       {userRole === 'student'
-                        ? "You are securely connected to the classroom. Your video and audio will automatically link as soon as your lecturer enters."
-                        : "Your student has not joined the room yet. As soon as they enter, your 1:1 session will begin."}
+                        ? 'Your lecturer has not joined yet. You can review your lesson materials while you wait.'
+                        : 'Your student has not joined yet. You can prepare your lesson materials while you wait.'}
                     </p>
 
                     {/* Minimal Diagnostic Status */}
@@ -407,7 +397,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                         </span>
                         <div>
                           <p className="font-medium text-[11px] text-white/90">{isMicrophoneEnabled ? 'Mic Active' : 'Mic Muted'}</p>
-                          <p className="text-[10px] text-white/40">Ready to speak</p>
+                          <p className="text-xs text-[#b5c5bc]">{isMicrophoneEnabled ? 'Others can hear you' : 'Unmute to speak'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2.5 px-2 py-1">
@@ -416,31 +406,30 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                         </span>
                         <div>
                           <p className="font-medium text-[11px] text-white/90">{isCameraEnabled ? 'Camera On' : 'Camera Off'}</p>
-                          <p className="text-[10px] text-white/40">Self-view active</p>
+                          <p className="text-xs text-[#b5c5bc]">{isCameraEnabled ? 'Your video is visible' : 'Your video is hidden'}</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Luxury CTA */}
                     <button
                       type="button"
                       onClick={() => {
                         setShowMaterialsOnStage(true);
                         setPanel('materials');
                       }}
-                      className="w-full flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-500 hover:to-teal-700 px-5 py-3 text-xs font-semibold text-white shadow-lg shadow-emerald-950/60 transition-all active:scale-[0.98] border border-emerald-400/25"
+                      className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200/30 bg-[#095F46] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#087453]"
                     >
                       <BookOpen className="h-4 w-4 text-emerald-200" />
-                      Preview Noorani Qaida Slides While Waiting
+                      Review lesson materials
                     </button>
                   </div>
                 </div>
               ) : layoutMode === 'split' ? (
                 
                 /* 4. Side-by-Side 1:1 Practice Mode (Both in room) */
-                <div className="grid h-full w-full gap-4 p-4 grid-cols-1 md:grid-cols-2">
+                <div className="grid h-full w-full grid-cols-1 grid-rows-2 gap-3 p-3 md:grid-cols-2 md:grid-rows-1">
                   {/* Remote Counterpart Card */}
-                  <div className="relative h-full min-h-0 w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0c1411] shadow-2xl flex items-center justify-center">
+                  <div className={`${styles.participantCard} relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl bg-[#16221b]`}>
                     {remoteCameraTrack ? (
                       <ParticipantTile
                         trackRef={remoteCameraTrack}
@@ -452,18 +441,18 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                           {counterpart.slice(0, 2).toUpperCase()}
                         </div>
                         <p className="text-sm font-semibold text-white/90">{counterpart}</p>
-                        <p className="text-xs text-white/40">Camera currently paused</p>
+                        <p className="text-xs text-[#b5c5bc]">Camera currently paused</p>
                       </div>
                     )}
-                    <div className="absolute top-4 left-4 flex items-center gap-2 rounded-full bg-black/60 backdrop-blur-md px-3.5 py-1.5 text-xs text-white border border-white/10 shadow-lg">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <div className="absolute top-4 left-4 flex items-center gap-2 rounded-lg bg-[#0a130f]/90 px-3.5 py-1.5 text-xs text-white border border-white/10">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
                       <span className="font-semibold">{counterpart}</span>
                       <span className="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">({counterpartRole})</span>
                     </div>
                   </div>
 
                   {/* Local User Card */}
-                  <div className="relative h-full min-h-0 w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0c1411] shadow-2xl flex items-center justify-center">
+                  <div className={`${styles.participantCard} relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl bg-[#16221b]`}>
                     {localCameraTrack ? (
                       <ParticipantTile
                         trackRef={localCameraTrack}
@@ -475,11 +464,11 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                         <p className="text-xs text-white/60">Your camera is turned off</p>
                       </div>
                     )}
-                    <div className="absolute top-4 left-4 flex items-center gap-2 rounded-full bg-black/60 backdrop-blur-md px-3.5 py-1.5 text-xs text-white border border-white/10 shadow-lg">
+                    <div className="absolute top-4 left-4 flex items-center gap-2 rounded-lg bg-[#0a130f]/90 px-3.5 py-1.5 text-xs text-white border border-white/10">
                       <span className="font-semibold">You</span>
                       <span className="text-[10px] text-white/60 uppercase tracking-wider font-bold">({userRole})</span>
                     </div>
-                    <div className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-2.5 py-1 text-xs border border-white/10 shadow-md">
+                    <div className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-lg bg-[#0a130f]/90 px-2.5 py-1 text-xs border border-white/10">
                       {isMicrophoneEnabled ? <Mic className="h-3.5 w-3.5 text-emerald-300" /> : <MicOff className="h-3.5 w-3.5 text-rose-400" />}
                     </div>
                   </div>
@@ -487,7 +476,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               ) : (
                 
                 /* 5. Spotlight Focus Mode */
-                <div className="relative h-full w-full bg-[#080e0b]">
+                <div className={`${styles.participantCard} relative h-full w-full rounded-2xl bg-[#16221b]`}>
                   {remoteCameraTrack ? (
                     <ParticipantTile
                       trackRef={remoteCameraTrack}
@@ -501,21 +490,20 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                       <p className="text-base font-semibold">{counterpart}</p>
                     </div>
                   )}
-                  <div className="absolute top-4 left-4 flex items-center gap-2 rounded-full bg-black/60 backdrop-blur-md px-3.5 py-1.5 text-xs text-white border border-white/10 shadow-lg">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <div className="absolute top-4 left-4 flex items-center gap-2 rounded-lg bg-[#0a130f]/90 px-3.5 py-1.5 text-xs text-white border border-white/10">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
                     <span className="font-semibold">{counterpart}</span>
                     <span className="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">({counterpartRole})</span>
                   </div>
                 </div>
               )}
 
-              {/* Floating Luxury Picture-in-Picture (PiP) Self-View */}
               {localCameraTrack && (isWaitingForCounterpart || showMaterialsOnStage || layoutMode === 'spotlight') && (
                 <aside
                   aria-label="Self preview"
-                  className={`absolute bottom-5 right-5 z-30 transition-all duration-300 ${
-                    isSelfViewMinimized ? 'w-40 h-10' : 'w-52 sm:w-60 aspect-video'
-                  } rounded-2xl border border-emerald-500/30 bg-black/90 shadow-[0_16px_50px_rgba(0,0,0,0.85)] overflow-hidden backdrop-blur-2xl group`}
+                  className={`${styles.participantCard} ${isWaitingForCounterpart ? 'relative m-3 ml-auto shrink-0 sm:absolute sm:m-0' : 'absolute bottom-3 right-3'} z-30 transition-all duration-300 sm:bottom-5 sm:right-5 ${
+                    isSelfViewMinimized ? 'w-40 h-11' : 'w-36 sm:w-52 lg:w-60 aspect-video'
+                  } group overflow-hidden rounded-xl bg-[#16221b] shadow-lg`}
                 >
                   {isSelfViewMinimized ? (
                     <button
@@ -545,10 +533,10 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
                           <button
                             type="button"
                             onClick={() => setIsSelfViewMinimized(true)}
-                            className="p-1 rounded-full bg-white/10 text-white/70 hover:text-white hover:bg-white/20 transition-colors"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                             title="Minimize preview"
                           >
-                            <Minimize2 className="h-3 w-3" />
+                            <Minimize2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -561,9 +549,8 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
           </div>
         </main>
 
-        {/* Minimal Luxury Floating Control Dock */}
         <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex min-h-24 items-center justify-center px-4 pb-5">
-          <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 sm:gap-3 rounded-2xl border border-white/10 bg-[#09120e]/90 p-2 sm:p-2.5 shadow-[0_20px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+          <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 rounded-xl border border-white/20 bg-[#15221b] p-2 shadow-lg sm:gap-3 sm:p-2.5">
             {/* Microphone Button */}
             <button
               type="button"
@@ -572,8 +559,8 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               aria-label={isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone'}
               className={`relative flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 active:scale-95 ${
                 isMicrophoneEnabled
-                  ? 'bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/25 hover:border-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-                  : 'bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.2)]'
+                  ? 'bg-white/5 border border-white/20 text-white hover:bg-white/10'
+                  : 'bg-[#422326] border border-rose-300/40 text-rose-200 hover:bg-[#563034]'
               }`}
             >
               {isMicrophoneEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
@@ -587,8 +574,8 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               aria-label={isCameraEnabled ? 'Turn off camera' : 'Turn on camera'}
               className={`relative flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 active:scale-95 ${
                 isCameraEnabled
-                  ? 'bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 hover:bg-emerald-500/25 hover:border-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-                  : 'bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.2)]'
+                  ? 'bg-white/5 border border-white/20 text-white hover:bg-white/10'
+                  : 'bg-[#422326] border border-rose-300/40 text-rose-200 hover:bg-[#563034]'
               }`}
             >
               {isCameraEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
@@ -602,7 +589,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               aria-label={isScreenShareEnabled ? 'Stop sharing screen' : 'Share screen'}
               className={`relative hidden sm:flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 active:scale-95 ${
                 isScreenShareEnabled
-                  ? 'bg-sky-500/20 border border-sky-400/40 text-sky-300 shadow-[0_0_20px_rgba(56,189,248,0.2)]'
+                  ? 'bg-emerald-500/20 border border-emerald-300/40 text-emerald-200'
                   : 'bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
               }`}
             >
@@ -625,7 +612,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               title={showMaterialsOnStage ? 'Hide materials from stage' : 'Open Noorani Qaida materials'}
               className={`hidden sm:flex h-12 items-center gap-2 px-4 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 active:scale-95 border ${
                 showMaterialsOnStage
-                  ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+                  ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
                   : 'bg-white/[0.06] border-white/10 text-white/80 hover:bg-white/10 hover:text-white'
               }`}
             >
@@ -641,7 +628,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               type="button"
               onClick={onLeave}
               aria-label="Leave session"
-              className="flex h-12 items-center gap-2 px-6 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white font-semibold text-xs tracking-wide shadow-[0_4px_25px_rgba(225,29,72,0.4)] border border-rose-400/30 transition-all duration-200 hover:scale-105 active:scale-95"
+              className="flex h-12 items-center gap-2 rounded-lg border border-rose-300/30 bg-[#b82f3f] px-5 text-xs font-semibold text-white transition-colors hover:bg-[#cd3547]"
             >
               <PhoneOff className="h-4 w-4" />
               <span>Leave</span>
