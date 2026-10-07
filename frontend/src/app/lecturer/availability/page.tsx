@@ -111,7 +111,7 @@ export default function AvailabilityPage() {
       const otherStart = slotStart(otherKey);
       const stored = dbSlotsMap.get(otherKey);
       const otherEnd = stored ? shiftDate(stored.endsAt) : new Date(otherStart.getTime() + SESSION_MINUTES * 60_000);
-      if (conflictsWithLecturerBreak(date, end, otherStart, otherEnd)) return 'Session or 10-minute break';
+      if (conflictsWithLecturerBreak(date, end, otherStart, otherEnd)) return 'Session or reserved break';
     }
     return undefined;
   };

@@ -74,7 +74,9 @@ export function MeetingReactions({ publish, disabled }: Pick<ReturnType<typeof u
   }, [open]);
 
   return (
-    <div ref={root} className="relative" onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); trigger.current?.focus(); } }} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
+    <div ref={root} className="relative" onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); trigger.current?.focus(); } }} onBlur={(event) => {
+      if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+    }}>
       <button ref={trigger} type="button" aria-label="Reactions" aria-expanded={open} aria-controls="meeting-reactions" onClick={() => { setError(''); setOpen(!open); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/[0.06] text-white hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><Smile className="h-5 w-5" /></button>
       {open && <div id="meeting-reactions" role="group" aria-label="Send a reaction" className="absolute bottom-full right-0 mb-3 w-56 rounded-xl border border-white/20 bg-[#0a130f] p-3 shadow-xl">
         <p className="mb-2 text-xs text-white/80">Send a reaction</p>

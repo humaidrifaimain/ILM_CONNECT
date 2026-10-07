@@ -395,13 +395,14 @@ function StudentMessagesContent() {
                 return (
                   <button
                     key={thread.threadId}
+                    aria-pressed={isSelected}
                     onClick={() => handleSelectThread(thread)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${
+                    className={`conversation-row w-[calc(100%-1rem)] mx-2 my-1 flex items-center gap-3 border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-[#095F46] ${
                       isSelected
-                        ? 'border-r-2 border-[#095F46] bg-[#e8f0ed]'
+                        ? 'border-[#095F46] bg-[#f0f5f2] shadow-sm'
                         : hasUnread
-                        ? 'border-l-4 border-rose-500 bg-rose-50 hover:bg-rose-100'
-                        : 'hover:bg-[#f5f7f6]'
+                        ? 'border-transparent bg-white hover:bg-[#f5f7f6]'
+                        : 'border-transparent hover:bg-[#f5f7f6]'
                     }`}
                   >
                     {/* Avatar with Presence Indicator */}
@@ -696,7 +697,7 @@ function StudentMessagesContent() {
                                 isMine
                                   ? 'bg-[#095F46] text-white rounded-br-sm'
                                   : isUnread
-                                  ? 'bg-[hsl(var(--card))] border-2 border-red-500/60 shadow-md shadow-red-500/10 ring-2 ring-red-500/20 text-[hsl(var(--foreground))] rounded-bl-sm font-medium'
+                                  ? 'bg-[#f0f5f2] border border-[#bac9c1] text-[hsl(var(--foreground))] rounded-bl-sm font-medium'
                                   : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] rounded-bl-sm'
                               }`}
                             >

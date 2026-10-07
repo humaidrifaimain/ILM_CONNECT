@@ -6,10 +6,31 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, Role } from '@prisma/client';
+import { CreateCourseAssessmentDto } from './course-assessment.dto';
 
 @Injectable()
 export class CurriculumService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async getAssessments(lecturerId: string, learningPathId: string) {
+    await this.getPath(learningPathId);
+    return this.prisma.courseAssessment.findMany({
+      where: { lecturerId, learningPathId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createAssessment(lecturerId: string, learningPathId: string, body: CreateCourseAssessmentDto) {
+    await this.getPath(learningPathId);
+    return this.prisma.courseAssessment.create({ data: {
+      lecturerId, learningPathId, title: body.title.trim(),
+      questions: body.questions.map(question => ({
+        prompt: question.prompt.trim(),
+        options: question.options.map(option => option.trim()),
+        correctOption: question.correctOption,
+      })),
+    } });
+  }
 
   async getRequests(userId: string, role: Role) {
     return this.prisma.courseRequest.findMany({

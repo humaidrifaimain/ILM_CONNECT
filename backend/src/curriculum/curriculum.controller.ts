@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurriculumService } from './curriculum.service';
+import { CreateCourseAssessmentDto } from './course-assessment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -57,5 +58,17 @@ export class CurriculumController {
   @Get('paths/:id')
   async getPath(@Param('id') id: string) {
     return this.curriculumService.getPath(id);
+  }
+
+  @Get('paths/:id/assessments')
+  @Roles(Role.LECTURER)
+  getAssessments(@Request() req: any, @Param('id', ParseUUIDPipe) id: string) {
+    return this.curriculumService.getAssessments(req.user.id, id);
+  }
+
+  @Post('paths/:id/assessments')
+  @Roles(Role.LECTURER)
+  createAssessment(@Request() req: any, @Param('id', ParseUUIDPipe) id: string, @Body() body: CreateCourseAssessmentDto) {
+    return this.curriculumService.createAssessment(req.user.id, id, body);
   }
 }

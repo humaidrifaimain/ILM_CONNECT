@@ -461,13 +461,14 @@ function LecturerMessagesContent() {
                 return (
                   <button
                     key={thread.threadId}
+                    aria-pressed={isSelected}
                     onClick={() => handleSelectThread(thread)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${
+                    className={`conversation-row w-[calc(100%-1rem)] mx-2 my-1 flex items-center gap-3 border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-[#095F46] ${
                       isSelected
-                        ? 'bg-[hsl(var(--primary)/0.1)] border-r-2 border-[hsl(var(--primary))]'
+                        ? 'bg-[#f0f5f2] border-[#095F46] shadow-sm'
                         : hasUnread
-                        ? 'bg-red-500/[0.05] border-l-4 border-red-500 hover:bg-red-500/[0.08]'
-                        : 'hover:bg-[hsl(var(--muted))]'
+                        ? 'border-transparent bg-[hsl(var(--card))] hover:bg-[hsl(var(--muted))]'
+                        : 'border-transparent hover:bg-[hsl(var(--muted))]'
                     }`}
                   >
                     {/* Avatar with Presence Indicator */}
@@ -757,7 +758,7 @@ function LecturerMessagesContent() {
                                 isMine
                                   ? 'bg-[#095F46] text-white rounded-br-sm'
                                   : isUnread
-                                  ? 'bg-[hsl(var(--card))] border-2 border-red-500/60 shadow-md shadow-red-500/10 ring-2 ring-red-500/20 text-[hsl(var(--foreground))] rounded-bl-sm font-medium'
+                                  ? 'bg-[#f0f5f2] border border-[#bac9c1] text-[hsl(var(--foreground))] rounded-bl-sm font-medium'
                                   : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] rounded-bl-sm'
                               }`}
                             >

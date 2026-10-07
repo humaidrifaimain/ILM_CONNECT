@@ -107,7 +107,7 @@
 }
 
 @keyframes reactionRise {
-  0% { opacity: 0; transform: translate(0, 24px) scale(.6) rotate(-8deg); }
+  0% { opacity: 1; transform: translate(0, 24px) scale(.6) rotate(-8deg); }
   15% { opacity: 1; }
   40% { opacity: 1; transform: translate(calc(var(--reaction-drift, 0px) * .6), -80px) scale(1.05) rotate(6deg); }
   100% { opacity: 0; transform: translate(var(--reaction-drift, 0px), -240px) scale(.85) rotate(-4deg); }

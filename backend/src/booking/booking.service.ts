@@ -753,7 +753,7 @@ export class BookingService {
         { studentId: session.studentId, startsAt: { lt: newEndsAt }, endsAt: { gt: newStartsAt } },
       ],
     } });
-    if (overlap) throw new BadRequestException('Choose a free time with at least a 10-minute lecturer break before and after');
+    if (overlap) throw new BadRequestException('Choose a free time with at least a 10-minute lecturer break between sessions');
     const newSlot = await tx.availabilitySlot.findFirst({
       where: {
         lecturerId: session.lecturerId,

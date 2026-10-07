@@ -107,7 +107,10 @@ export function DashboardMobileNav() {
   const items = pathname.startsWith('/admin') && ['ADMIN', 'SUPER_ADMIN'].includes(user.role) ? adminNav : pathname.startsWith('/lecturer') && user.role === 'LECTURER' ? lecturerNav : [];
   if (!items.length) return null;
   return <nav aria-label={user.role === 'LECTURER' ? 'Lecturer pages' : 'Admin pages'} className="grid grid-cols-2 gap-1 border-b border-[#d6e0db] bg-white px-3 py-2 sm:grid-cols-4 lg:hidden">
-    {items.map(item => <Link key={item.href} href={item.href} aria-current={pathname === item.href ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold ${pathname === item.href ? 'bg-[#095F46] text-white' : 'text-[#202823] hover:bg-[#eef4f1]'}`}>{item.label}</Link>)}
+    {items.map(item => {
+      const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+      return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#095F46] ${active ? 'bg-[#095F46] text-white' : 'text-[#202823] hover:bg-[#eef4f1]'}`}>{item.label}</Link>;
+    })}
   </nav>;
 }
 
@@ -217,8 +220,8 @@ export default function DashboardSidebar() {
               aria-current={isActive ? 'page' : undefined}
               className={`flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                 isActive
-                  ? 'rounded-full bg-[#10BF8D] text-[#0b3027] font-extrabold shadow-sm'
-                  : 'rounded-xl text-white/80 hover:bg-white/[0.08] hover:text-white font-semibold'
+                  ? 'rounded-lg bg-[#10BF8D] text-[#0b3027] font-bold'
+                  : 'rounded-lg text-white/80 hover:bg-white/[0.08] hover:text-white font-semibold'
               }`}
               title={collapsed ? item.label : undefined}
             >

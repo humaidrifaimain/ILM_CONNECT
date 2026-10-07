@@ -72,6 +72,7 @@ enum PayoutStatus {
 // -------------------------------------------------------------------------
 
 model User {
+  courseAssessments CourseAssessment[]
   id                String            @id @default(uuid())
   email             String            @unique
   gender            String?
@@ -415,6 +416,7 @@ model AuditLog {
 // -------------------------------------------------------------------------
 
 model LearningPath {
+  assessments CourseAssessment[]
   courseRequests CourseRequest[]
   id             String   @id @default(uuid())
   title          String
@@ -430,6 +432,20 @@ model LearningPath {
   certificates   Certificate[]
 
   @@map("learning_paths")
+}
+
+model CourseAssessment {
+  id String @id @default(uuid())
+  learningPathId String @map("learning_path_id")
+  lecturerId String @map("lecturer_id")
+  title String
+  questions Json
+  createdAt DateTime @default(now()) @map("created_at")
+  learningPath LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  lecturer User @relation(fields: [lecturerId], references: [id], onDelete: Cascade)
+
+  @@index([learningPathId, lecturerId])
+  @@map("course_assessments")
 }
 
 model Module {

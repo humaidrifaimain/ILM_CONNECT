@@ -1,6 +1,7 @@
 'use client';
 
 import { SharedMaterials } from '@/components/classroom/shared-materials';
+import { CourseAssessments } from '@/components/lecturer/course-assessments';
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
@@ -37,7 +38,7 @@ export default function LecturerCourseDetailPage() {
   const queryClient = useQueryClient();
   const courseId = params.courseId as string;
 
-  const [activeTab, setActiveTab] = useState<'content' | 'permissions' | 'matrix'>('permissions');
+  const [activeTab, setActiveTab] = useState<'content' | 'permissions' | 'matrix' | 'assessments'>('permissions');
   const [studentSearch, setStudentSearch] = useState('');
   const [previewLesson, setPreviewLesson] = useState<any | null>(null);
   const [selectedStudentForModal, setSelectedStudentForModal] = useState<any | null>(null);
@@ -279,10 +280,11 @@ export default function LecturerCourseDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] pb-px">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <button
+            aria-pressed={activeTab === 'permissions'}
             onClick={() => setActiveTab('permissions')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+            className={`course-tab flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors focus-visible:outline-2 focus-visible:outline-[#095F46] ${
               activeTab === 'permissions'
-                ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]'
+                ? 'border-[hsl(var(--primary))] bg-[#f0f5f2] text-[hsl(var(--primary))]'
                 : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
             }`}
           >
@@ -294,10 +296,11 @@ export default function LecturerCourseDetailPage() {
           </button>
 
           <button
+            aria-pressed={activeTab === 'content'}
             onClick={() => setActiveTab('content')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+            className={`course-tab flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors focus-visible:outline-2 focus-visible:outline-[#095F46] ${
               activeTab === 'content'
-                ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]'
+                ? 'border-[hsl(var(--primary))] bg-[#f0f5f2] text-[hsl(var(--primary))]'
                 : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
             }`}
           >
@@ -309,16 +312,18 @@ export default function LecturerCourseDetailPage() {
           </button>
 
           <button
+            aria-pressed={activeTab === 'matrix'}
             onClick={() => setActiveTab('matrix')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+            className={`course-tab flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors focus-visible:outline-2 focus-visible:outline-[#095F46] ${
               activeTab === 'matrix'
-                ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]'
+                ? 'border-[hsl(var(--primary))] bg-[#f0f5f2] text-[hsl(var(--primary))]'
                 : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
             }`}
           >
             <SlidersHorizontal className="h-4 w-4" />
             <span>Access Matrix</span>
           </button>
+          <button aria-pressed={activeTab === 'assessments'} onClick={() => setActiveTab('assessments')} className={`course-tab min-h-11 border-b-2 px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#095F46] ${activeTab === 'assessments' ? 'border-[#095F46] bg-[#f0f5f2] text-[#095F46]' : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Assessments</button>
         </div>
 
         {activeTab === 'permissions' && (
@@ -334,6 +339,8 @@ export default function LecturerCourseDetailPage() {
           </div>
         )}
       </div>
+
+      {activeTab === 'assessments' && <CourseAssessments courseId={courseId} />}
 
       {/* TAB 1: PER-STUDENT ACCESS & PERMISSIONS */}
       {activeTab === 'permissions' && (
