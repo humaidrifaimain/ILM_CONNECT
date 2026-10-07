@@ -173,6 +173,7 @@ export default function AdminRequestsPage() {
       {/* ─── Role Separation Tabs ─── */}
       <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] pb-2 overflow-x-auto">
         <button
+          aria-pressed={roleFilter === 'ALL'}
           onClick={() => setRoleFilter('ALL')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
             roleFilter === 'ALL'
@@ -187,10 +188,11 @@ export default function AdminRequestsPage() {
         </button>
 
         <button
+          aria-pressed={roleFilter === 'STUDENT'}
           onClick={() => setRoleFilter('STUDENT')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
             roleFilter === 'STUDENT'
-              ? 'bg-emerald-600 text-white shadow-sm'
+              ? 'bg-[hsl(var(--primary))] text-white shadow-sm'
               : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'
           }`}
         >
@@ -202,10 +204,11 @@ export default function AdminRequestsPage() {
         </button>
 
         <button
+          aria-pressed={roleFilter === 'LECTURER'}
           onClick={() => setRoleFilter('LECTURER')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
             roleFilter === 'LECTURER'
-              ? 'bg-purple-600 text-white shadow-sm'
+              ? 'bg-[hsl(var(--primary))] text-white shadow-sm'
               : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'
           }`}
         >

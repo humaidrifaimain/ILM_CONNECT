@@ -57,28 +57,27 @@
 }
 
 .reactionEffects {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 90;
   overflow: hidden;
   pointer-events: none;
 }
 
 .reactionBurst {
   position: absolute;
-  bottom: 22%;
   width: 0;
 }
 
 .reactionParticles {
   position: relative;
-  height: 64px;
+  height: 0;
 }
 
 .reactionMain, .reactionParticle {
   position: absolute;
   left: -24px;
-  top: 0;
+  top: -24px;
   font-size: 48px;
   line-height: 1;
   animation: reactionRise 2.8s ease-out both;
@@ -89,40 +88,18 @@
   font-size: 28px;
 }
 
-.reactionName {
-  display: block;
-  position: absolute;
-  left: -60px;
-  width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-  font-size: 12px;
-  color: #fff;
-  border-radius: 6px;
-  padding: 4px 8px;
-  background: #12251f;
-  animation: reactionCaption 3s ease-out both;
-}
-
 @keyframes reactionRise {
-  0% { opacity: 1; transform: translate(0, 24px) scale(.6) rotate(-8deg); }
+  0% { opacity: 1; transform: translate(0, 0) scale(.6) rotate(-8deg); }
   15% { opacity: 1; }
   40% { opacity: 1; transform: translate(calc(var(--reaction-drift, 0px) * .6), -80px) scale(1.05) rotate(6deg); }
   100% { opacity: 0; transform: translate(var(--reaction-drift, 0px), -240px) scale(.85) rotate(-4deg); }
-}
-
-@keyframes reactionCaption {
-  0%, 100% { opacity: 0; }
-  10%, 70% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .participantCard:has(> [data-lk-speaking='true'][data-lk-source='camera'])::after {
     animation: none;
   }
-  .reactionMain, .reactionName {
+  .reactionMain {
     animation: none;
     opacity: 1;
   }

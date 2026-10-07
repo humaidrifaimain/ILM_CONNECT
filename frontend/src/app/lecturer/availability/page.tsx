@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { Clock } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,6 +56,11 @@ function shiftInstant(date: Date) {
 export default function AvailabilityPage() {
   const [localSlots, setLocalSlots] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const queryClient = useQueryClient();
   const { data: rawDbSlots, isLoading, isError: slotsError, refetch: refetchSlots } = useQuery<AvailabilitySlot[]>({
@@ -116,6 +121,7 @@ export default function AvailabilityPage() {
   };
 
   const toggleSlot = (key: string) => {
+    if (formatDateKey(slotStart(key)) < formatDateKey(shiftDate(new Date().toISOString()))) return;
     const dbSlot = dbSlotsMap.get(key);
     if (dbSlot?.status === 'BOOKED') {
       toast.info('Slot Booked', 'This slot is already booked for a student session and cannot be modified.');
@@ -200,28 +206,28 @@ export default function AvailabilityPage() {
     const dbSlot = dbSlotsMap.get(key);
     const startsAt = slotStart(key);
     const booked = dbSlot?.status === 'BOOKED';
+    const past = formatDateKey(startsAt) < formatDateKey(shiftDate(new Date(now).toISOString()));
     calendarEvents.push({
       id: key, startsAt: startsAt.toISOString(), endsAt: dbSlot ? shiftDate(dbSlot.endsAt).toISOString() : new Date(startsAt.getTime() + 40 * 60000).toISOString(),
-      title: booked ? 'Booked session' : 'Available session', subtitle: booked ? 'Reserved for a student' : '40-minute session',
-      tone: booked ? 'blue' : localSlots[key] ? 'purple' : 'green', selected: localSlots[key] === true,
-      disabled: booked || isSaving, onClick: () => toggleSlot(key),
+      title: booked ? 'Booked session' : past ? 'Past session' : 'Available session', subtitle: booked ? 'Reserved for a student' : past ? 'This time has passed' : '40-minute session',
+      tone: booked ? 'blue' : localSlots[key] ? 'purple' : 'green', selected: !past && localSlots[key] === true, past,
+      disabled: past || booked || isSaving, onClick: () => toggleSlot(key),
     });
   }
 
   if (slotsError || profileError) return <div role="alert" className="space-y-3"><p>Unable to load your availability and assigned shift.</p><button className="rounded-lg border px-4 py-2" onClick={() => { void refetchSlots(); void refetchProfile(); }}>Retry</button></div>;
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-end gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="min-w-0 text-sm leading-6 text-[#095F46]">
+          <p>Click an empty time cell to add availability, or an available session to remove it. Booked sessions are locked. Save Changes to apply your edits.</p>
+          <p>Each time slot is one 40-minute class.</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
           <button onClick={handleSave} disabled={isSaving || Object.keys(localSlots).length === 0} className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] shadow-sm transition-all disabled:opacity-50">
             {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
-      </div>
-
-      <div className="p-4 rounded-xl bg-[hsl(var(--primary-light))] text-[hsl(var(--primary))] text-sm">
-        Click an empty time cell to add availability, or an available session to remove it. Booked sessions are locked. Save Changes to apply your edits.
-        <p className="mt-2">Each time slot is one 40-minute class.</p>
       </div>
 
       {/* Timeshift Info & Shift Change Notice */}

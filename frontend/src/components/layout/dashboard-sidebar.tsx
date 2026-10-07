@@ -183,17 +183,17 @@ export default function DashboardSidebar() {
 
   return (
     <aside
-      className={`hidden lg:flex flex-col h-screen sticky top-0 border-r transition-all duration-300 border-[#477361] bg-[#0b3027] ${collapsed ? 'w-[68px]' : 'w-[260px]'}`}
+      className={`hidden lg:flex shrink-0 flex-col h-screen sticky top-0 border-r transition-all duration-300 border-[#477361] bg-[#0b3027] ${collapsed ? 'w-[68px]' : 'w-[260px]'}`}
     >
       {/* Logo */}
-      <div className="flex h-20 items-center border-b px-4 border-white/10 bg-[#0b3027]">
+      <div className={`flex h-20 items-center border-b border-white/10 bg-[#0b3027] ${collapsed ? 'justify-center px-0' : 'px-4'}`}>
         <Link href={dashboardHref} className="flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10BF8D]" aria-label={`${roleName} dashboard home`}>
           <Image
             src="/images/ilmbit-logo-white.png"
             alt="ILMBIT"
             width={collapsed ? 34 : 130}
             height={45}
-            className={`${collapsed ? 'h-10' : 'h-11'} w-auto object-contain`}
+            className={`${collapsed ? 'h-10 w-9' : 'h-11 w-auto'} object-contain`}
           />
         </Link>
       </div>
@@ -218,7 +218,7 @@ export default function DashboardSidebar() {
               href={item.href}
               aria-label={item.label}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+              className={`flex min-h-11 items-center py-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10BF8D] ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} ${
                 isActive
                   ? 'rounded-lg bg-[#10BF8D] text-[#0b3027] font-bold'
                   : 'rounded-lg text-white/80 hover:bg-white/[0.08] hover:text-white font-semibold'
@@ -279,7 +279,7 @@ export default function DashboardSidebar() {
         <button
           aria-label={collapsed ? 'Expand' : 'Collapse'}
           onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors text-white/60 hover:bg-white/[0.08] hover:text-white"
+          className={`flex min-h-11 items-center w-full py-2 rounded-lg text-sm transition-colors text-white/80 hover:bg-white/[0.08] hover:text-white focus-visible:outline-2 focus-visible:outline-[#10BF8D] ${collapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4 flex-shrink-0" />

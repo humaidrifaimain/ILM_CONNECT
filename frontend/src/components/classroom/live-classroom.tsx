@@ -600,7 +600,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
               <MessageSquare className="h-5 w-5" />
               {unreadCount > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 rounded-full bg-emerald-200 px-1.5 text-[11px] font-bold text-emerald-950">{unreadCount > 99 ? '99+' : unreadCount}</span>}
             </button>
-            <MeetingReactions publish={meetingReactions.publish} disabled={meetingReactions.disabled} />
+            <MeetingReactions publish={meetingReactions.publish} disabled={meetingReactions.disabled} pickerAnchor={meetingReactions.pickerAnchor} />
 
             {/* Materials Quick Toggle Button */}
             <button

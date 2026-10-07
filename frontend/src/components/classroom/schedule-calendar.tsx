@@ -15,6 +15,7 @@ export interface ScheduleEvent {
   rescheduledAt?: string | null;
   selected?: boolean;
   disabled?: boolean;
+  past?: boolean;
   onClick?: () => void;
   reserveBreak?: boolean;
 }
@@ -112,7 +113,7 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
     return (
     <button type="button" style={{ borderRadius: 8, fontSize: 12, opacity: 1 }} title={`${event.title}${event.subtitle ? ` · ${event.subtitle}` : ''}${event.disabled ? ' · Locked' : ''}`} disabled={event.disabled} onClick={event.onClick} aria-pressed={event.selected || undefined}
       aria-label={`${event.title}, ${new Date(event.startsAt).toLocaleDateString()}, ${timeLabel(new Date(event.startsAt))}${state ? `, ${state.label}` : ''}${event.subtitle ? `, ${event.subtitle}` : ''}`}
-      className={`flex h-full w-full flex-col items-stretch justify-start overflow-hidden rounded-md border text-left text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095F46] ${colors[state?.tone || event.tone || 'blue']} ${event.selected ? 'ring-2 ring-[#095F46]' : ''} ${event.disabled ? 'cursor-default' : 'hover:brightness-95'}`}>
+      className={`flex h-full w-full flex-col items-stretch justify-start overflow-hidden rounded-md border text-left text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095F46] ${event.past ? 'border-[#d6e0db] bg-[#f0f3f1] text-[#56635c]' : colors[state?.tone || event.tone || 'blue']} ${event.selected ? 'ring-2 ring-[#095F46]' : ''} ${event.disabled ? 'cursor-default' : 'hover:brightness-95'}`}>
       <span className={`block whitespace-nowrap border-b border-current/10 px-2 py-1 font-semibold leading-tight tabular-nums ${compact ? 'text-[10px]' : ''}`}>{timeLabel(new Date(event.startsAt))}{!compact && event.endsAt ? ` – ${timeLabel(new Date(event.endsAt))}` : ''}</span>
       <span className="flex items-center gap-1 px-2 py-1 font-semibold leading-tight">{event.disabled && <LockKeyhole className="h-3 w-3 shrink-0" />}<span className="truncate">{state ? `${state.label} · ` : ''}{event.title}</span>{event.selected && <span aria-hidden="true" className="ml-auto">✓</span>}</span>
     </button>
@@ -143,10 +144,12 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
                 return <div key={localDateKey(day)} className="relative border-l border-[#e4e7eb]" style={{ height: hours.length * hourHeight }}>
                   {hours.map(hour => {
                     const cellDate = new Date(day); cellDate.setHours(hour, 0, 0, 0);
+                    const cellEnd = new Date(+cellDate + 40 * 60000);
+                    const occupied = dayEvents.some(event => Date.parse(event.startsAt) < +cellEnd && Date.parse(event.endsAt || new Date(Date.parse(event.startsAt) + 40 * 60000).toISOString()) > +cellDate);
                     const disabled = isCellDisabled?.(cellDate) ?? false;
                     const reason = getCellDisabledReason?.(cellDate) || (disabled ? 'Locked' : undefined);
                     return <div key={hour} style={{ height: hourHeight }} className="border-b border-[#e4e7eb] p-0.5">
-                      {!getSessionStarts &&
+                      {!getSessionStarts && !occupied &&
                       <button type="button" disabled={!onCellClick || disabled} onClick={() => onCellClick?.(cellDate)}
                         title={reason || (onCellClick ? 'Click to add an available session' : 'No session')}
                         aria-label={`${cellDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}, ${timeLabel(cellDate)}${reason ? `, ${reason}` : ''}`}
