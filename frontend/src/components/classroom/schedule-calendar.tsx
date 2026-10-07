@@ -61,7 +61,7 @@ function eventLayout(events: ScheduleEvent[]) {
   return positions;
 }
 
-export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleHours, onCellClick, isCellDisabled, getCellDisabledReason, onDateChange, cellStepMinutes = 60, breakMinutes = 0, ariaLabel = 'Session calendar', timezoneLabel = 'Times shown in your device’s timezone' }: {
+export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleHours, onCellClick, isCellDisabled, getCellDisabledReason, onDateChange, getSessionStarts, ariaLabel = 'Session calendar', timezoneLabel = 'Times shown in your device’s timezone' }: {
   events: ScheduleEvent[];
   startHour?: number;
   endHour?: number;
@@ -72,8 +72,7 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
   onDateChange?: (date: Date) => void;
   ariaLabel?: string;
   timezoneLabel?: string;
-  cellStepMinutes?: 10 | 60;
-  breakMinutes?: number;
+  getSessionStarts?: (day: Date) => Date[];
 }) {
   const [date, setDate] = useState(() => new Date());
   const [view, setView] = useState<CalendarView>('week');
@@ -97,25 +96,13 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
   };
   const lastHour = Math.min(24, Math.max(endHour, ...visibleEvents.map(event => Math.ceil(endMinute(event) / 60))));
   const hours = visibleHours ? [...new Set(visibleHours)].filter(hour => Number.isInteger(hour) && hour >= 0 && hour < 24).sort((a, b) => a - b) : Array.from({ length: lastHour - firstHour }, (_, i) => firstHour + i);
-  if (breakMinutes > 0) {
-    for (const event of visibleEvents) {
-      if (event.reserveBreak === false) continue;
-      const begins = new Date(event.startsAt);
-      const ends = new Date(event.endsAt || begins.getTime() + 40 * 60000);
-      for (const edge of [new Date(ends.getTime() + breakMinutes * 60000 - 1)]) {
-        if (localDateKey(edge) === localDateKey(begins) && !hours.includes(edge.getHours())) hours.push(edge.getHours());
-      }
-    }
-    hours.sort((a, b) => a - b);
-  }
-  const hourHeight = cellStepMinutes === 10 ? 288 : 108;
+  const hourHeight = 108;
   const dayWidths = days.map(day => {
     const dayEvents = eventsForDay(day);
     const concurrent = Math.max(1, ...dayEvents.map(event => dayEvents.filter(other => Date.parse(other.startsAt) <= Date.parse(event.startsAt) && Date.parse(other.endsAt || new Date(Date.parse(other.startsAt) + 40 * 60000).toISOString()) > Date.parse(event.startsAt)).length));
     return Math.max(view === 'day' ? 232 : 210, concurrent * 190);
   });
   const timedColumns = `88px ${dayWidths.map(width => `minmax(${width}px, 1fr)`).join(' ')}`;
-  const cellHeight = hourHeight * cellStepMinutes / 60;
   const eventStates = [...new Map(events.filter(event => event.status).map(event => {
     const state = getSessionStatus(event.status!, event.rescheduledAt);
     return [state.label, state] as const;
@@ -154,37 +141,35 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
                 const dayEvents = eventsForDay(day).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
                 const positions = eventLayout(dayEvents);
                 return <div key={localDateKey(day)} className="relative border-l border-[#e4e7eb]" style={{ height: hours.length * hourHeight }}>
-                  {hours.flatMap(hour => Array.from({ length: 60 / cellStepMinutes }, (_, index) => {
-                    const cellDate = new Date(day); cellDate.setHours(hour, index * cellStepMinutes, 0, 0);
+                  {hours.map(hour => {
+                    const cellDate = new Date(day); cellDate.setHours(hour, 0, 0, 0);
                     const disabled = isCellDisabled?.(cellDate) ?? false;
                     const reason = getCellDisabledReason?.(cellDate) || (disabled ? 'Locked' : undefined);
-                    return <div key={`${hour}:${index}`} style={{ height: cellHeight }} className="border-b border-[#e4e7eb] p-0.5">
+                    return <div key={hour} style={{ height: hourHeight }} className="border-b border-[#e4e7eb] p-0.5">
+                      {!getSessionStarts &&
                       <button type="button" disabled={!onCellClick || disabled} onClick={() => onCellClick?.(cellDate)}
                         title={reason || (onCellClick ? 'Click to add an available session' : 'No session')}
                         aria-label={`${cellDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}, ${timeLabel(cellDate)}${reason ? `, ${reason}` : ''}`}
-                        style={{ height: cellStepMinutes === 10 ? cellHeight - 4 : hourHeight * 2 / 3 - 4, borderRadius: 10, fontSize: 10, backgroundImage: disabled ? 'repeating-linear-gradient(135deg, transparent, transparent 5px, #d6e0db55 5px, #d6e0db55 6px)' : undefined }}
+                        style={{ height: hourHeight * 2 / 3 - 4, borderRadius: 10, fontSize: 10, backgroundImage: disabled ? 'repeating-linear-gradient(135deg, transparent, transparent 5px, #d6e0db55 5px, #d6e0db55 6px)' : undefined }}
                         className={`flex w-full flex-col items-center justify-center gap-0.5 border text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095F46] ${disabled ? 'border-[#d6e0db] bg-[#f0f3f1] text-[#56635c]' : 'border-[#e1e9e5] bg-white text-[#56635c] enabled:hover:border-[#095F46] enabled:hover:bg-[#effaf5]'}`}>
-                        {disabled ? <><LockKeyhole aria-hidden="true" className="h-3 w-3" /><span className="max-w-full truncate px-1">{reason}</span></> : onCellClick ? <span>{cellStepMinutes === 10 ? `${timeLabel(cellDate)} · ` : ''}+ Add slot</span> : null}
-                      </button>
+                        {disabled ? <><LockKeyhole aria-hidden="true" className="h-3 w-3" /><span className="max-w-full truncate px-1">{reason}</span></> : onCellClick ? <span>+ Add slot</span> : null}
+                      </button>}
                     </div>;
-                  }))}
-                  {breakMinutes > 0 && (() => {
-                    const ranges = new Map<string, { start: Date; end: Date }>();
-                    for (const event of dayEvents) {
-                      if (event.reserveBreak === false) continue;
-                      const start = new Date(event.startsAt);
-                      const end = new Date(event.endsAt || start.getTime() + 40 * 60000);
-                      for (const range of [{ start: end, end: new Date(end.getTime() + breakMinutes * 60000) }]) {
-                        ranges.set(`${range.start.getTime()}:${range.end.getTime()}`, range);
-                      }
-                    }
-                    return [...ranges.entries()].map(([key, range]) => {
-                      if (localDateKey(range.start) !== localDateKey(day) || !hours.includes(range.start.getHours())) return null;
-                      const top = (hours.indexOf(range.start.getHours()) + range.start.getMinutes() / 60) * hourHeight;
-                      const height = Math.min(breakMinutes / 60 * hourHeight, hours.length * hourHeight - top);
-                      return <div key={key} role="note" aria-label={`Lecturer break, ${timeLabel(range.start)} to ${timeLabel(range.end)}`} title={`Lecturer break: ${timeLabel(range.start)} to ${timeLabel(range.end)}`} className="pointer-events-none absolute inset-x-1 z-[5] rounded-sm bg-stone-100" style={{ top, height }} />;
-                    });
-                  })()}
+                  })}
+                  {getSessionStarts?.(day).map(cellDate => {
+                    const disabled = !onCellClick || (isCellDisabled?.(cellDate) ?? false);
+                    const reason = getCellDisabledReason?.(cellDate);
+                    const cellEnd = new Date(+cellDate + 40 * 60000);
+                    const top = (hours.indexOf(cellDate.getHours()) + cellDate.getMinutes() / 60) * hourHeight;
+                    return <button key={cellDate.toISOString()} type="button" disabled={disabled} onClick={() => onCellClick?.(cellDate)}
+                      aria-label={`${disabled ? 'Unavailable session' : 'Add session'}, ${cellDate.toLocaleDateString()}, ${timeLabel(cellDate)} to ${timeLabel(cellEnd)}${reason ? `, ${reason}` : ''}`}
+                      title={reason}
+                      style={{ top: top + 4, height: hourHeight * 40 / 60 - 4 }}
+                      className={`absolute inset-x-1 flex flex-col items-start justify-center rounded-lg border px-2 text-left text-xs focus-visible:outline-2 focus-visible:outline-[#095F46] ${disabled ? 'border-[#d6e0db] bg-[#f0f3f1] text-[#56635c]' : 'border-[#7e9187] bg-white text-[#095F46] hover:bg-[#effaf5]'}`}>
+                      <span className="whitespace-nowrap font-semibold tabular-nums">{timeLabel(cellDate)} – {timeLabel(cellEnd)}</span>
+                      <span className="mt-1">{disabled ? reason || 'Unavailable' : '+ Add session'}</span>
+                    </button>;
+                  })}
                   {dayEvents.map(event => {
                     const eventStart = new Date(event.startsAt); const eventEnd = new Date(event.endsAt || eventStart.getTime() + 40 * 60000);
                     const { column, count } = positions.get(event.id)!;
@@ -200,7 +185,7 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
       </div>
       <div className="flex flex-wrap gap-4 border-t border-[#e4e7eb] px-4 py-3 text-xs text-stone-600">
         {eventStates.length ? eventStates.map(state => <span key={state.label} className="flex items-center gap-2"><i aria-hidden="true" className={`h-3 w-3 rounded border ${colors[state.tone]}`} />{state.label}</span>) : <><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#b9cac2]" />Scheduled / booked</span><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#10BF8D]" />Selected / completed</span><span className="flex items-center gap-2"><i className="h-2.5 w-2.5 rounded bg-[#b4dfce]" />Available</span><span className="flex items-center gap-2"><LockKeyhole className="h-3 w-3" />Locked / unavailable</span></>}
-        {breakMinutes > 0 && <span className="flex items-center gap-2"><i aria-hidden="true" className="h-3 w-3 rounded-sm bg-stone-100 border border-stone-300" />{breakMinutes}-minute break between sessions</span>}<span>{timezoneLabel}</span>
+        <span>{timezoneLabel}</span>
       </div>
     </section>
   );

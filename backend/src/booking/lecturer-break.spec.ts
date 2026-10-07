@@ -66,4 +66,9 @@ describe('Lecturer breaks', () => {
     if (allowed) await expect(result).resolves.toMatchObject({ startsAt });
     else await expect(result).rejects.toThrow('10 minutes');
   });
+  it.each([30, 50])('rejects availability lasting %s minutes', async minutes => {
+    const startsAt = date('12:00');
+    await expect(availability.createSlot('lecturer', { startsAt: startsAt.toISOString(), endsAt: new Date(+startsAt + minutes * 60000).toISOString() })).rejects.toThrow('40 minutes');
+    expect(prisma.availabilitySlot.create).not.toHaveBeenCalled();
+  });
 });

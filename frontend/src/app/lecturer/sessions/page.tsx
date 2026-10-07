@@ -437,7 +437,6 @@ export default function LecturerSessionsPage() {
         onClick: () => setSelectedSessionId(session.id),
       }))}
         visibleHours={shiftHours}
-        breakMinutes={10}
         isCellDisabled={(date) => date.getHours() < 10 || date.getHours() >= 22 || (shiftHours.length > 0 && !shiftHours.includes(date.getHours()))}
         getCellDisabledReason={(date) => date.getHours() < 10 || date.getHours() >= 22 || (shiftHours.length > 0 && !shiftHours.includes(date.getHours())) ? 'Outside your shift' : undefined}
         ariaLabel="Lecturer sessions calendar" />}

@@ -8,16 +8,15 @@ import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { ScheduleCalendar, type ScheduleEvent } from '@/components/classroom/schedule-calendar';
 import { LoadingScreen } from '@/components/ui/loading-screen';
-import { conflictsWithLecturerBreak, sessionFitsShift, SESSION_MINUTES } from '@/lib/session-timing';
+import { availabilitySessionStarts, conflictsWithLecturerBreak, sessionFitsShift, SESSION_MINUTES } from '@/lib/session-timing';
 
 
 // Lecturer working hours: 10 to 2, 2 to 6, and 6 to 10 (10:00 AM to 10:00 PM)
 const hours = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 
 function formatHourSlot(h: number) {
-  const start = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  return `${start}:00 – ${start}:40 ${ampm}`;
+  const format = (hour: number) => new Date(2000, 0, 1, hour).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `${format(h)} – ${format(h + 1)}`;
 }
 
 function formatShiftName(shiftHours: number[]) {
@@ -222,7 +221,7 @@ export default function AvailabilityPage() {
 
       <div className="p-4 rounded-xl bg-[hsl(var(--primary-light))] text-[hsl(var(--primary))] text-sm">
         Click an empty time cell to add availability, or an available session to remove it. Booked sessions are locked. Save Changes to apply your edits.
-        <p className="mt-2">Classes last 40 minutes. Leave at least 10 minutes between classes. For example, 11:00 to 11:40 can be followed by 11:50 to 12:30.</p>
+        <p className="mt-2">Each time slot is one 40-minute class.</p>
       </div>
 
       {/* Timeshift Info & Shift Change Notice */}
@@ -276,8 +275,7 @@ export default function AvailabilityPage() {
         events={calendarEvents}
         startHour={10}
         visibleHours={timeshift}
-        cellStepMinutes={10}
-        breakMinutes={10}
+        getSessionStarts={(day) => availabilitySessionStarts(day, timeshift, calendarEvents)}
         onCellClick={(date) => toggleSlot(getSlotKey(formatDateKey(date), date.getHours(), date.getMinutes()))}
         isCellDisabled={(date) => !!slotDisabledReason(date)}
         getCellDisabledReason={slotDisabledReason}

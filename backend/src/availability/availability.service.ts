@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSlotDto } from './dto/availability.dto';
-import { lecturerConflictWindow } from './session-timing';
+import { lecturerConflictWindow, SESSION_MINUTES } from './session-timing';
 
 @Injectable()
 export class AvailabilityService {
@@ -39,6 +39,8 @@ export class AvailabilityService {
     }
     if (startsAt <= new Date())
       throw new BadRequestException('Availability must start in the future');
+    if (+endsAt - +startsAt !== SESSION_MINUTES * 60000)
+      throw new BadRequestException('Each availability session must last 40 minutes');
 
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${'lecturer:' + lecturerId}))`;
@@ -96,7 +98,7 @@ export class AvailabilityService {
       if (overlap) {
         if (overlap.status === 'BOOKED') {
           throw new BadRequestException(
-            'Leave at least 10 minutes before and after a booked session',
+            'Leave at least 10 minutes between sessions',
           );
         }
         throw new BadRequestException(
