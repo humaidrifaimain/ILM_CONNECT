@@ -4,7 +4,7 @@ describe('Session notification times', () => {
   const start = new Date('2026-10-08T08:30:00Z');
   const end = new Date('2026-10-08T09:10:00Z');
   const prisma = {
-    session: { findUnique: jest.fn(), findMany: jest.fn() },
+    session: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), findMany: jest.fn() },
     studentProfile: { findUnique: jest.fn() },
     notification: { create: jest.fn(), findMany: jest.fn() },
   };
@@ -54,5 +54,16 @@ describe('Session notification times', () => {
     const notices = await service.getMyNotifications('student');
     expect(notices[0].payloadJson).toEqual(expect.objectContaining({ message: 'Original booking', currentSession: expect.objectContaining({ status: 'CANCELED', timeFormatted: '02:00 PM to 02:40 PM (Asia/Colombo)' }) }));
     expect(prisma.session.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ OR: [{ studentId: 'student' }, { lecturerId: 'student' }] }) }));
+  });
+
+  it('shares saved lesson feedback through in-app, email and WhatsApp, escaping email HTML', async () => {
+    prisma.session.findUniqueOrThrow.mockResolvedValue({ startsAt: start, studentId: 'student',
+      student: { fullName: 'Student', timezone: 'Asia/Colombo', phone: '+94771234567', user: { email: 'parent-account@example.test' } },
+      lecturer: { fullName: 'Lecturer' } });
+    const note = 'Practise the letters <script>alert(1)</script> carefully at home.';
+    await service.dispatchLessonFeedback('session', note);
+    expect(prisma.notification.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ type: 'LESSON_FEEDBACK', payloadJson: expect.objectContaining({ message: expect.stringContaining(note) }) }) }));
+    expect(email.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ toEmail: 'parent-account@example.test', htmlContent: expect.stringContaining('&lt;script&gt;'), textContent: expect.stringContaining(note) }));
+    expect(whatsapp.sendWhatsApp).toHaveBeenCalledWith(expect.objectContaining({ toPhone: '+94771234567', message: expect.stringContaining(note) }));
   });
 });

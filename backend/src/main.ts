@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { raw } from 'express';
 
 const defaultCorsOrigins = [
   'http://localhost:3000',
@@ -28,7 +29,8 @@ function parseCorsOrigins() {
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
+  app.use('/api/v1/livekit/webhook', raw({ type: 'application/webhook+json' }));
 
   // Set global API prefix
   app.setGlobalPrefix('api/v1');

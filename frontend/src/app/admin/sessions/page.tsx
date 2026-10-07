@@ -7,6 +7,7 @@ import { downloadCsv } from '@/lib/download';
 import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 import { toast } from '@/components/ui/toast';
 import { TableSkeleton } from '@/components/ui/loading-screen';
+import { studentAttendanceLabel } from '@/lib/student-attendance';
 import { Search, Download, Eye, XCircle, AlertTriangle, FileText, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -28,6 +29,8 @@ interface SessionRecord {
   endsAt: string;
   status: string;
   livekitRoomName?: string;
+  meetingStartedAt?: string | null;
+  studentJoinedAt?: string | null;
   studentName?: string;
   lecturerName?: string;
   subject?: string;
@@ -118,7 +121,7 @@ export default function AdminSessionsPage() {
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const exportCSV = () => {
-    downloadCsv([['Session ID', 'Date', 'Student', 'Lecturer', 'Subject', 'Status'], ...filtered.map(s => [s.id, new Date(s.startsAt).toISOString(), s.studentName, s.lecturerName, s.subject, s.rawStatus])], 'sessions-export.csv');
+    downloadCsv([['Session ID', 'Date', 'Student', 'Lecturer', 'Subject', 'Status', 'Student attendance'], ...filtered.map(s => [s.id, new Date(s.startsAt).toISOString(), s.studentName, s.lecturerName, s.subject, s.rawStatus, studentAttendanceLabel(s)])], 'sessions-export.csv');
   };
 
   const handleCancelSession = async () => {
@@ -239,7 +242,7 @@ export default function AdminSessionsPage() {
       {/* Table */}
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-x-auto shadow-xs">
         {isLoading ? (
-          <TableSkeleton rows={5} cols={7} />
+          <TableSkeleton rows={5} cols={8} />
         ) : (
           <table className="w-full min-w-[900px]">
             <thead>
@@ -247,6 +250,7 @@ export default function AdminSessionsPage() {
                 <th className="text-left py-3 px-4 text-xs font-semibold text-[hsl(var(--muted-foreground))]">ID</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Date &amp; Time</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Student</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Student attendance</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Lecturer</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Subject</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-[hsl(var(--muted-foreground))]">Status</th>
@@ -266,6 +270,7 @@ export default function AdminSessionsPage() {
                       {new Date(s.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="py-3 px-4 text-sm font-medium text-[hsl(var(--foreground))]">{s.studentName}</td>
+                    <td className="py-3 px-4 text-sm text-[hsl(var(--foreground))]">{studentAttendanceLabel(s)}</td>
                     <td className="py-3 px-4 text-sm text-[hsl(var(--foreground))]">{s.lecturerName}</td>
                     <td className="py-3 px-4 text-xs truncate max-w-[180px] text-[hsl(var(--muted-foreground))]">{s.subject}</td>
                     <td className="py-3 px-4">
@@ -320,7 +325,7 @@ export default function AdminSessionsPage() {
               })}
               {paginated.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-sm text-[hsl(var(--muted-foreground))]">
+                  <td colSpan={8} className="py-12 text-center text-sm text-[hsl(var(--muted-foreground))]">
                     {isError ? 'Unable to load sessions.' : 'No sessions found matching current filter or search criteria.'}
                   </td>
                 </tr>
@@ -385,6 +390,10 @@ export default function AdminSessionsPage() {
                   <div className="flex justify-between pt-2 gap-4">
                     <span className="text-[hsl(var(--muted-foreground))] shrink-0">Lecturer</span>
                     <span className="font-medium text-[hsl(var(--foreground))] text-right">{actionModal.session.lecturerName}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 gap-4">
+                    <span className="text-[hsl(var(--muted-foreground))] shrink-0">Student attendance</span>
+                    <span className="text-right">{studentAttendanceLabel(sessionsList.find(session => session.id === actionModal.session.id) || actionModal.session)}</span>
                   </div>
                   <div className="flex justify-between pt-2 gap-4">
                     <span className="text-[hsl(var(--muted-foreground))] shrink-0">Subject / Course</span>

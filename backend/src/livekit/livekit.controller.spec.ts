@@ -8,7 +8,7 @@ describe('Classroom admission', () => {
     notification: { findFirst: jest.fn() },
   };
   const livekit = { generateToken: jest.fn() };
-  const controller = new LivekitController(livekit as any, prisma as any, {} as any, { finishExpired: jest.fn() } as any);
+  const controller = new LivekitController(livekit as any, prisma as any, {} as any, { finishExpired: jest.fn() } as any, {} as any);
   const session = {
     id: 'session-1', studentId: 'student-1', lecturerId: 'lecturer-1',
     student: { fullName: 'Student' }, lecturer: { fullName: 'Lecturer' },

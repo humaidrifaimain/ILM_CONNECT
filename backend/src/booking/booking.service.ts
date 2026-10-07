@@ -503,30 +503,59 @@ export class BookingService {
   }
 
   async updateBooking(id: string, data: { notes?: string; status?: string }, user: { id: string; role: Role }) {
-    const session = await this.prisma.session.findUnique({ where: { id } });
+    const session = await this.prisma.session.findUnique({ where: { id }, include: { notes: true } });
     if (!session) throw new NotFoundException('Session not found');
     if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN && session.lecturerId !== user.id) throw new ForbiddenException('This session is not assigned to you');
     if (data.notes !== undefined && (typeof data.notes !== 'string' || data.notes.length > 10000)) throw new BadRequestException('Invalid session notes');
+    const cleanNotes = data.notes?.trim();
+    if ((data.status === SessionStatus.COMPLETED || (session.status === SessionStatus.COMPLETED && data.notes !== undefined)) && (!cleanNotes || cleanNotes.length < 30)) {
+      throw new BadRequestException('Write at least 30 characters of lesson feedback before completing the session');
+    }
     if (data.status && data.status !== SessionStatus.COMPLETED) throw new BadRequestException('Use the cancellation, rescheduling, or attendance action to change session status');
-    if (data.status === SessionStatus.COMPLETED && (session.startsAt > new Date() || ![SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS].includes(session.status as any))) throw new BadRequestException('Only a started active session can be completed');
+    if (data.status === SessionStatus.COMPLETED && (session.startsAt > new Date() || ![SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS, SessionStatus.COMPLETED].includes(session.status as any))) throw new BadRequestException('Only a started active session can be completed');
 
-    return this.prisma.$transaction(async tx => {
-      if (data.status === SessionStatus.COMPLETED) {
-        const changed = await tx.session.updateMany({ where: { id, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, startsAt: { lte: new Date() } }, data: { status: SessionStatus.COMPLETED } });
-        if (changed.count !== 1) throw new BadRequestException('This session is no longer active');
+    const result = await this.prisma.$transaction(async tx => {
+      for (const key of [`lecturer:${session.lecturerId}`, `student:${session.studentId}`].sort()) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
       }
-    return tx.session.update({
+      const current = await tx.session.findUnique({ where: { id }, include: { notes: true } });
+      if (!current) throw new NotFoundException('Session not found');
+      if (data.status === SessionStatus.COMPLETED && ![SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS, SessionStatus.COMPLETED].includes(current.status as any)) throw new BadRequestException('This session is no longer active');
+      if (current.status === SessionStatus.COMPLETED && data.notes !== undefined && (!cleanNotes || cleanNotes.length < 30)) throw new BadRequestException('Write at least 30 characters of lesson feedback');
+      if (data.status === SessionStatus.COMPLETED && current.status !== SessionStatus.COMPLETED) {
+        const changed = await tx.session.updateMany({ where: { id, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, startsAt: { lte: new Date() } }, data: { status: SessionStatus.COMPLETED } });
+        if (changed.count !== 1) {
+          const current = await tx.session.findUnique({ where: { id } });
+          if (current?.status !== SessionStatus.COMPLETED) throw new BadRequestException('This session is no longer active');
+        }
+      }
+    const updated = await tx.session.update({
       where: { id },
       data: {
         notes: data.notes !== undefined ? {
           upsert: {
-            create: { lecturerId: session.lecturerId, topicsCovered: '', homework: '', studentProgressRating: 0, internalNotes: '', sharedNotes: data.notes },
-            update: { sharedNotes: data.notes }
+            create: { lecturerId: session.lecturerId, topicsCovered: '', homework: '', studentProgressRating: 0, internalNotes: '', sharedNotes: cleanNotes! },
+            update: { sharedNotes: cleanNotes }
           }
         } : undefined,
       },
     });
+    return { updated, shouldNotify: !!cleanNotes && cleanNotes.length >= 30 && (data.status === SessionStatus.COMPLETED || current.status === SessionStatus.COMPLETED) && (current.status !== SessionStatus.COMPLETED || (current.notes?.sharedNotes.trim().length || 0) < 30) };
     });
+    if (result.shouldNotify) {
+      try { await this.notificationService.dispatchLessonFeedback(id, cleanNotes!); }
+      catch (error) { this.logger.error(`Lesson feedback notification failed for ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`); }
+    }
+    return result.updated;
+  }
+
+  async getPendingLessonNotes(lecturerId: string) {
+    const sessions = await this.prisma.session.findMany({
+      where: { lecturerId, status: { in: [SessionStatus.COMPLETED, SessionStatus.IN_PROGRESS] } },
+      select: { id: true, startsAt: true, status: true, student: { select: { fullName: true } }, notes: { select: { sharedNotes: true } } },
+      orderBy: { startsAt: 'asc' },
+    });
+    return sessions.filter(session => session.status === SessionStatus.IN_PROGRESS || (session.notes?.sharedNotes.trim().length || 0) < 30);
   }
 
   async markStudentAbsent(
@@ -534,6 +563,7 @@ export class BookingService {
     sessionId: string,
     reason?: string,
     absentRole: 'student' | 'lecturer' = 'student',
+    options?: { onlyIfNeverJoined: boolean; closeMeeting: () => Promise<void> },
   ) {
     if (!['student', 'lecturer'].includes(absentRole)) throw new BadRequestException('Choose student or lecturer absence');
     if (reason !== undefined && (typeof reason !== 'string' || reason.length > 1000)) throw new BadRequestException('Attendance reason must be text up to 1,000 characters');
@@ -577,8 +607,15 @@ export class BookingService {
     const eventType = absentRole === 'lecturer' ? 'SESSION_LECTURER_NO_SHOW' : 'SESSION_STUDENT_NO_SHOW';
 
     const updatedSession = await this.prisma.$transaction(async tx => {
-      const claimed = await tx.session.updateMany({ where: { id: sessionId, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] } }, data: { status } });
+      if (options?.onlyIfNeverJoined) {
+        for (const key of [`lecturer:${session.lecturerId}`, `student:${session.studentId}`].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
+        const current = await tx.session.findUniqueOrThrow({ where: { id: sessionId } });
+        const waitStartedAt = current.meetingStartedAt ? Math.max(+current.startsAt, +current.meetingStartedAt) : null;
+        if (current.studentJoinedAt || waitStartedAt === null || Date.now() < waitStartedAt + 15 * 60_000 || (current.attendancePromptAfter && new Date() < current.attendancePromptAfter)) throw new BadRequestException('Student attendance changed or the waiting period has not ended');
+      }
+      const claimed = await tx.session.updateMany({ where: { id: sessionId, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, ...(options?.onlyIfNeverJoined ? { studentJoinedAt: null } : {}) }, data: { status } });
       if (claimed.count !== 1) throw new BadRequestException('Attendance has already been recorded or the session is no longer active');
+      if (options) await options.closeMeeting();
       const updated = await tx.session.update({
         where: { id: sessionId },
         data: {
@@ -622,7 +659,7 @@ export class BookingService {
         },
       });
       return updated;
-    });
+    }, options ? { maxWait: 10_000, timeout: 15_000 } : undefined);
 
     try {
       const studentName = session.student?.fullName || session.student?.user?.email?.split('@')[0] || 'Student';

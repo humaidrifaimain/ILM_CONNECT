@@ -137,6 +137,28 @@ export class NotificationService {
     });
   }
 
+  async dispatchLessonFeedback(sessionId: string, note: string) {
+    const session = await this.prisma.session.findUniqueOrThrow({
+      where: { id: sessionId },
+      include: { student: { include: { user: true } }, lecturer: true },
+    });
+    const date = this.formatDate(session.startsAt, this.validTimezone(session.student.timezone));
+    const title = 'Lesson feedback from your lecturer';
+    const message = `${session.lecturer.fullName}'s feedback for ${session.student.fullName} on ${date}:\n\n${note}`;
+    await this.createNotification(session.studentId, 'LESSON_FEEDBACK', { sessionId, title, message });
+    const escape = (value: string) => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
+    await this.emailService.sendEmail({
+      toEmail: session.student.user.email, recipientName: session.student.fullName, recipientRole: 'STUDENT',
+      subject: `[IlmConnect] Lesson feedback for ${date}`, textContent: message,
+      htmlContent: `<h1>${escape(title)}</h1><p style="white-space:pre-wrap">${escape(message)}</p>`,
+      eventType: 'GENERAL', metadata: { userId: session.studentId, sessionId },
+    });
+    if (/^\+[1-9]\d{7,14}$/.test(session.student.phone)) {
+      await this.whatsAppService.sendWhatsApp({ toPhone: session.student.phone, recipientName: session.student.fullName,
+        recipientRole: 'STUDENT', eventType: 'GENERAL', message, metadata: { userId: session.studentId, sessionId } });
+    }
+  }
+
   async createNotification(
     userId: string,
     type: string,

@@ -5,6 +5,7 @@ import { NotificationService } from '../notification/notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SessionStatus } from '@prisma/client';
 import { MeetingClockService, MEETING_MS } from './meeting-clock.service';
+import { StudentAttendanceService } from './student-attendance.service';
 
 @Controller('livekit')
 @UseGuards(JwtAuthGuard)
@@ -16,6 +17,7 @@ export class LivekitController {
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
     private readonly meetingClock: MeetingClockService,
+    private readonly attendance: StudentAttendanceService,
   ) {}
 
   @Get('clock/:sessionId')
@@ -23,6 +25,18 @@ export class LivekitController {
 
   @Post('start/:sessionId')
   startClock(@Req() req: any, @Param('sessionId') sessionId: string) { return this.meetingClock.start(req.user, sessionId); }
+
+  @Get('attendance/:sessionId')
+  getAttendance(@Req() req: any, @Param('sessionId') id: string) { return this.attendance.snapshot(req.user, id); }
+
+  @Post('attendance/:sessionId/heartbeat')
+  reportConnection(@Req() req: any, @Param('sessionId') id: string) { return this.attendance.heartbeat(req.user, id); }
+
+  @Post('attendance/:sessionId/wait')
+  waitForStudent(@Req() req: any, @Param('sessionId') id: string) { return this.attendance.wait(req.user, id); }
+
+  @Post('attendance/:sessionId/absent')
+  markStudentAbsent(@Req() req: any, @Param('sessionId') id: string) { return this.attendance.markAbsent(req.user, id); }
 
   /**
    * POST /livekit/reopen/:sessionId
@@ -59,7 +73,7 @@ export class LivekitController {
     for (const key of [`lecturer:${session.lecturerId}`, `student:${session.studentId}`].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
     const overlap = await tx.session.findFirst({ where: { id: { not: sessionId }, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, startsAt: { lt: session.endsAt }, endsAt: { gt: session.startsAt }, OR: [{ lecturerId: session.lecturerId }, { studentId: session.studentId }] } });
     if (overlap) throw new BadRequestException('Another session occupies this time');
-    const changed = await tx.session.updateMany({ where: { id: sessionId, status: session.status }, data: { status: newStatus, meetingStartedAt: null } });
+    const changed = await tx.session.updateMany({ where: { id: sessionId, status: session.status }, data: { status: newStatus, meetingStartedAt: null, studentJoinedAt: null, studentLastSeenAt: null, studentLeftAt: null, attendancePromptAfter: null, attendanceResetAt: new Date(), livekitRoomName: `${this.livekitService.getRoomName(sessionId)}-${now.getTime()}` } });
     if (changed.count !== 1) throw new BadRequestException('The session status has changed. Refresh and try again');
     await tx.availabilitySlot.updateMany({ where: { lecturerId: session.lecturerId, startsAt: { lte: session.startsAt }, endsAt: { gte: session.endsAt } }, data: { status: 'BOOKED' } });
     return tx.session.findUniqueOrThrow({

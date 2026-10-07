@@ -32,4 +32,10 @@ export class FeedbackController {
   getLecturerFeedbacks(@Param('id') id: string) {
     return this.feedbackService.getLecturerFeedbacks(id);
   }
+
+  @Get('lesson-notes')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  getLessonNotes() {
+    return this.feedbackService.getLessonNotes();
+  }
 }

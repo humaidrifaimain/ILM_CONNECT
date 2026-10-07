@@ -12,6 +12,7 @@ import { toast } from '@/components/ui/toast';
 import { InteractiveClassroom } from '@/components/classroom/interactive-classroom';
 import { LiveClassroom } from '@/components/classroom/live-classroom';
 import { useClassroomConnection } from '@/hooks/use-classroom-connection';
+import { useRequiredLessonFeedback, useRegisterLessonFeedbackSession } from '@/components/lecturer/required-lesson-feedback';
 
 interface SessionInfo {
   id: string;
@@ -45,7 +46,28 @@ export default function LecturerSessionRoom({
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isReopening, setIsReopening] = useState(false);
-  const leaveClassroom = useCallback(() => router.push('/lecturer/sessions'), [router]);
+  const requestFeedback = useRequiredLessonFeedback();
+  const registerFeedbackSession = useRegisterLessonFeedbackSession();
+  useEffect(() => {
+    if (state !== 'connected' || !tokenData) return;
+    registerFeedbackSession({ ...tokenData.session, student: { fullName: tokenData.session.studentName } });
+    return () => registerFeedbackSession(null);
+  }, [state, tokenData, registerFeedbackSession]);
+  const leaveClassroom = useCallback(() => {
+    const session = tokenData?.session || sessionInfo;
+    if (!session) { router.push('/lecturer/sessions'); return; }
+    void (async () => {
+      try {
+        const sessions = await apiFetch('/bookings/lecturer');
+        const current = sessions.find((item: { id: string; status: string; notes?: { sharedNotes: string } | null }) => item.id === session.id);
+        if (current && (!['SCHEDULED', 'IN_PROGRESS', 'COMPLETED'].includes(current.status) || (current.status === 'COMPLETED' && (current.notes?.sharedNotes.trim().length || 0) >= 30))) {
+          router.push('/lecturer/sessions');
+          return;
+        }
+      } catch {}
+      requestFeedback({ ...session, student: { fullName: session.studentName } });
+    })();
+  }, [router, requestFeedback, tokenData, sessionInfo]);
   const reportConnectionError = useCallback((err: Error) => {
     console.error('LiveKit connection error:', err);
     setError(err.message || 'Failed to connect to the classroom');

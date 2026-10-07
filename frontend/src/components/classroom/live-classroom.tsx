@@ -35,7 +35,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 
-import { toast } from '@/components/ui/toast';
 import { apiFetch } from '@/lib/api';
 import { MeetingChat } from './meeting-chat';
 import { MeetingReactionEffects, MeetingReactions, useMeetingReactions } from './meeting-reactions';
@@ -94,12 +93,11 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
   const room = useRoomContext();
   const connectionState = useConnectionState();
   const endDialog = useRef<HTMLDialogElement>(null);
-  const [ending, setEnding] = useState(false);
   const { data: sessionStatus } = useQuery<string>({ queryKey: ['roomSessionStatus', sessionInfo.id], queryFn: async () => { const sessions = await apiFetch(`/bookings/${userRole}`); return sessions.find((session: { id: string; status: string }) => session.id === sessionInfo.id)?.status || sessionInfo.status; }, refetchInterval: 5000 });
   useEffect(() => { if (userRole === 'student' && sessionStatus === 'COMPLETED') onLeave(); }, [sessionStatus, userRole, onLeave]);
-  const completeLesson = async () => {
-    setEnding(true);
-    try { await apiFetch(`/bookings/${sessionInfo.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'COMPLETED' }) }); endDialog.current?.close(); onLeave(); } catch (error) { toast.error('Unable to end lesson', error instanceof Error ? error.message : 'Please try again'); } finally { setEnding(false); }
+  const completeLesson = () => {
+    endDialog.current?.close();
+    onLeave();
   };
   const participants = useParticipants();
   const cameraTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
@@ -637,7 +635,7 @@ export function LiveClassroom({ sessionInfo, userRole, courseId, onLeave }: Live
         </footer>
       </div>
 
-      <dialog ref={endDialog} aria-labelledby="end-lesson-title" className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-[#d6e0db] bg-white p-6 text-[#202823] backdrop:bg-black/60"><h2 id="end-lesson-title" className="text-xl font-semibold">End this lesson?</h2><p className="mt-3 text-sm text-[#56635c]">This marks the session as completed. The student will be taken to their feedback form.</p><div className="mt-6 flex justify-end gap-3"><button type="button" disabled={ending} onClick={() => endDialog.current?.close()} className="rounded-lg border border-[#d6e0db] px-4 py-2 text-sm">Keep teaching</button><button type="button" disabled={ending} onClick={completeLesson} className="rounded-lg bg-[#095F46] px-4 py-2 text-sm font-semibold text-white">{ending ? 'Ending…' : 'Complete & leave'}</button></div></dialog>
+      <dialog ref={endDialog} aria-labelledby="end-lesson-title" className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-[#d6e0db] bg-white p-6 text-[#202823] backdrop:bg-black/60"><h2 id="end-lesson-title" className="text-xl font-semibold">End this lesson?</h2><p className="mt-3 text-sm text-[#56635c]">You must save a feedback note before completing this lesson. The student can then review the session.</p><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => endDialog.current?.close()} className="rounded-lg border border-[#d6e0db] px-4 py-2 text-sm">Keep teaching</button><button type="button" onClick={completeLesson} className="rounded-lg bg-[#095F46] px-4 py-2 text-sm font-semibold text-white">Write lesson feedback</button></div></dialog>
 
       {/* Side Drawers (Materials and Participants) */}
       {panel && (

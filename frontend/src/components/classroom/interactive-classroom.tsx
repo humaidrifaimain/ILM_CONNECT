@@ -73,18 +73,6 @@ export function InteractiveClassroom({
   onLeave,
 }: InteractiveClassroomProps) {
   const router = useRouter();
-  const [ending, setEnding] = useState(false);
-  const endSession = async () => {
-    if (ending) return;
-    if (userRole === 'student') { onLeave(); return; }
-    setEnding(true);
-    try {
-      await apiFetch(`/bookings/${sessionInfo.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'COMPLETED' }) });
-      onLeave();
-    } catch (error) {
-      toast.error('Unable to end session', error instanceof Error ? error.message : 'Please try again');
-    } finally { setEnding(false); }
-  };
 
   // Media state
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -621,12 +609,11 @@ export function InteractiveClassroom({
 
         {/* Leave Session */}
         <button
-          onClick={endSession}
-          disabled={ending}
+          onClick={onLeave}
           className="ml-6 px-6 py-2.5 rounded-full text-sm font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-colors flex items-center gap-2 shadow-lg shadow-rose-900/30"
         >
           <PhoneOff className="h-4 w-4" />
-          <span>{ending ? 'Ending session...' : userRole === 'student' ? 'Leave Class' : 'End Session'}</span>
+          <span>{userRole === 'student' ? 'Leave Class' : 'End Session'}</span>
         </button>
       </div>
     </div>

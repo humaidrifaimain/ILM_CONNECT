@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
+import { StudentAttendance } from './student-attendance';
 
 type MeetingClock = { serverNow: string; meetingStartedAt: string | null; warningAt: string | null; meetingEndsAt: string | null; status: string; expired: boolean };
 const formatTime = (milliseconds: number) => {
@@ -44,7 +45,7 @@ export function MeetingTimer({ sessionId, userRole, onExpire, active = true }: {
   const started = data?.meetingStartedAt ? Date.parse(data.meetingStartedAt) : null;
   const end = data?.meetingEndsAt ? Date.parse(data.meetingEndsAt) : null;
   const warning = data?.warningAt ? Date.parse(data.warningAt) : null;
-  const expired = !!data && (data.expired || data.status === 'COMPLETED' || data.status === 'CANCELED' || (end !== null && now >= end));
+  const expired = !!data && (data.expired || ['COMPLETED', 'CANCELED', 'NO_SHOW_STUDENT', 'NO_SHOW_LECTURER'].includes(data.status) || (end !== null && now >= end));
   const showWarning = warning !== null && now >= warning && !expired && !dismissed;
   useEffect(() => {
     if (showWarning && !dialog.current?.open) dialog.current?.showModal();
@@ -58,6 +59,7 @@ export function MeetingTimer({ sessionId, userRole, onExpire, active = true }: {
     void callback.current();
   }, [expired, data?.status]);
   return <>
+    <StudentAttendance sessionId={sessionId} userRole={userRole} active={active && !expired} onAbsent={onExpire} />
     <span role="timer" aria-label="Lesson elapsed time" aria-live="off" className="whitespace-nowrap text-xs tabular-nums text-white/90">
       {started !== null ? formatTime(now - started) : isError ? 'Timer unavailable' : userRole === 'lecturer' ? 'Starting lesson…' : 'Waiting for lecturer'}
     </span>

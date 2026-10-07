@@ -71,6 +71,14 @@ export class FeedbackService {
     });
   }
 
+  async getLessonNotes() {
+    return this.prisma.session.findMany({
+      where: { status: 'COMPLETED', notes: { is: { sharedNotes: { not: '' } } } },
+      select: { id: true, startsAt: true, student: { select: { fullName: true } }, lecturer: { select: { fullName: true } }, notes: { select: { sharedNotes: true } } },
+      orderBy: { startsAt: 'desc' },
+    });
+  }
+
   async getLecturerFeedbacks(lecturerId: string) {
     return this.prisma.rating.findMany({
       where: { lecturerId },

@@ -1,5 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
+import { AccessToken, RoomServiceClient, WebhookReceiver } from 'livekit-server-sdk';
 
 export interface LivekitTokenResult {
   token: string;
@@ -38,6 +38,23 @@ export class LivekitService {
    */
   getRoomName(sessionId: string): string {
     return `ilm-session-${sessionId}`;
+  }
+
+  async studentIsPresent(roomName: string, studentId: string): Promise<boolean> {
+    if (!this.isConfigured()) throw new ServiceUnavailableException('Live attendance is unavailable');
+    const client = new RoomServiceClient((process.env.LIVEKIT_URL || this.wsUrl)!.replace(/^ws/, 'http'), process.env.LIVEKIT_API_KEY || this.apiKey, process.env.LIVEKIT_API_SECRET || this.apiSecret);
+    try {
+      const participants = await client.listParticipants(roomName);
+      return participants.some(participant => participant.identity === `student:${studentId}`);
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'not_found') return false;
+      throw new ServiceUnavailableException('Unable to check classroom attendance. Please retry.');
+    }
+  }
+
+  async receiveWebhook(body: string, authorization?: string) {
+    if (!this.isConfigured()) throw new ServiceUnavailableException('Live video service is not configured');
+    return new WebhookReceiver((process.env.LIVEKIT_API_KEY || this.apiKey)!, (process.env.LIVEKIT_API_SECRET || this.apiSecret)!).receive(body, authorization);
   }
 
   async endRoom(roomName: string) {

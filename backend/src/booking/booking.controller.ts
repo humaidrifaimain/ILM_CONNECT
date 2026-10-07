@@ -59,6 +59,12 @@ export class BookingController {
     return this.bookingService.getLecturerBookings(req.user.id);
   }
 
+  @Get('lecturer/pending-notes')
+  @Roles(Role.LECTURER)
+  getPendingLessonNotes(@Req() req: any) {
+    return this.bookingService.getPendingLessonNotes(req.user.id);
+  }
+
   @Patch(':id')
   @Roles(Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
   async updateBooking(

@@ -233,6 +233,11 @@ model Session {
   status        SessionStatus      @default(SCHEDULED)
   livekitRoomName String?           @map("livekit_room_name")
   meetingStartedAt DateTime?        @map("meeting_started_at")
+  studentJoinedAt DateTime?         @map("student_joined_at")
+  studentLastSeenAt DateTime?       @map("student_last_seen_at")
+  studentLeftAt DateTime?           @map("student_left_at")
+  attendancePromptAfter DateTime?   @map("attendance_prompt_after")
+  attendanceResetAt DateTime?       @map("attendance_reset_at")
   rescheduledAt DateTime?           @map("rescheduled_at")
   recordingUrl  String?            @map("recording_url")
 
