@@ -332,19 +332,19 @@ export default function StudentDashboard() {
               <article className="rounded-xl border border-[#d6e0db] bg-white p-3.5 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-xl font-bold text-[#202823]">Upcoming Sessions</h2>
-                    <p className="text-sm text-[#56635c]">Your booked live classes, arranged like a weekly plan.</p>
+                    <h2 className="text-xl font-bold text-[#202823]">Session calendar</h2>
+                    <p className="text-sm text-[#56635c]">Yesterday, today, and upcoming classes.</p>
                   </div>
                   <button onClick={() => setShowBookModal(true)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#095F46] px-4 text-xs font-bold text-white transition-colors hover:bg-[#074c38]">
                     <Calendar className="h-4 w-4" /> Book Session
                   </button>
                 </div>
                 <div className="mt-4">
-                  <ScheduleCalendar events={visibleSessions.map(session => ({
+                  <ScheduleCalendar events={dashboardBookings.map(session => ({
                     id: session.id, startsAt: session.startsAt, endsAt: session.endsAt,
-                    title: 'Quran Session', subtitle: session.lecturer?.fullName || 'Your lecturer', tone: 'blue' as const,
+                    title: 'Quran Session', subtitle: session.lecturer?.fullName || 'Your lecturer', status: session.status || undefined, tone: 'blue' as const,
                     onClick: () => router.push('/student/courses/beginner-qaida/sessions'),
-                  }))} visibleHours={Array.isArray(profile?.assignedLecturer?.hourlyAvailabilityJson) ? profile.assignedLecturer.hourlyAvailabilityJson.map(Number) : []} ariaLabel="Upcoming student sessions" />
+                  }))} visibleHours={Array.isArray(profile?.assignedLecturer?.hourlyAvailabilityJson) ? profile.assignedLecturer.hourlyAvailabilityJson.map(Number) : []} ariaLabel="Student session calendar" />
                 </div>
               </article>
             </div>

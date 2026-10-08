@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, LockKeyhole } from 'lucide-react';
 import { getSessionStatus, type SessionTone } from '@/lib/session-status';
+import { calendarRange, type CalendarView } from '@/lib/calendar-range';
 
 export interface ScheduleEvent {
   id: string;
@@ -20,7 +21,6 @@ export interface ScheduleEvent {
   reserveBreak?: boolean;
 }
 
-type CalendarView = 'day' | 'week' | 'month';
 const colors = {
   blue: 'border-[#b9cac2] bg-[#e8f0ed] text-[#0b3027]',
   purple: 'border-[#095F46] bg-[#d4f4e7] text-[#095F46]',
@@ -30,12 +30,6 @@ const colors = {
 };
 export function localDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-function addDays(date: Date, days: number) {
-  const next = new Date(date); next.setDate(next.getDate() + days); return next;
-}
-function weekStart(date: Date) {
-  const next = addDays(date, -((date.getDay() + 6) % 7)); next.setHours(0, 0, 0, 0); return next;
 }
 function timeLabel(date: Date) {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -75,17 +69,24 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
   timezoneLabel?: string;
   getSessionStarts?: (day: Date) => Date[];
 }) {
-  const [date, setDate] = useState(() => new Date());
+  const [selectedDate, setDate] = useState(() => new Date());
   const [view, setView] = useState<CalendarView>('week');
-  const today = new Date();
-  const start = view === 'day' ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : view === 'month' ? weekStart(new Date(date.getFullYear(), date.getMonth(), 1)) : weekStart(date);
-  const days = Array.from({ length: view === 'month' ? 42 : view === 'day' ? 1 : 7 }, (_, i) => addDays(start, i));
-  const moveTo = (next: Date) => { setDate(next); onDateChange?.(next); };
+  const [today, setToday] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setTimeout(() => setToday(new Date()), 60000 - today.getSeconds() * 1000 - today.getMilliseconds());
+    return () => window.clearTimeout(timer);
+  }, [today]);
+  const { date, days, minimumDate, previousDate, canGoPrevious } = calendarRange(selectedDate, view, today);
+  const moveTo = (next: Date) => {
+    const allowed = new Date(Math.max(+next, +minimumDate));
+    setDate(allowed); onDateChange?.(allowed);
+  };
   const navigate = (direction: number) => {
-    const next = view === 'month' ? new Date(date.getFullYear(), date.getMonth() + direction, 1) : addDays(date, direction * (view === 'week' ? 7 : 1));
+    if (direction < 0 && !canGoPrevious) return;
+    const next = direction < 0 ? previousDate : view === 'month' ? new Date(date.getFullYear(), date.getMonth() + 1, 1) : new Date(date.getFullYear(), date.getMonth(), date.getDate() + (view === 'week' ? 7 : 1));
     moveTo(next);
   };
-  const allowedEvents = visibleHours ? events.filter(event => visibleHours.includes(new Date(event.startsAt).getHours())) : events;
+  const allowedEvents = events.filter(event => new Date(event.startsAt) >= minimumDate && (!visibleHours || visibleHours.includes(new Date(event.startsAt).getHours())));
   const eventsForDay = (day: Date) => allowedEvents.filter(event => localDateKey(new Date(event.startsAt)) === localDateKey(day));
   const visibleEvents = allowedEvents.filter(event => days.some(day => localDateKey(day) === localDateKey(new Date(event.startsAt))));
   // Include early/late sessions rather than silently hiding them outside working hours.
@@ -104,7 +105,7 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
     return Math.max(view === 'day' ? 232 : 210, concurrent * 190);
   });
   const timedColumns = `88px ${dayWidths.map(width => `minmax(${width}px, 1fr)`).join(' ')}`;
-  const eventStates = [...new Map(events.filter(event => event.status).map(event => {
+  const eventStates = [...new Map(allowedEvents.filter(event => event.status).map(event => {
     const state = getSessionStatus(event.status!, event.rescheduledAt);
     return [state.label, state] as const;
   })).values()];
@@ -132,10 +133,10 @@ export function ScheduleCalendar({ events, startHour = 8, endHour = 22, visibleH
       <div className="max-h-[720px] overflow-auto">
         <div style={{ minWidth: view === 'month' ? 840 : 88 + dayWidths.reduce((total, width) => total + width, 0) }}>
           <div className="sticky top-0 z-30 grid border-y border-[#e4e7eb] bg-white" style={{ gridTemplateColumns: view === 'month' ? '88px repeat(7, minmax(0, 1fr))' : timedColumns }}>
-            <div className="flex items-center justify-center gap-1"><button type="button" aria-label={`Previous ${view}`} onClick={() => navigate(-1)} className="rounded p-2 hover:bg-stone-100"><ChevronLeft className="h-4 w-4" /></button><button type="button" aria-label={`Next ${view}`} onClick={() => navigate(1)} className="rounded p-2 hover:bg-stone-100"><ChevronRight className="h-4 w-4" /></button></div>
-            {(view === 'month' ? days.slice(0, 7) : days).map(day => <div key={localDateKey(day)} className={`border-l border-[#e4e7eb] px-2 py-5 text-center text-xs font-semibold uppercase ${localDateKey(day) === localDateKey(today) && view !== 'month' ? 'bg-[#e8f0ed] text-[#095F46]' : 'text-stone-500'}`}>{day.toLocaleDateString([], { weekday: 'short' })}{view !== 'month' ? ` ${day.getDate()}` : ''}</div>)}
+            <div className="flex items-center justify-center gap-1"><button type="button" aria-label={`Previous ${view}`} disabled={!canGoPrevious} onClick={() => navigate(-1)} className="rounded p-2 hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button><button type="button" aria-label={`Next ${view}`} onClick={() => navigate(1)} className="rounded p-2 hover:bg-stone-100"><ChevronRight className="h-4 w-4" /></button></div>
+            {(view === 'month' ? Array.from({ length: 7 }, (_, index) => new Date(2000, 0, 3 + index)) : days).map(day => <div key={localDateKey(day)} className={`border-l border-[#e4e7eb] px-2 py-5 text-center text-xs font-semibold uppercase ${localDateKey(day) === localDateKey(today) && view !== 'month' ? 'bg-[#e8f0ed] text-[#095F46]' : 'text-stone-500'}`}>{day.toLocaleDateString([], { weekday: 'short' })}{view !== 'month' ? ` ${day.getDate()}` : ''}</div>)}
           </div>
-          {view === 'month' ? <div className="grid grid-cols-7 border-l-[88px] border-l-white">{days.map(day => <div key={localDateKey(day)} className={`min-h-32 border-b border-l border-[#e4e7eb] p-2 ${day.getMonth() !== date.getMonth() ? 'bg-stone-50' : ''}`}><button type="button" onClick={() => { moveTo(day); setView('day'); }} className={`mb-2 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${localDateKey(day) === localDateKey(today) ? 'bg-[#095F46] text-white' : 'hover:bg-stone-100'}`}>{day.getDate()}</button><div className="space-y-1">{eventsForDay(day).map(event => <div key={event.id}>{eventCard(event, true)}</div>)}</div></div>)}</div> :
+          {view === 'month' ? <div className="grid grid-cols-7 border-l-[88px] border-l-white">{days.map((day, index) => <div key={localDateKey(day)} style={index === 0 ? { gridColumnStart: (day.getDay() + 6) % 7 + 1 } : undefined} className={`min-h-32 border-b border-l border-[#e4e7eb] p-2 ${day.getMonth() !== date.getMonth() ? 'bg-stone-50' : ''}`}><button type="button" aria-label={day.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} onClick={() => { moveTo(day); setView('day'); }} className={`mb-2 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${localDateKey(day) === localDateKey(today) ? 'bg-[#095F46] text-white' : 'hover:bg-stone-100'}`}>{day.getDate()}</button><div className="space-y-1">{eventsForDay(day).map(event => <div key={event.id}>{eventCard(event, true)}</div>)}</div></div>)}</div> :
             <div className="grid" style={{ gridTemplateColumns: timedColumns }}>
               <div>{hours.map(hour => <div key={hour} style={{ height: hourHeight }} className="border-b border-[#e4e7eb] px-3 pt-3 text-right text-xs text-stone-500">{timeLabel(new Date(2000, 0, 1, hour)).replace(':00', '')}</div>)}</div>
               {days.map(day => {
