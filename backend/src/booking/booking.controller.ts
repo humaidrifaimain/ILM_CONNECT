@@ -42,9 +42,9 @@ export class BookingController {
   async markAbsent(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body?: { reason?: string },
+    @Body() body?: { reason?: string; absentRole?: 'student' | 'lecturer' },
   ) {
-    return this.bookingService.markStudentAbsent(req.user, id, body?.reason);
+    return this.bookingService.markStudentAbsent(req.user, id, body?.reason, body?.absentRole);
   }
 
   @Get('student')
@@ -59,6 +59,12 @@ export class BookingController {
     return this.bookingService.getLecturerBookings(req.user.id);
   }
 
+  @Get('lecturer/pending-notes')
+  @Roles(Role.LECTURER)
+  getPendingLessonNotes(@Req() req: any) {
+    return this.bookingService.getPendingLessonNotes(req.user.id);
+  }
+
   @Patch(':id')
   @Roles(Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
   async updateBooking(
@@ -66,6 +72,6 @@ export class BookingController {
     @Param('id') id: string,
     @Body() body: { notes?: string; status?: string },
   ) {
-    return this.bookingService.updateBooking(id, body);
+    return this.bookingService.updateBooking(id, body, req.user);
   }
 }

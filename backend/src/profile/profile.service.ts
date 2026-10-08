@@ -1,16 +1,45 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { validateStudentHours } from '../availability/student-hours';
+
+export const publicLecturerSelect = {
+  userId: true, fullName: true, bio: true, qualifications: true,
+  languages: true, specializations: true, ratingAvg: true, ratingCount: true, hourlyAvailabilityJson: true,
+} as const;
 
 @Injectable()
 export class ProfileService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private editableFields(data: unknown, allowed: string[]) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new BadRequestException('Invalid profile');
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (!allowed.includes(key)) throw new BadRequestException(`Field ${key} cannot be edited here`);
+      if (key === 'preferredHours') {
+        result[key] = validateStudentHours(value);
+        continue;
+      } else if (['languages', 'specializations'].includes(key)) {
+        if (!Array.isArray(value) || value.length > 20 || value.some(item => typeof item !== 'string' || item.length > 100)) throw new BadRequestException('Invalid language or specialization list');
+      } else if (typeof value !== 'string' || value.length > 5000 || (key === 'fullName' && !value.trim())) throw new BadRequestException(`Invalid ${key}`);
+      result[key] = value;
+    }
+    return result;
+  }
+
   async getStudentProfile(userId: string) {
     const profile = await this.prisma.studentProfile.findUnique({
       where: { userId },
       include: { 
-        user: true,
-        assignedLecturer: true,
+        user: { select: { id: true, email: true, role: true, status: true } },
+        assignedLecturer: { select: publicLecturerSelect },
+        progress: {
+          include: {
+            currentLearningPath: true,
+            currentModule: true,
+            currentLesson: true,
+          },
+        },
       },
     });
     if (!profile) throw new NotFoundException('Student profile not found');
@@ -18,6 +47,8 @@ export class ProfileService {
   }
 
   async updateStudentProfile(userId: string, data: any) {
+    data = this.editableFields(data, ['fullName', 'phone', 'country', 'timezone', 'preferredLanguage', 'learningGoals', 'preferredHours']);
+    if (data.timezone) { try { new Intl.DateTimeFormat('en', { timeZone: data.timezone }); } catch { throw new BadRequestException('Choose a valid timezone, such as Asia/Colombo'); } }
     return this.prisma.studentProfile.update({
       where: { userId },
       data,
@@ -27,13 +58,14 @@ export class ProfileService {
   async getLecturerProfile(userId: string) {
     const profile = await this.prisma.lecturerProfile.findUnique({
       where: { userId },
-      include: { user: true },
+      include: { user: { select: { id: true, email: true, role: true, status: true } } },
     });
     if (!profile) throw new NotFoundException('Lecturer profile not found');
     return profile;
   }
 
   async updateLecturerProfile(userId: string, data: any) {
+    data = this.editableFields(data, ['fullName', 'bio', 'qualifications', 'languages', 'specializations']);
     return this.prisma.lecturerProfile.update({
       where: { userId },
       data,
@@ -42,13 +74,8 @@ export class ProfileService {
 
   async getAllLecturers() {
     return this.prisma.lecturerProfile.findMany({
-      include: {
-        user: {
-          select: {
-            email: true,
-          },
-        },
-      },
+      where: { user: { status: 'ACTIVE', deletedAt: null } },
+      select: publicLecturerSelect,
     });
   }
 
@@ -193,6 +220,7 @@ export class ProfileService {
     studentId: string,
     lessonId: string,
   ) {
+    if (typeof lessonId !== 'string' || !lessonId.trim()) throw new BadRequestException('Choose a lesson');
     // Verify this student is assigned to the lecturer
     const student = await this.prisma.studentProfile.findFirst({
       where: { userId: studentId, assignedLecturerId: lecturerUserId },
@@ -254,6 +282,7 @@ export class ProfileService {
     studentId: string,
     learningPathId: string,
   ) {
+    if (typeof learningPathId !== 'string' || !learningPathId.trim()) throw new BadRequestException('Choose a course');
     const student = await this.prisma.studentProfile.findFirst({
       where: { userId: studentId, assignedLecturerId: lecturerUserId },
     });

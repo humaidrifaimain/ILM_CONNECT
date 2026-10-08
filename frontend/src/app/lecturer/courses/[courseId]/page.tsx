@@ -1,7 +1,10 @@
 'use client';
 
+import { SharedMaterials } from '@/components/classroom/shared-materials';
+import { CourseAssessments } from '@/components/lecturer/course-assessments';
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
@@ -20,7 +23,6 @@ import {
   Search,
   ShieldCheck,
   Award,
-  Sparkles,
   AlertCircle,
   Eye,
   SlidersHorizontal,
@@ -36,10 +38,12 @@ export default function LecturerCourseDetailPage() {
   const queryClient = useQueryClient();
   const courseId = params.courseId as string;
 
-  const [activeTab, setActiveTab] = useState<'content' | 'permissions' | 'matrix'>('permissions');
+  const [activeTab, setActiveTab] = useState<'content' | 'permissions' | 'assessments'>('permissions');
   const [studentSearch, setStudentSearch] = useState('');
   const [previewLesson, setPreviewLesson] = useState<any | null>(null);
   const [selectedStudentForModal, setSelectedStudentForModal] = useState<any | null>(null);
+  const previewDialog = useDialogAccessibility(!!previewLesson, () => setPreviewLesson(null));
+  const accessDialog = useDialogAccessibility(!!selectedStudentForModal, () => setSelectedStudentForModal(null));
   const showNotification = (type: 'success' | 'error', message: string) => {
     if (type === 'success') {
       toast.success('Access Updated', message);
@@ -211,7 +215,7 @@ export default function LecturerCourseDetailPage() {
   const totalLessons = allLessons.length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+    <div className="w-full mx-auto space-y-6 animate-fade-in">
 
       {/* Breadcrumb & Navigation */}
       <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
@@ -227,9 +231,9 @@ export default function LecturerCourseDetailPage() {
         <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[hsl(var(--primary)/0.06)] blur-3xl pointer-events-none" />
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
           <div className="space-y-3 max-w-2xl">
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[hsl(var(--foreground))]">
+            <h2 className="text-2xl lg:text-3xl font-bold tracking-tight text-[hsl(var(--foreground))]">
               {course.title}
-            </h1>
+            </h2>
 
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
@@ -239,11 +243,11 @@ export default function LecturerCourseDetailPage() {
                 {course.difficulty || 'All Levels'}
               </span>
               <span className="text-xs text-[hsl(var(--muted-foreground))] flex items-center gap-1 ml-1">
-                <Clock className="h-3.5 w-3.5" /> 45 min lessons
+                <Clock className="h-3.5 w-3.5" /> 40 min sessions
               </span>
             </div>
             <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
-              {course.description || 'Comprehensive learning path with interactive lessons and assigned student materials.'}
+              {course.description || 'Lessons and materials for your assigned students.'}
             </p>
 
             {course.objectives && (
@@ -255,16 +259,16 @@ export default function LecturerCourseDetailPage() {
           </div>
 
           {/* Quick Stats Cards */}
-          <div className="grid grid-cols-3 gap-3 flex-shrink-0">
-            <div className="p-3.5 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-center min-w-[90px]">
+          <div className="grid min-w-0 grid-cols-3 gap-2 lg:shrink-0">
+            <div className="p-2 sm:p-3.5 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-center min-w-0">
               <div className="text-2xl font-bold text-[hsl(var(--foreground))]">{totalModules}</div>
               <div className="text-xs text-[hsl(var(--muted-foreground))] font-medium mt-0.5">Modules</div>
             </div>
-            <div className="p-3.5 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-center min-w-[90px]">
+            <div className="p-2 sm:p-3.5 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-center min-w-0">
               <div className="text-2xl font-bold text-[hsl(var(--primary))]">{totalLessons}</div>
               <div className="text-xs text-[hsl(var(--muted-foreground))] font-medium mt-0.5">Lessons</div>
             </div>
-            <div className="p-3.5 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-center min-w-[90px]">
+            <div className="p-2 sm:p-3.5 rounded-xl bg-[hsl(var(--muted)/0.3)] border border-[hsl(var(--border))] text-center min-w-0">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{(students as any[]).length}</div>
               <div className="text-xs text-[hsl(var(--muted-foreground))] font-medium mt-0.5">Students</div>
             </div>
@@ -273,13 +277,14 @@ export default function LecturerCourseDetailPage() {
       </div>
 
       {/* View Tabs */}
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] pb-px">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[hsl(var(--border))] pb-px">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <button
+            aria-pressed={activeTab === 'permissions'}
             onClick={() => setActiveTab('permissions')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+            className={`course-tab flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors focus-visible:outline-2 focus-visible:outline-[#095F46] ${
               activeTab === 'permissions'
-                ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]'
+                ? 'border-[hsl(var(--primary))] bg-[#f0f5f2] text-[hsl(var(--primary))]'
                 : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
             }`}
           >
@@ -291,10 +296,11 @@ export default function LecturerCourseDetailPage() {
           </button>
 
           <button
+            aria-pressed={activeTab === 'content'}
             onClick={() => setActiveTab('content')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+            className={`course-tab flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors focus-visible:outline-2 focus-visible:outline-[#095F46] ${
               activeTab === 'content'
-                ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]'
+                ? 'border-[hsl(var(--primary))] bg-[#f0f5f2] text-[hsl(var(--primary))]'
                 : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
             }`}
           >
@@ -305,17 +311,7 @@ export default function LecturerCourseDetailPage() {
             </span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('matrix')}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              activeTab === 'matrix'
-                ? 'border-[hsl(var(--primary))] text-[hsl(var(--primary))]'
-                : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
-            }`}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Access Matrix</span>
-          </button>
+          <button aria-pressed={activeTab === 'assessments'} onClick={() => setActiveTab('assessments')} className={`course-tab min-h-11 border-b-2 px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#095F46] ${activeTab === 'assessments' ? 'border-[#095F46] bg-[#f0f5f2] text-[#095F46]' : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Assessments</button>
         </div>
 
         {activeTab === 'permissions' && (
@@ -332,12 +328,14 @@ export default function LecturerCourseDetailPage() {
         )}
       </div>
 
+      {activeTab === 'assessments' && <CourseAssessments courseId={courseId} />}
+
       {/* TAB 1: PER-STUDENT ACCESS & PERMISSIONS */}
       {activeTab === 'permissions' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40 p-4 rounded-xl text-xs text-blue-800 dark:text-blue-300">
             <div className="flex items-center gap-2.5">
-              <Sparkles className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+              <ShieldCheck className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
               <span>
                 <strong>Separate Student Access Control:</strong> As the lecturer, you have full authority to unlock lessons and materials for each student individually. When you unlock a lesson, the student can immediately access all course materials up to that point.
               </span>
@@ -359,7 +357,7 @@ export default function LecturerCourseDetailPage() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid min-w-0 grid-cols-1 gap-4">
               {filteredStudents.map((student: any) => {
                 const sId = student.userId || student.id;
                 const access = getStudentAccessInfo(student);
@@ -371,16 +369,16 @@ export default function LecturerCourseDetailPage() {
                 return (
                   <div
                     key={sId}
-                    className="p-5 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:shadow-md transition-all space-y-4"
+                    className="min-w-0 p-5 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:shadow-md transition-all space-y-4"
                   >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
                       {/* Student Info */}
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-sm font-bold text-white shadow-sm flex-shrink-0">
                           {(student.fullName || 'ST').substring(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="font-bold text-base text-[hsl(var(--foreground))] truncate">
                               {student.fullName || 'Student'}
                             </span>
@@ -408,13 +406,15 @@ export default function LecturerCourseDetailPage() {
                       </div>
 
                       {/* Quick Action Controls */}
-                      <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {/* Selector: Grant access up to selected lesson */}
-                        <div className="flex items-center gap-1.5">
-                          <label className="text-xs text-[hsl(var(--muted-foreground))] font-medium whitespace-nowrap">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          <label htmlFor={`lesson-access-${sId}`} className="text-xs text-[hsl(var(--muted-foreground))] font-medium whitespace-nowrap">
                             Unlock up to:
                           </label>
                           <select
+                            id={`lesson-access-${sId}`}
+                            aria-label={`Lesson access for ${student.fullName || 'student'}`}
                             disabled={isPending}
                             value={access.currentLessonId || ''}
                             onChange={e => {
@@ -422,7 +422,7 @@ export default function LecturerCourseDetailPage() {
                                 updateAccessMutation.mutate({ studentId: sId, lessonId: e.target.value });
                               }
                             }}
-                            className="text-xs py-1.5 px-2.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] text-[hsl(var(--foreground))] font-medium focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
+                            className="min-w-0 max-w-full text-xs py-1.5 px-2.5 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.4)] text-[hsl(var(--foreground))] font-medium focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
                           >
                             <option value="" disabled>Select Lesson...</option>
                             {allLessons.map(lesson => (
@@ -520,7 +520,7 @@ export default function LecturerCourseDetailPage() {
                                   ? 'bg-[hsl(var(--primary))] text-white border-[hsl(var(--primary))] shadow-sm ring-2 ring-[hsl(var(--primary)/0.3)]'
                                   : isUnlocked
                                   ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100'
-                                  : 'bg-[hsl(var(--muted)/0.3)] text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.4)] opacity-70'
+                                  : 'bg-[hsl(var(--muted)/0.3)] text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.4)]'
                               }`}
                             >
                               {isUnlocked ? (
@@ -556,6 +556,7 @@ export default function LecturerCourseDetailPage() {
               {totalModules} Modules · {totalLessons} Lessons
             </span>
           </div>
+          <SharedMaterials courseId={courseId} />
 
           <div className="space-y-6">
             {course.modules?.map((module: any, mIdx: number) => (
@@ -607,7 +608,7 @@ export default function LecturerCourseDetailPage() {
                                 </span>
                               </div>
                               <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 leading-relaxed max-w-xl">
-                                {lesson.objectives || 'Objectives and recitation practices for this lesson.'}
+                                {lesson.objectives || 'No lesson objectives have been added.'}
                               </p>
                             </div>
                           </div>
@@ -618,8 +619,8 @@ export default function LecturerCourseDetailPage() {
                               onClick={() => setPreviewLesson(lesson)}
                               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] text-xs font-medium transition-colors"
                             >
-                              <PlayCircle className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
-                              <span>Preview Materials</span>
+                              <Eye className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
+                              <span>View lesson overview</span>
                             </button>
                           </div>
                         </div>
@@ -633,97 +634,10 @@ export default function LecturerCourseDetailPage() {
         </div>
       )}
 
-      {/* TAB 3: ACCESS MATRIX (GRID VIEW) */}
-      {activeTab === 'matrix' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold">Permissions Matrix</h2>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-                Overview of unlocked lessons across all students. Click any cell to toggle access for that student.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                <Check className="h-3.5 w-3.5" /> Unlocked / Granted
-              </span>
-              <span className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
-                <Lock className="h-3.5 w-3.5" /> Locked
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-x-auto shadow-sm">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)]">
-                  <th className="py-3 px-4 text-left font-semibold text-[hsl(var(--muted-foreground))] min-w-[180px]">
-                    Student
-                  </th>
-                  {allLessons.map(l => (
-                    <th key={l.id} className="py-3 px-3 text-center font-semibold text-[hsl(var(--muted-foreground))] min-w-[70px]">
-                      L{l.globalIndex}
-                    </th>
-                  ))}
-                  <th className="py-3 px-4 text-right font-semibold text-[hsl(var(--muted-foreground))] min-w-[100px]">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[hsl(var(--border))]">
-                {(students as any[]).map(student => {
-                  const sId = student.userId || student.id;
-                  const access = getStudentAccessInfo(student);
-
-                  return (
-                    <tr key={sId} className="hover:bg-[hsl(var(--muted)/0.2)] transition-colors">
-                      <td className="py-3 px-4 font-semibold text-[hsl(var(--foreground))]">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-lg bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] flex items-center justify-center font-bold text-xs">
-                            {(student.fullName || 'S').substring(0, 1).toUpperCase()}
-                          </div>
-                          <span className="truncate max-w-[140px]">{student.fullName}</span>
-                        </div>
-                      </td>
-                      {allLessons.map(lesson => {
-                        const isUnlocked = access.unlockedLessonIds.has(lesson.id);
-                        return (
-                          <td key={lesson.id} className="py-3 px-3 text-center">
-                            <button
-                              onClick={() => updateAccessMutation.mutate({ studentId: sId, lessonId: lesson.id })}
-                              title={`Click to set access up to Lesson ${lesson.globalIndex}`}
-                              className={`p-1.5 rounded-lg transition-all ${
-                                isUnlocked
-                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200'
-                                  : 'bg-[hsl(var(--muted)/0.4)] text-[hsl(var(--muted-foreground)/0.4)] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
-                              }`}
-                            >
-                              {isUnlocked ? <Check className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                            </button>
-                          </td>
-                        );
-                      })}
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => fullAccessMutation.mutate({ studentId: sId })}
-                          className="text-[11px] font-semibold text-[hsl(var(--primary))] hover:underline"
-                        >
-                          Unlock All
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* MODAL: GRANULAR PERMISSIONS PER STUDENT */}
       {selectedStudentForModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
-          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl">
+          <div ref={accessDialog} role="dialog" aria-modal="true" aria-label="Manage lesson access" tabIndex={-1} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl">
             {/* Modal Header */}
             <div className="p-5 border-b border-[hsl(var(--border))] flex items-center justify-between">
               <div>
@@ -736,6 +650,7 @@ export default function LecturerCourseDetailPage() {
               </div>
               <button
                 onClick={() => setSelectedStudentForModal(null)}
+                aria-label="Close lesson access dialog"
                 className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
               >
                 <X className="h-4 w-4" />
@@ -823,7 +738,7 @@ export default function LecturerCourseDetailPage() {
       {/* MODAL: LESSON MATERIALS PREVIEW */}
       {previewLesson && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
-          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl max-w-xl w-full flex flex-col shadow-2xl overflow-hidden">
+          <div ref={previewDialog} role="dialog" aria-modal="true" aria-label="Lesson overview" tabIndex={-1} className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl max-w-xl w-full max-h-[85dvh] overflow-y-auto flex flex-col shadow-2xl">
             <div className="p-5 border-b border-[hsl(var(--border))] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-lg bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))]">
@@ -834,30 +749,27 @@ export default function LecturerCourseDetailPage() {
                     {previewLesson.title}
                   </h3>
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                    Slide deck and learning resource preview
+                    Lesson overview
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setPreviewLesson(null)}
+                aria-label="Close materials preview"
                 className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Slide Preview Canvas */}
-            <div className="p-6 bg-gradient-to-br from-emerald-950/20 via-[hsl(var(--card))] to-blue-950/20 border-b border-[hsl(var(--border))] flex flex-col items-center justify-center min-h-[220px] text-center">
-              <div className="text-4xl mb-3">📖</div>
+            <div className="p-6 bg-[hsl(var(--card))] border-b border-[hsl(var(--border))] flex flex-col items-center justify-center min-h-[220px] text-center">
+              <BookOpen aria-hidden="true" className="h-8 w-8 mb-3 text-[hsl(var(--primary))]" />
               <h4 className="text-lg font-bold text-[hsl(var(--foreground))] mb-1">
                 {previewLesson.title}
               </h4>
               <p className="text-xs text-[hsl(var(--muted-foreground))] max-w-sm">
-                {previewLesson.objectives || 'Recitation, pronunciation exercises and vocabulary drills.'}
+                {previewLesson.objectives || 'No lesson objectives have been added.'}
               </p>
-              <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] text-xs font-semibold">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Interactive Presentation Active
-              </div>
             </div>
 
             <div className="p-4 bg-[hsl(var(--muted)/0.2)] flex items-center justify-between">

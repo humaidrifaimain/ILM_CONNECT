@@ -1,0 +1,24 @@
+'use client';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
+import { downloadCsv } from '@/lib/download';
+interface Entry { id: string; fullName: string; email: string; phone: string; country: string; course: string; pace: string; notes: string; createdAt: string; }
+export function AdminWaitlist() {
+  const { data: entries = [], isPending, isError } = useQuery<Entry[]>({ queryKey: ['adminWaitlist'], queryFn: () => apiFetch('/admin/waitlist'), refetchInterval: 30000 });
+  return (
+    <section className="rounded-xl border border-[#d6e0db] bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-semibold">Course enquiries · {entries.length}</h2>
+        <button disabled={entries.length === 0} className="text-sm font-semibold text-[#095F46] underline" onClick={() => downloadCsv([['Name', 'Email', 'Phone', 'Country', 'Course', 'Pace', 'Notes', 'Date'], ...entries.map(item => [item.fullName, item.email, item.phone, item.country, item.course, item.pace, item.notes, item.createdAt])], 'course-enquiries.csv')}>Export enquiries</button>
+      </div>
+      {isPending ? <p role="status" className="mt-3 text-sm">Loading enquiries…</p> : isError ? <p role="alert" className="mt-3">Unable to load enquiries.</p> : entries.length === 0 ? <p className="mt-3 text-sm text-[#56635c]">No course enquiries yet.</p> : (
+        <div className="mt-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Course enquiries table">
+          <table className="w-full min-w-[650px] text-left text-sm">
+            <thead><tr>{['Name & contact', 'Country', 'Course & pace', 'Notes', 'Received'].map(label => <th key={label} className="p-2 text-xs text-[#56635c]">{label}</th>)}</tr></thead>
+            <tbody>{entries.map(item => <tr key={item.id} className="border-t border-[#d6e0db]"><td className="p-2"><p className="font-semibold">{item.fullName}</p><p>{item.email}</p><p>{item.phone}</p></td><td className="p-2">{item.country}</td><td className="p-2">{item.course}<p className="text-xs">{item.pace}</p></td><td className="max-w-xs break-words p-2">{item.notes || 'None'}</td><td className="p-2">{new Date(item.createdAt).toLocaleDateString()}</td></tr>)}</tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}

@@ -14,7 +14,7 @@ const howItWorksSteps = [
     image: '/images/how-it-works-step-1-v7.jpg',
     imageAlt: 'Ilmbit student account registration on laptop screen',
     buttonText: 'Get Started',
-    buttonLink: '/about#waitlist',
+    buttonLink: '/auth/signup',
   },
   {
     num: '2',
@@ -41,7 +41,7 @@ const howItWorksSteps = [
     image: '/images/how-it-works-step-4-v4.jpg',
     imageAlt: 'Student actively learning Quran 1:1 online with certified scholar on laptop screen',
     buttonText: 'Join Classroom',
-    buttonLink: '/about#waitlist',
+    buttonLink: '/auth/signup',
   },
 ];
 

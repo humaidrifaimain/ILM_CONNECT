@@ -31,7 +31,7 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) 
   const defaultOptions: RequestInit = {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...authHeaders,
       ...options.headers,
     },
@@ -54,6 +54,8 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) 
         typeof errorData.message === 'string'
       ) {
         errorMessage = errorData.message;
+      } else if (typeof errorData === 'object' && errorData !== null && 'message' in errorData && Array.isArray(errorData.message)) {
+        errorMessage = errorData.message.filter((message): message is string => typeof message === 'string').join('. ') || errorMessage;
       }
     } catch {
       errorMessage = response.statusText;
@@ -83,4 +85,12 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) 
   }
 
   return response.json();
+}
+
+export async function downloadMaterial(id: string, title: string) {
+  const response = await fetch(`${API_BASE_URL}/materials/${encodeURIComponent(id)}/file`, { credentials: 'include', headers: { Authorization: `Bearer ${getAuthToken() || ''}` } });
+  if (!response.ok) { const error = await response.json().catch(() => null); throw new Error(error?.message || 'Unable to download this file'); }
+  const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement('a');
+  const extension = blob.type === 'application/pdf' ? '.pdf' : blob.type === 'image/png' ? '.png' : '.jpg';
+  link.href = url; link.download = title.replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 100) + extension; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

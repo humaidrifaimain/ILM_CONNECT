@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import { CurrencySelector, usePricingCurrency } from '@/lib/pricing-currency';
+import { useSubscriptionPlans } from '@/lib/subscription-plans';
 import { Check, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
 
@@ -113,7 +116,7 @@ const faqs = [
   },
   {
     q: 'What is the main difference between Standard and Fast Track?',
-    a: 'The Standard Plan provides 8 sessions per month (2 sessions a week) for $59. The Fast Track Plan accelerates learning with 12 sessions per month (3 sessions a week) for $89, and adds replayable cloud recordings and detailed monthly progress evaluations.',
+    a: 'Standard includes 8 sessions per month (2 per week). Fast Track includes 12 sessions per month (3 per week), replayable cloud recordings, and detailed monthly progress evaluations. Current prices are displayed with each course.',
   },
   {
     q: 'Can I switch from Standard to Fast Track later?',
@@ -134,6 +137,10 @@ const faqs = [
 ];
 
 export default function PricingPage() {
+  const { data: plans = [], isPending: pricesLoading, isError: pricesError } = useSubscriptionPlans();
+  const { user } = useAuth();
+  const { format } = usePricingCurrency();
+  const priceFor = (courseId: string, tier: string) => plans.find(plan => plan.courseId === courseId && plan.tier === tier);
   const [openFaqs, setOpenFaqs] = useState<number[]>([]);
   const shouldReduceMotion = useReducedMotion();
 
@@ -181,6 +188,7 @@ export default function PricingPage() {
           </p>
         </motion.div>
 
+        <div className="text-center"><CurrencySelector /></div>
         {/* ========================================================================= */}
         {/* SECTION 1: Standard Plans (2 Sessions / Week · Free Trial Included)       */}
         {/* ========================================================================= */}
@@ -232,7 +240,7 @@ export default function PricingPage() {
                   {/* Price Tag */}
                   <div className="mb-6 pb-6 border-b border-stone-100">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-4xl font-black text-stone-950 tracking-tight">$59</span>
+                      <span className="text-4xl font-black text-stone-950 tracking-tight">{pricesLoading ? '…' : pricesError || priceFor(course.id, 'Standard') === undefined ? '—' : format(priceFor(course.id, 'Standard')!)}</span>
                       <span className="text-xs sm:text-sm font-medium text-stone-500">/ month</span>
                     </div>
                     <div className="text-xs text-stone-500 mt-1 font-medium">
@@ -259,10 +267,10 @@ export default function PricingPage() {
                     Includes complimentary 30-min trial session.
                   </div>
                   <Link
-                    href="/about#waitlist"
+                    href={user?.role === 'STUDENT' ? `/student/billing?plan=${course.id}-standard` : '/auth/signup'}
                     className="brand-button brand-button-primary w-full"
                   >
-                    Join Waitlist
+                    {user?.role === 'STUDENT' ? 'Select Standard' : 'Free Trial'}
                   </Link>
                 </div>
               </motion.div>
@@ -322,7 +330,7 @@ export default function PricingPage() {
                   {/* Price Tag */}
                   <div className="mb-6 pb-6 border-b border-stone-100">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-4xl font-black text-[#095F46] tracking-tight">$89</span>
+                      <span className="text-4xl font-black text-[#095F46] tracking-tight">{pricesLoading ? '…' : pricesError || priceFor(course.id, 'Fast Track') === undefined ? '—' : format(priceFor(course.id, 'Fast Track')!)}</span>
                       <span className="text-xs sm:text-sm font-medium text-stone-500">/ month</span>
                     </div>
                     <div className="text-xs text-stone-500 mt-1 font-medium">
@@ -355,7 +363,7 @@ export default function PricingPage() {
                     Direct monthly subscription. Cancel anytime.
                   </div>
                   <Link
-                    href="/about#waitlist"
+                    href={user?.role === 'STUDENT' ? `/student/billing?plan=${course.id}-fast-track` : '/auth/signup'}
                     className="brand-button brand-button-primary w-full"
                   >
                     Enroll in Fast Track

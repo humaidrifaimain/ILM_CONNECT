@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useSubscriptionPlans } from '@/lib/subscription-plans';
+import { CurrencySelector, usePricingCurrency } from '@/lib/pricing-currency';
+import { apiFetch } from '@/lib/api';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Check, ChevronRight, ChevronDown } from 'lucide-react';
-import { motion, useInView, type Variants } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import CountryPhoneInput from '@/components/country-phone-input';
 import {
   formatInternationalPhone,
@@ -13,91 +16,6 @@ import {
 } from '@/lib/country-calling-codes';
 
 const fadeUp: Variants = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0 } };
-
-function AnimatedCounter({
-  target,
-  duration = 2000,
-  decimals = 0,
-  suffix = '',
-  start = false,
-}: {
-  target: number;
-  duration?: number;
-  decimals?: number;
-  suffix?: string;
-  start?: boolean;
-}) {
-  const [count, setCount] = useState(0);
-  const hasAnimatedRef = useRef(false);
-
-  useEffect(() => {
-    if (!start || hasAnimatedRef.current) return;
-    hasAnimatedRef.current = true;
-
-    let startTime: number | null = null;
-    let animationFrameId: number;
-
-    const easeOutExpo = (x: number): number => {
-      return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
-    };
-
-    const step = (timestamp: number) => {
-      if (startTime === null) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = easeOutExpo(progress);
-
-      setCount(eased * target);
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(step);
-      } else {
-        setCount(target);
-      }
-    };
-
-    animationFrameId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [start, target, duration]);
-
-  const formatted =
-    decimals > 0
-      ? count.toFixed(decimals)
-      : Math.floor(count).toLocaleString('en-US');
-
-  return (
-    <span className="tabular-nums" suppressHydrationWarning>
-      {formatted}{suffix}
-    </span>
-  );
-}
-
-const platformStats = [
-  {
-    target: 12,
-    suffix: '+',
-    decimals: 0,
-    label: 'Qualified Scholars',
-  },
-  {
-    target: 150,
-    suffix: '+',
-    decimals: 0,
-    label: 'Active Students',
-  },
-  {
-    target: 4.85,
-    suffix: '',
-    decimals: 2,
-    label: 'Average Rating',
-  },
-  {
-    target: 10000,
-    suffix: '+',
-    decimals: 0,
-    label: 'Teaching Hours Completed',
-  },
-];
 
 const values = [
   {
@@ -230,49 +148,31 @@ function RegionFlag({
 }
 
 export default function AboutPage() {
+  const { data: plans = [] } = useSubscriptionPlans();
+  const { format } = usePricingCurrency();
   const [waitlistName, setWaitlistName] = useState('');
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistPhone, setWaitlistPhone] = useState('');
   const [waitlistPhoneCountry, setWaitlistPhoneCountry] = useState<CountryCallingCode>(() => getCountryCallingCode('LK'));
   const [waitlistCourse, setWaitlistCourse] = useState('Tajweed Quran Recitation');
   const [waitlistPace, setWaitlistPace] = useState<'standard' | 'fast-track'>('standard');
+  const price = (tier: string) => { const plan = plans.find(item => item.course === waitlistCourse && item.tier === tier); return plan ? format(plan) : 'Price unavailable'; };
   const [waitlistNotes, setWaitlistNotes] = useState('');
+  const [waitlistError, setWaitlistError] = useState('');
   const [isWaitlistSubmitting, setIsWaitlistSubmitting] = useState(false);
   const [isWaitlistSubmitted, setIsWaitlistSubmitted] = useState(false);
-  const statsRef = useRef<HTMLDivElement>(null);
-  const statsActive = useInView(statsRef, {
-    once: true,
-    amount: 0.35,
-    margin: '0px 0px -10% 0px',
-  });
 
   const handleWaitlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!waitlistName || !waitlistEmail) return;
     setIsWaitlistSubmitting(true);
+    setWaitlistError('');
     try {
       const formattedPhone = formatInternationalPhone(waitlistPhone, waitlistPhoneCountry);
-      const waitlistEntry = {
-        fullName: waitlistName,
-        email: waitlistEmail,
-        phone: formattedPhone,
-        rawPhone: waitlistPhone,
-        phoneCountry: waitlistPhoneCountry.name,
-        phoneCountryCode: waitlistPhoneCountry.iso2,
-        phoneDialCode: waitlistPhoneCountry.dialCode,
-        course: waitlistCourse,
-        pace: waitlistPace,
-        notes: waitlistNotes,
-        submittedAt: new Date().toISOString(),
-        source: 'about_page',
-      };
-      if (typeof window !== 'undefined') {
-        const existing = JSON.parse(localStorage.getItem('ilm_waitlist_entries') || '[]');
-        existing.push(waitlistEntry);
-        localStorage.setItem('ilm_waitlist_entries', JSON.stringify(existing));
-      }
-      await new Promise((res) => setTimeout(res, 600));
+      await apiFetch('/auth/waitlist', { method: 'POST', body: JSON.stringify({ fullName: waitlistName, email: waitlistEmail, phone: formattedPhone, country: waitlistPhoneCountry.name, course: waitlistCourse, pace: waitlistPace, notes: waitlistNotes }), skipRedirect: true });
       setIsWaitlistSubmitted(true);
+    } catch (error) {
+      setWaitlistError(error instanceof Error ? error.message : 'Unable to join the waitlist. Please try again.');
     } finally {
       setIsWaitlistSubmitting(false);
     }
@@ -435,7 +335,7 @@ export default function AboutPage() {
       {/* ========================================================================= */}
       {/* 3. PLATFORM STANDARDS & STATS SECTION */}
       {/* ========================================================================= */}
-      <section id="standards" className="relative z-10 border-t border-b-0 lg:border-b border-stone-200/70 bg-white/50 pt-16 sm:pt-20 lg:py-28 pb-0 sm:pb-0 backdrop-blur-sm scroll-mt-20">
+      <section id="standards" className="relative z-10 border-y border-stone-200/70 bg-white/50 py-16 sm:py-20 lg:py-28 backdrop-blur-sm scroll-mt-20">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           
           <div className="space-y-10 lg:space-y-12">
@@ -448,11 +348,8 @@ export default function AboutPage() {
               variants={fadeUp}
               className="space-y-8"
             >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-                <div className="flex min-h-[230px] flex-col items-start justify-center rounded-2xl border border-white/12 bg-white/[0.04] p-6 text-left sm:col-span-2 lg:col-span-1 lg:min-h-[220px] lg:p-7">
-                  <p className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-emerald-200/85">
-                    Our Standards
-                  </p>
+              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+                <div className="flex min-h-[230px] flex-col items-start justify-center p-1 text-left sm:col-span-2 lg:col-span-1 lg:min-h-[255px] lg:p-0">
                   <h2 className="max-w-[420px] text-3xl font-bold leading-[1.08] tracking-tight text-stone-950 sm:text-4xl lg:text-[38px]">
                     Elevating Islamic Education Standards
                   </h2>
@@ -460,18 +357,24 @@ export default function AboutPage() {
                     Held to the highest benchmarks of authentic Islamic guidance.
                   </p>
                   <Link
-                    href="/about#waitlist"
+                    href="/auth/signup"
                     className="mt-7 inline-flex min-h-12 items-center justify-center rounded-full bg-white px-8 text-sm font-black text-[#095F46] shadow-[0_18px_34px_rgba(0,0,0,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-50"
                   >
-                    Join Waitlist
+                    Free Trial
                   </Link>
                 </div>
                 {values.map((val, idx) => (
                   <div
                     key={val.title}
-                    className="relative min-h-[230px] overflow-hidden rounded-2xl bg-stone-950 bg-cover bg-center p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10 lg:min-h-[220px] lg:p-7"
+                    className="relative h-[255px] overflow-hidden rounded-2xl bg-stone-950 bg-cover p-6 text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] ring-1 ring-white/10 lg:p-7"
                     style={{
-                      backgroundImage: `linear-gradient(to bottom, rgb(0 0 0 / 38%), rgb(0 0 0 / 48%) 48%, rgb(0 0 0 / 72%)), url(${val.image})`,
+                      backgroundImage: `linear-gradient(to bottom, rgb(0 0 0 / 22%), rgb(0 0 0 / 34%) 48%, rgb(0 0 0 / 62%)), url(${val.image})`,
+                      backgroundPosition:
+                        val.title === 'Verified Scholars'
+                          ? 'center center'
+                          : val.title === 'Live 1:1 Sessions'
+                            ? 'center 58%'
+                            : 'center center',
                     }}
                   >
                     <div className="relative mb-8 flex items-center justify-between gap-4">
@@ -492,50 +395,7 @@ export default function AboutPage() {
               </div>
             </motion.div>
 
-            {/* Right Column: Platform Stats (2x2 Grid) */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.15 }}
-              variants={fadeUp}
-              className="-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)] lg:mx-0 lg:w-full"
-            >
-              <div
-                id="stats"
-                ref={statsRef}
-                className="grid w-full scroll-mt-32 grid-cols-2 bg-transparent border-y border-white/15 lg:grid-cols-4 lg:border-0"
-              >
-                {platformStats.map((stat, idx) => (
-                  <div
-                    key={stat.label}
-                    className={`flex min-h-[120px] flex-col items-center justify-center px-4 py-8 text-center sm:min-h-[140px] sm:px-8 sm:py-10 lg:min-h-[150px] lg:px-5 lg:py-8 ${
-                      idx % 2 === 0 ? 'border-r border-white/15' : ''
-                    } ${idx < 2 ? 'border-b border-white/15' : ''} ${
-                      idx < platformStats.length - 1 ? 'lg:border-r lg:border-white/15' : 'lg:border-r-0'
-                    } lg:border-b-0`}
-                  >
-                    <h3 className="mb-2 text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-[44px] xl:text-[48px]">
-                      <AnimatedCounter
-                        target={stat.target}
-                        decimals={stat.decimals}
-                        suffix={stat.suffix}
-                        duration={2000}
-                        start={statsActive}
-                      />
-                    </h3>
-                    <p className="stat-label mx-auto max-w-[150px] text-xs font-bold leading-snug tracking-tight text-white/90 sm:text-sm lg:text-sm">
-                      {stat.label === 'Teaching Hours Completed' ? (
-                        <>
-                          Teaching Hours<br />Completed
-                        </>
-                      ) : (
-                        stat.label
-                      )}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+
 
           </div>
         </div>
@@ -570,7 +430,7 @@ export default function AboutPage() {
               </p>
               <div className="mt-6">
                 <Link
-                  href="/about#waitlist"
+                  href="/auth/signup"
                   className="brand-button brand-button-inverse px-7"
                 >
                   Get Started <ChevronRight className="h-4 w-4" />
@@ -670,6 +530,7 @@ export default function AboutPage() {
             <div className="mb-6 sm:mb-7 flex items-end justify-between gap-4 border-b border-stone-200/60 pb-4 sm:pb-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-[#095F46]">Join the waitlist</p>
+                <div className="mt-3"><CurrencySelector /></div>
                 <h3 className="mt-1 text-2xl font-black tracking-tight text-stone-950 sm:text-[26px]">
                   Your learning preferences
                 </h3>
@@ -764,7 +625,7 @@ export default function AboutPage() {
                         {waitlistPace === 'standard' && <span className="h-2 w-2 rounded-full bg-emerald-300" />}
                       </div>
                       <span className={`mt-0.5 block text-[11px] ${waitlistPace === 'standard' ? 'text-emerald-50/80 font-medium' : 'text-stone-500'}`}>
-                        2 sessions / wk · $59/mo
+                        2 sessions / wk · {price('Standard')}/mo
                       </span>
                     </button>
                     <button
@@ -782,7 +643,7 @@ export default function AboutPage() {
                         {waitlistPace === 'fast-track' && <span className="h-2 w-2 rounded-full bg-emerald-300" />}
                       </div>
                       <span className={`mt-0.5 block text-[11px] ${waitlistPace === 'fast-track' ? 'text-emerald-50/80 font-medium' : 'text-stone-500'}`}>
-                        3 sessions / wk · $89/mo
+                        3 sessions / wk · {price('Fast Track')}/mo
                       </span>
                     </button>
                   </div>
@@ -804,12 +665,13 @@ export default function AboutPage() {
 
                 {/* Form Submit Button */}
                 <div className="pt-2">
+                  {waitlistError && <p role="alert" className="text-sm text-red-700">{waitlistError}</p>}
                   <button
                     type="submit"
                     disabled={isWaitlistSubmitting}
                     className="brand-button brand-button-primary justify-center w-full sm:w-auto px-8 py-3 text-base sm:text-sm font-bold shadow-md shadow-[#095F46]/15 hover:shadow-lg transition-all min-h-[46px]"
                   >
-                    <span>{isWaitlistSubmitting ? 'Joining Waitlist...' : 'Join the Priority Waitlist'}</span>
+                    <span>{isWaitlistSubmitting ? 'Sending request…' : 'Request a trial'}</span>
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -821,10 +683,10 @@ export default function AboutPage() {
                   <Check className="h-7 w-7 stroke-[3]" />
                 </div>
                 <h3 className="text-2xl font-bold text-stone-950">
-                  Alhamdulillah, You&apos;re on the Waitlist!
+                  Your trial request is registered
                 </h3>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-stone-600">
-                  We have reserved your priority place for <span className="font-bold text-stone-900">{waitlistCourse}</span> ({waitlistPace === 'fast-track' ? 'Fast Track · 3 sessions/wk' : 'Standard · 2 sessions/wk'}). We will reach out to <span className="font-bold text-[#095F46]">{waitlistEmail}</span> as soon as your matching scholar schedule opens up.
+                  Your interest has been registered for <span className="font-bold text-stone-900">{waitlistCourse}</span> ({waitlistPace === 'fast-track' ? 'Fast Track · 3 sessions/wk' : 'Standard · 2 sessions/wk'}). We will reach out to <span className="font-bold text-[#095F46]">{waitlistEmail}</span> as soon as your matching scholar schedule opens up.
                 </p>
               </div>
             )}

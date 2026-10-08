@@ -141,7 +141,20 @@ textarea {
 }
 
 button {
-  border-radius: var(--radius-action);
+  border-radius: 0.5rem;
+}
+
+nav a[aria-current="page"],
+nav a:hover {
+  border-radius: 0.5rem;
+}
+
+.course-tab {
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.conversation-row {
+  border-radius: 0.5rem;
 }
 
 .home-hero-section {

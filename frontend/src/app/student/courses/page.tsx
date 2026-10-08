@@ -1,57 +1,211 @@
 'use client';
 
-import { Library, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
+import type { CoursePath, CourseRequest } from '@/lib/course-requests';
+import {
+  StudentCard,
+  StudentProgressBars,
+  studentUi,
+} from '@/components/student/student-dashboard-ui';
+
+interface CourseProfile {
+  assignedLecturerId?: string;
+  assignedLecturer?: { fullName: string };
+  progress?: { progressPercentage: number; currentLearningPath?: { id: string; title: string } };
+}
 
 export default function MyCoursesPage() {
+  const client = useQueryClient();
+  const profileQuery = useQuery<CourseProfile>({
+    queryKey: ['studentProfile'],
+    queryFn: () => apiFetch('/profile/student'),
+    refetchInterval: 15000,
+  });
+  const pathsQuery = useQuery<CoursePath[]>({
+    queryKey: ['curriculumPaths'],
+    queryFn: () => apiFetch('/curriculum/paths'),
+  });
+  const requestsQuery = useQuery<CourseRequest[]>({
+    queryKey: ['courseRequests'],
+    queryFn: () => apiFetch('/curriculum/requests'),
+    refetchInterval: 15000,
+  });
+  const request = useMutation({
+    mutationFn: (learningPathId: string) =>
+      apiFetch('/curriculum/requests', {
+        method: 'POST',
+        body: JSON.stringify({ learningPathId }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['courseRequests'] }),
+  });
+  const profile = profileQuery.data;
+  const course = profile?.progress?.currentLearningPath;
+  const progress = Math.max(0, Math.min(100, profile?.progress?.progressPercentage ?? 0));
+  if (profileQuery.isLoading || pathsQuery.isLoading)
+    return (
+      <StudentCard>
+        <p role="status">Loading courses…</p>
+      </StudentCard>
+    );
+  if (profileQuery.isError || pathsQuery.isError)
+    return (
+      <StudentCard>
+        <p role="alert">Unable to load courses.</p>
+        <button
+          className={studentUi.secondaryButton}
+          onClick={() => {
+            void profileQuery.refetch();
+            void pathsQuery.refetch();
+            void requestsQuery.refetch();
+          }}
+        >
+          Retry
+        </button>
+      </StudentCard>
+    );
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight mb-1 text-stone-950">My Courses</h1>
-        <p className="text-stone-600 text-sm">
-          Manage your enrolled courses.
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="p-6 rounded-xl border-2 border-[#095F46] bg-white shadow-sm relative overflow-hidden flex flex-col h-full">
-          <div className="absolute top-0 right-0 p-4">
-             <span className="inline-flex items-center rounded-full bg-[#095F46]/10 px-2.5 py-0.5 text-xs font-semibold text-[#095F46]">
-                Active
-              </span>
+    <div className={studentUi.page}>
+      {course && (
+        <StudentCard className="p-5">
+          <h2 className="text-lg font-semibold">{course.title}</h2>
+          <p className="mt-1 text-sm text-[#56635c]">
+            Instructor: {profile?.assignedLecturer?.fullName || 'Awaiting lecturer assignment'}
+          </p>
+          <div className="mt-5">
+            <p className="mb-2 text-sm">Course progress: {progress}%</p>
+            <StudentProgressBars value={progress} />
           </div>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-[#095F46]/10 flex items-center justify-center text-[#095F46] flex-shrink-0">
-              <Library className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-stone-950 line-clamp-1">Beginner: Noorani Qaida</h2>
-              <p className="text-sm text-stone-600">Instructor: Sheikh Ahmed Al-Farsi</p>
-            </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href={`/student/courses/${course.id}/materials`}
+              className={studentUi.primaryButton}
+            >
+              Materials
+            </Link>
+            <Link
+              href={`/student/courses/${course.id}/sessions/book`}
+              className={studentUi.secondaryButton}
+            >
+              Book session
+            </Link>
           </div>
-          
-          <div className="space-y-4 mb-8 flex-1">
-             <div>
-               <div className="flex justify-between text-sm mb-1">
-                 <span className="font-medium">Course Progress</span>
-                 <span>30%</span>
-               </div>
-               <div className="w-full bg-[hsl(var(--muted))] rounded-full h-2">
-                 <div className="bg-[hsl(var(--primary))] h-2 rounded-full" style={{ width: '30%' }}></div>
-               </div>
-             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-auto">
-             <Link href="/student/courses/beginner-qaida/materials" className="flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)/0.9)] transition-colors text-sm">
-                Materials <ChevronRight className="h-4 w-4" />
-             </Link>
-             <Link href="/student/courses/beginner-qaida/sessions/book" className="flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors text-[hsl(var(--foreground))] text-sm">
-                Book Session
-             </Link>
-          </div>
+        </StudentCard>
+      )}
+      <section className="space-y-4" aria-labelledby="available-courses">
+        <div>
+          <h2 id="available-courses" className="text-lg font-semibold">
+            Available courses
+          </h2>
+          <p className="mt-1 text-sm text-[#56635c]">
+            Choose a course and send a request to your lecturer for review.
+          </p>
         </div>
-      </div>
+        {requestsQuery.isLoading && (
+          <p role="status" className="text-sm">
+            Loading course requests…
+          </p>
+        )}
+        {requestsQuery.isError && (
+          <StudentCard>
+            <p role="alert" className="text-sm">
+              Course requests are temporarily unavailable. You can still browse courses.
+            </p>
+            <button
+              className={studentUi.secondaryButton}
+              onClick={() => void requestsQuery.refetch()}
+            >
+              Retry requests
+            </button>
+          </StudentCard>
+        )}
+        {!profile?.assignedLecturer && (
+          <StudentCard>
+            <p className="text-sm">
+              You can browse courses now.{' '}
+              <Link href="/student/support" className="font-semibold underline">
+                Contact support
+              </Link>{' '}
+              to get matched with a lecturer before sending a request.
+            </p>
+          </StudentCard>
+        )}
+        {request.isError && (
+          <p role="alert" className="text-sm text-red-700">
+            {request.error.message}
+          </p>
+        )}
+        {request.isSuccess && (
+          <p role="status" className="text-sm text-[#095F46]">
+            Request sent. Your lecturer will review it.
+          </p>
+        )}
+        {pathsQuery.data?.length === 0 && (
+          <StudentCard>
+            <p>No courses are available yet.</p>
+          </StudentCard>
+        )}
+        <div className="grid gap-4 md:grid-cols-2">
+          {pathsQuery.data?.map((path) => {
+            const saved = requestsQuery.data?.find(
+              (row) =>
+                row.learningPathId === path.id && row.lecturerId === profile?.assignedLecturerId,
+            );
+            const assigned = course?.id === path.id;
+            const pending = saved?.status === 'PENDING';
+            return (
+              <StudentCard key={path.id} className="flex flex-col p-5">
+                <h3 className="text-base font-semibold">{path.title}</h3>
+                <p className="mt-2 text-sm text-[#56635c]">{path.description}</p>
+                <p className="mt-3 text-sm text-[#56635c]">
+                  {path.level} · {path.modules.length} modules ·{' '}
+                  {path.modules.reduce((sum, module) => sum + module.lessons.length, 0)} lessons
+                </p>
+                <div className="mt-4 space-y-2">
+                  {saved && (
+                    <p className="text-sm" role="status">
+                      {pending
+                        ? 'Awaiting lecturer review'
+                        : saved.status === 'DECLINED'
+                          ? 'Your lecturer declined this request. You can request again.'
+                          : 'Request accepted'}
+                    </p>
+                  )}
+                  {course && !assigned && (
+                    <p className="text-sm text-[#56635c]">
+                      Ask your lecturer before changing your assigned course.
+                    </p>
+                  )}
+                  <button
+                    className={studentUi.primaryButton}
+                    disabled={
+                      Boolean(course) ||
+                      pending ||
+                      !profile?.assignedLecturer ||
+                      request.isPending ||
+                      requestsQuery.isLoading ||
+                      requestsQuery.isError
+                    }
+                    onClick={() => request.mutate(path.id)}
+                  >
+                    {assigned
+                      ? 'Your current course'
+                      : pending
+                        ? 'Request pending'
+                        : request.isPending && request.variables === path.id
+                          ? 'Sending request…'
+                          : saved?.status === 'DECLINED'
+                            ? 'Request again'
+                            : 'Request course'}
+                  </button>
+                </div>
+              </StudentCard>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

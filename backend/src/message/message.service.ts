@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PresenceService } from './presence.service';
 
@@ -118,7 +118,7 @@ export class MessageService {
     });
 
     if (messages.length > 0) {
-      const isParticipant = messages.some(
+      const isParticipant = messages.every(
         (m) => m.senderId === userId || m.recipientId === userId,
       );
       if (!isParticipant) {
@@ -138,16 +138,26 @@ export class MessageService {
     content: string,
     threadId?: string,
   ) {
+    if (typeof recipientId !== 'string' || !recipientId.trim() || typeof content !== 'string' || !content.trim() || content.length > 10000 || (threadId !== undefined && (typeof threadId !== 'string' || !threadId.trim()))) {
+      throw new BadRequestException('Choose a recipient and write a message between 1 and 10,000 characters');
+    }
+    const recipient = await this.prisma.user.findUnique({ where: { id: recipientId }, select: { status: true, deletedAt: true } });
+    if (!recipient || recipient.deletedAt) throw new NotFoundException('Recipient not found');
+    if (recipient.status !== 'ACTIVE' || recipientId === senderId) throw new BadRequestException('Choose an active recipient');
     this.presenceService.recordActivity(senderId);
 
-    const computedThreadId =
-      threadId || [senderId, recipientId].sort().join('_');
+    const canonicalThreadId = [senderId, recipientId].sort().join('_');
+    const computedThreadId = threadId || canonicalThreadId;
+    const existing = await this.prisma.message.findMany({ where: { threadId: computedThreadId }, select: { senderId: true, recipientId: true } });
+    if ((computedThreadId !== canonicalThreadId && !existing.length) || existing.some(m => !((m.senderId === senderId && m.recipientId === recipientId) || (m.senderId === recipientId && m.recipientId === senderId)))) {
+        throw new ForbiddenException('This thread belongs to another conversation');
+    }
 
     const message = await this.prisma.message.create({
       data: {
         senderId,
         recipientId,
-        content,
+        content: content.trim(),
         threadId: computedThreadId,
       },
       include: {
@@ -202,6 +212,7 @@ export class MessageService {
    * Mark all messages in a specific thread as read for the requesting user.
    */
   async markThreadAsRead(userId: string, threadId: string): Promise<void> {
+    await this.getMessagesInThread(userId, threadId);
     this.presenceService.recordActivity(userId);
 
     await this.prisma.message.updateMany({
@@ -240,4 +251,3 @@ export class MessageService {
     }
   }
 }
-

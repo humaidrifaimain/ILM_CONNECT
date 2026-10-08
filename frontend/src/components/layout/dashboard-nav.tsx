@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, LogOut, Inbox, MessageSquare, CheckCheck, CalendarCheck, CalendarX, CalendarClock } from 'lucide-react';
+import { Bell, LogOut, Inbox, MessageSquare, CheckCheck, Calendar, CalendarCheck, CalendarX, CalendarClock } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
@@ -20,11 +20,16 @@ interface Notification {
     senderName?: string;
     preview?: string;
     messageId?: string;
+    currentSession?: { dateFormatted: string; timeFormatted: string; lecturerName: string; status: string };
     [key: string]: unknown;
   };
   readAt: string | null;
   createdAt: string;
   channel: string;
+}
+
+interface TopbarProfile {
+  fullName: string;
 }
 
 function getNotifLabel(type: string) {
@@ -52,9 +57,8 @@ function formatNotifTime(iso: string) {
 export function DashboardTopbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const queryClient = useQueryClient();
-  const [showLogoutToast, setShowLogoutToast] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -73,22 +77,33 @@ export function DashboardTopbar() {
     } else if (segments.length === 2 && segments[0] === 'lecturer' && segments[1] === 'students') {
       pageTitle = 'My Students';
     } else {
-      pageTitle = last.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      const titles: Record<string, string> = { config: 'Configuration', book: 'Book Session', finance: 'Financial Reports', audit: 'Audit Log', users: 'User Management', requests: 'Requests & Support', support: 'Support & Help', materials: 'Course Materials', awards: 'Awards & Badges', feedback: 'Session Feedback' };
+      pageTitle = titles[last] || last.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     }
   }
 
-  const handleLogout = () => {
-    document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    setShowLogoutToast(true);
-    setTimeout(() => { router.push('/'); }, 1500);
+  const handleLogout = async () => {
+    await logout();
   };
 
   // Live notifications — poll every 30s
   const isInDashboard = pathname.startsWith('/student') || pathname.startsWith('/lecturer') || pathname.startsWith('/admin');
+  const isStudentRoute = pathname.startsWith('/student');
+  const isLecturerRoute = pathname.startsWith('/lecturer');
+  const dashboardHref = pathname.startsWith('/admin') ? '/admin/dashboard' : isLecturerRoute ? '/lecturer/dashboard' : '/student/dashboard';
+  const roleLabel = isStudentRoute ? 'Student' : isLecturerRoute ? 'Lecturer' : 'Admin';
+  const isDashboardHome = pathname === dashboardHref;
+  const isStudentDashboard = pathname === '/student/dashboard';
+  const { data: profile } = useQuery<TopbarProfile>({
+    queryKey: ['profile', isLecturerRoute ? 'lecturer' : 'student'],
+    queryFn: () => apiFetch(isLecturerRoute ? '/profile/lecturer' : '/profile/student'),
+    enabled: !!user && (isStudentRoute || isLecturerRoute),
+    retry: 1,
+  });
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ['notifications'],
     queryFn: () => apiFetch('/notifications'),
-    refetchInterval: 30000,
+    refetchInterval: 7000,
     enabled: !!user && isInDashboard,
   });
 
@@ -124,16 +139,31 @@ export function DashboardTopbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowNotifications(false);
+        document.getElementById('notif-bell-btn')?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [showNotifications]);
+
   // Determine messages href based on role
-  const messagesHref = pathname.startsWith('/lecturer') ? '/lecturer/messages' : '/student/messages';
+  const messagesHref = pathname.startsWith('/admin') ? '/admin/requests' : pathname.startsWith('/lecturer') ? '/lecturer/messages' : '/student/messages';
 
   const recentNotifs = notifications.slice(0, 8);
+  const displayName = profile?.fullName || user?.email?.split('@')[0]?.replace(/[._-]/g, ' ') || 'Account';
+  const firstName = displayName.split(' ')[0];
+  const topbarTitle = isDashboardHome ? `Welcome Back ${firstName}` : pageTitle;
 
   return (
     <>
-      <div className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 lg:px-6 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))/0.9] backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center lg:hidden" aria-label="ILMBIT home">
+      <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b h-[72px] border-[#d6e0db] bg-white px-3 lg:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href={dashboardHref} className="flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#095F46] lg:hidden" aria-label={`${roleLabel} dashboard home`}>
             <Image
               src="/images/ilmbit-logo-green.png"
               alt="ILMBIT"
@@ -142,16 +172,31 @@ export function DashboardTopbar() {
               className="h-9 w-auto object-contain"
             />
           </Link>
-          <h1 className="text-lg font-bold text-stone-950">{pageTitle}</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-stone-950">{topbarTitle}</h1>
+            {isDashboardHome && (
+              <p className="mt-0.5 hidden text-sm text-[#56635c] sm:block">{roleLabel} dashboard · {displayName}</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {isStudentDashboard && (
+            <Link
+              href="/student/courses"
+              className="hidden min-h-10 items-center justify-center gap-2 rounded-full bg-[#095F46] px-5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#074c38] hover:shadow-md sm:inline-flex"
+            >
+              <Calendar className="h-4 w-4" /> Book Session
+            </Link>
+          )}
 
           {/* Notification Bell with Live Dropdown */}
           <div className="relative" ref={notifRef}>
             <button
               id="notif-bell-btn"
+              aria-label="Notifications"
+              aria-expanded={showNotifications}
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition-colors"
+              className="relative transition-colors flex h-10 w-10 items-center justify-center rounded-full border border-[#d6e0db] text-[#202823] hover:bg-[#f5f7f6]"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -162,7 +207,7 @@ export function DashboardTopbar() {
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl animate-fade-in z-50 overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-24px)] sm:w-96 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-xl animate-fade-in z-50 overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(var(--border))]">
                   <div className="flex items-center gap-2">
@@ -200,18 +245,21 @@ export function DashboardTopbar() {
                       const isConfirmed = notif.type === 'BOOKING_CONFIRMED';
                       const threadId = notif.payloadJson?.threadId;
 
-                      const href = isMsg
+                      const href = notif.type.startsWith('COURSE_REQUEST')
+                        ? (pathname.startsWith('/lecturer') ? '/lecturer/courses' : '/student/courses')
+                        : isMsg
                         ? (threadId ? `${messagesHref}?threadId=${encodeURIComponent(threadId)}` : messagesHref)
-                        : (pathname.startsWith('/lecturer') ? '/lecturer/sessions' : '/student/dashboard');
+                        : (pathname.startsWith('/admin') ? '/admin/sessions' : pathname.startsWith('/lecturer') ? '/lecturer/sessions' : '/student/dashboard');
 
                       const previewText = notif.payloadJson?.message
                         || notif.payloadJson?.preview
                         || (notif.payloadJson?.actorName ? `Update from ${notif.payloadJson.actorName}` : 'Session update');
 
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={notif.id}
-                          className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[hsl(var(--muted))] cursor-pointer ${!notif.readAt ? 'bg-[hsl(var(--primary)/0.04)]' : ''}`}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[hsl(var(--muted))] ${!notif.readAt ? 'bg-[hsl(var(--primary)/0.04)]' : ''}`}
                           onClick={() => {
                             if (!notif.readAt) markOneMutation.mutate(notif.id);
                             if (href) { router.push(href); setShowNotifications(false); }
@@ -249,11 +297,17 @@ export function DashboardTopbar() {
                                 {previewText}
                               </p>
                             )}
+                            {notif.payloadJson.currentSession && <div className="mt-2 text-xs text-[hsl(var(--foreground))]">
+                              <p className="font-semibold">{notif.payloadJson.currentSession.status === 'SCHEDULED' ? 'Scheduled lesson' : notif.payloadJson.currentSession.status.replace(/_/g, ' ').toLowerCase()}</p>
+                              <p>{notif.payloadJson.currentSession.dateFormatted}</p>
+                              <p>{notif.payloadJson.currentSession.timeFormatted}</p>
+                              <p className="text-[hsl(var(--muted-foreground))]">Lecturer: {notif.payloadJson.currentSession.lecturerName}</p>
+                            </div>}
                           </div>
                           {!notif.readAt && (
                             <div className="flex-shrink-0 mt-2 h-2 w-2 rounded-full bg-[hsl(var(--primary))]" />
                           )}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -278,8 +332,9 @@ export function DashboardTopbar() {
 
 
           <button
+            aria-label="Logout"
             onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors"
+            className="flex items-center gap-1.5 text-sm font-medium transition-colors min-h-10 rounded-full border border-red-100 px-4 text-[hsl(var(--destructive))] hover:bg-red-50"
             title="Logout"
           >
             <LogOut className="h-4 w-4" />
@@ -288,14 +343,7 @@ export function DashboardTopbar() {
         </div>
       </div>
 
-      {showLogoutToast && (
-        <div className="fixed bottom-6 right-6 z-[100] animate-fade-in">
-          <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] shadow-lg flex items-center gap-2 text-sm font-medium">
-            <LogOut className="h-4 w-4 text-[hsl(var(--success))]" />
-            You have been logged out
-          </div>
-        </div>
-      )}
+
     </>
   );
 }

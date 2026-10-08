@@ -1,100 +1,155 @@
 'use client';
 
-import { CreditCard, Check, ChevronRight, Download, Clock } from 'lucide-react';
+import { CreditCard, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { CurrencySelector, usePricingCurrency } from '@/lib/pricing-currency';
+import { useSubscriptionPlans } from '@/lib/subscription-plans';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
-
-const invoices = [
-  { id: 'INV-2025-04', date: 'Apr 1, 2025', amount: '$55.00', status: 'Paid' },
-  { id: 'INV-2025-03', date: 'Mar 1, 2025', amount: '$55.00', status: 'Paid' },
-  { id: 'INV-2025-02', date: 'Feb 1, 2025', amount: '$55.00', status: 'Paid' },
-  { id: 'INV-2025-01', date: 'Jan 1, 2025', amount: '$50.00', status: 'Paid' },
-];
+import { StudentCard, StudentIconTile, StudentPageHeader, StudentStatusPill, studentUi } from '@/components/student/student-dashboard-ui';
 
 export default function BillingPage() {
-  const { data: subscription, isLoading } = useQuery({
+  return <Suspense fallback={<LoadingScreen message="Loading Billing Info..." />}><BillingContent /></Suspense>;
+}
+
+function BillingContent() {
+  const { format } = usePricingCurrency();
+  const { data: subscriptionPlans = [] } = useSubscriptionPlans();
+  const selectedPlanId = useSearchParams().get('plan');
+  const selectedPlan = subscriptionPlans.find(plan => plan.id === selectedPlanId);
+  const { data: subscription, isLoading, isError } = useQuery({
     queryKey: ['studentSubscription'],
-    queryFn: () => apiFetch('/subscriptions/me'),
+    queryFn: () =>
+      apiFetch('/subscriptions/me').catch((error: unknown) => {
+        const status =
+          typeof error === 'object' && error !== null && 'status' in error
+            ? (error as { status?: number }).status
+            : undefined;
+        if (status === 404) return null;
+        throw error;
+      }),
   });
+
+  const { data: payments = [], isPending: paymentsPending, isError: paymentsError } = useQuery<{ id: string; amountLkr: number; status: string; processedAt: string; gateway: string; subscription: { tier: string } }[]>({ queryKey: ['studentPayments'], queryFn: () => apiFetch('/subscriptions/payments') });
+
+  const expired = subscription?.currentPeriodEnd && new Date(subscription.currentPeriodEnd) <= new Date();
+  const isTrial = subscription?.tier?.toLowerCase?.() === 'trial';
+  const periodStart = subscription?.currentPeriodStart ? new Date(subscription.currentPeriodStart) : null;
+  const periodEnd = subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) : null;
+  const trialDays =
+    periodStart && periodEnd
+      ? Math.max(1, Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)))
+      : null;
+  const trialLabel =
+    trialDays === 7
+      ? '1 week'
+      : trialDays === 14
+        ? '2 weeks'
+        : trialDays && trialDays >= 28 && trialDays <= 31
+          ? '1 month'
+          : trialDays
+            ? `${trialDays} days`
+            : 'Not set';
 
   if (isLoading) {
     return <LoadingScreen message="Loading Billing Info..." subtitle="Fetching subscription status and invoice history" />;
   }
 
+  if (isError) return <div role="alert">Unable to load subscription information. Please refresh to try again.</div>;
+
   return (
-    <div className="space-y-6 animate-fade-in max-w-3xl">
-      <h1 className="text-2xl font-bold">Billing & Subscription</h1>
+    <div className={studentUi.page}>
+      <StudentPageHeader
+        eyebrow="Account"
+        title="Billing & Subscription"
+        description="Review your plan, trial status, billing date, and payment history."
+      />
 
-      {/* Current Plan */}
-      <div className="p-6 rounded-2xl border-2 border-[#095F46] bg-white shadow-sm">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-bold text-stone-950">{subscription?.tier || 'No Active Plan'}</h2>
-              <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-[#095F46]/10 text-[#095F46]">{subscription ? 'Active' : 'Inactive'}</span>
+      <CurrencySelector />
+      {selectedPlan && <StudentCard className="border-[#b9cac2] p-5">
+        <h2 className="text-xl font-bold">{selectedPlan.course} · {selectedPlan.tier}</h2>
+        <p className="mt-2 text-sm text-[#56635c]">{format(selectedPlan)}/month · {selectedPlan.sessions} live sessions per month</p>
+        <p className="mt-4 text-sm text-[#56635c]">Online payment is not connected yet. Contact subscription support to arrange activation. Selecting a plan does not activate access.</p>
+        <Link href={`/student/support?tab=contact&plan=${selectedPlan.id}`} className={`${studentUi.primaryButton} mt-4`}>Contact subscription support</Link>
+        <Link href="/student/dashboard" className="ml-4 text-sm font-semibold text-[#095F46] underline">Choose another plan</Link>
+      </StudentCard>}
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+        {/* Current Plan */}
+        <StudentCard className="border-[#b9cac2] p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg font-bold text-[#202823]">{subscription?.tier || 'No Active Plan'}</h2>
+                <StudentStatusPill tone={subscription && !expired ? 'primary' : 'neutral'}>{expired ? 'Expired' : subscription ? 'Active' : 'Inactive'}</StudentStatusPill>
+              </div>
+              <p className="mb-4 text-sm text-[#56635c]">
+                {isTrial
+                  ? 'Free trial access for your first scholar match'
+                  : subscription?.tier?.includes('Fast Track')
+                    ? '12 sessions/month · 40 min each · Recordings included'
+                    : subscription
+                      ? '8 sessions/month · 40 min each · Recordings included'
+                      : 'Choose a plan or activate your free trial to start booking.'}
+              </p>
+              <div className="text-3xl font-extrabold text-[#202823]">
+                LKR {subscription?.lkrAmount?.toLocaleString() ?? 0}<span className="text-base font-normal text-[#56635c]">/month</span>
+              </div>
+              {subscription ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-[#d6e0db] bg-[#f5f7f6] p-3">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#56635c]">
+                      <Clock className="h-3.5 w-3.5" />
+                      {isTrial ? 'Trial Period' : 'Current Period'}
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-[#202823]">
+                      {isTrial ? trialLabel : `${periodStart?.toLocaleDateString() || 'N/A'} - ${periodEnd?.toLocaleDateString() || 'N/A'}`}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[#d6e0db] bg-[#f5f7f6] p-3">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#56635c]">
+                      <CreditCard className="h-3.5 w-3.5" />
+                      {isTrial ? 'Billing Starts' : 'Next Billing Date'}
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-[#202823]">
+                      {periodEnd ? periodEnd.toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <p className="text-sm text-stone-600 mb-4">
-              {subscription?.tier?.includes('Fast Track') ? '12 sessions/month' : '8 sessions/month'} · 45 min each · Recordings included
-            </p>
-            <div className="text-3xl font-extrabold text-stone-950">${subscription?.lkrAmount === 17700 ? '59' : subscription?.lkrAmount === 26700 ? '89' : '0'}<span className="text-base font-normal text-stone-500">/month</span></div>
-            <p className="text-xs text-stone-500 mt-1">
-              Next billing date: {subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : 'N/A'}
-            </p>
           </div>
-        </div>
-        <div className="flex gap-3 mt-6">
-          <Link href="/pricing" className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] transition-colors shadow-sm">Change Plan</Link>
-          <button
-            onClick={() => toast.info('Subscription Assistance', 'To cancel or adjust your subscription, please visit Support or message your advisor.')}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 transition-colors"
-          >
-            Cancel Subscription
-          </button>
-        </div>
-      </div>
-
-      {/* Payment Method */}
-      <div className="p-5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-        <h3 className="font-semibold mb-3">Payment Method</h3>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-14 rounded-lg bg-[hsl(var(--muted))] flex items-center justify-center text-xs font-bold">VISA</div>
-          <div>
-            <div className="text-sm font-medium">•••• •••• •••• 4242</div>
-            <div className="text-xs text-[hsl(var(--muted-foreground))]">Expires 12/26</div>
+          <div className="flex gap-3 mt-6">
+            <Link href="/pricing" className={studentUi.primaryButton}>Change Plan</Link>
+            <Link href="/student/support?tab=contact" className={studentUi.secondaryButton}>Request subscription changes</Link>
           </div>
-          <button
-            onClick={() => toast.info('Payment Methods', 'Payment details can be updated via your Stripe customer portal.')}
-            className="ml-auto text-sm text-[hsl(var(--primary))] font-medium hover:underline"
-          >
-            Update
-          </button>
-        </div>
-      </div>
+        </StudentCard>
 
-      {/* Invoices */}
-      <div>
-        <h3 className="font-semibold mb-3">Invoice History</h3>
-        <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden">
-          {invoices.map((inv, i) => (
-            <div key={inv.id} className={`flex items-center gap-4 px-5 py-3.5 text-sm ${i > 0 ? 'border-t border-[hsl(var(--border))]' : ''}`}>
-              <span className="font-medium w-32">{inv.id}</span>
-              <span className="text-[hsl(var(--muted-foreground))] flex-1">{inv.date}</span>
-              <span className="font-medium w-20 text-right">{inv.amount}</span>
-              <span className="px-2 py-0.5 text-xs rounded-full bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] font-medium">{inv.status}</span>
-              <button
-                onClick={() => toast.info('Invoice Download', `Downloading receipt for ${inv.id}...`)}
-                className="p-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                title="Download invoice"
-              >
-                <Download className="h-4 w-4" />
-              </button>
+        <div className="grid gap-4">
+          {/* Payment Method */}
+          <StudentCard className="p-4">
+            <h3 className="mb-3 font-bold text-[#202823]">Payment Method</h3>
+            <div className="flex items-start gap-3 rounded-xl border border-dashed border-[#d6e0db] bg-[#f5f7f6] p-4">
+              <StudentIconTile icon={CreditCard} />
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-[#202823]">No payment method added yet</div>
+                <div className="mt-1 text-xs leading-relaxed text-[#56635c]">
+                  Payment details will appear here after the paid subscription flow is connected. Free trial users do not need a card.
+                </div>
+              </div>
             </div>
-          ))}
+          </StudentCard>
+
+          {/* Invoices */}
+          <StudentCard className="p-4">
+            <h3 className="mb-3 font-bold text-[#202823]">Payment & Subscription History</h3>
+            {paymentsPending ? <p role="status" className="text-sm text-[#56635c]">Loading payment history…</p> : paymentsError ? <p role="alert">Unable to load payment history.</p> : payments.length === 0 ? <p className="text-sm text-[#56635c]">No payments recorded yet.</p> : <ul className="divide-y divide-[#d6e0db]">{payments.map(payment => <li key={payment.id} className="py-3 text-sm"><p className="font-semibold">{payment.subscription.tier} · LKR {payment.amountLkr.toLocaleString()}</p><p className="mt-1 text-xs text-[#56635c]">{new Date(payment.processedAt).toLocaleDateString()} · {payment.status} · {payment.gateway}</p></li>)}</ul>}
+          </StudentCard>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

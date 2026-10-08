@@ -15,11 +15,10 @@ export class FeedbackController {
   submitFeedback(
     @Request() req: any,
     @Body('sessionId') sessionId: string,
-    @Body('lecturerId') lecturerId: string,
     @Body('score') score: number,
     @Body('comment') comment: string,
   ) {
-    return this.feedbackService.submitFeedback(req.user.id, sessionId, lecturerId, score, comment);
+    return this.feedbackService.submitFeedback(req.user.id, sessionId, score, comment);
   }
 
   @Get()
@@ -32,5 +31,11 @@ export class FeedbackController {
   @Roles(Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
   getLecturerFeedbacks(@Param('id') id: string) {
     return this.feedbackService.getLecturerFeedbacks(id);
+  }
+
+  @Get('lesson-notes')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  getLessonNotes() {
+    return this.feedbackService.getLessonNotes();
   }
 }

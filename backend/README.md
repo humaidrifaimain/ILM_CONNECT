@@ -32,6 +32,22 @@
 $ npm install
 ```
 
+## Email delivery
+
+Booking, cancellation, rescheduling, and attendance emails are delivered through
+[Resend](https://resend.com/docs/send-with-nodejs). Configure these server-side
+environment variables in `backend/.env` for local development and in the backend
+hosting provider for production:
+
+```bash
+RESEND_API_KEY=re_replace_with_a_resend_api_key
+RESEND_FROM_EMAIL="IlmConnect <onboarding@resend.dev>"
+FRONTEND_URL=http://localhost:3000
+```
+
+`RESEND_API_KEY` must never use a `NEXT_PUBLIC_` prefix. For production delivery,
+replace the Resend test sender with an address on a verified domain.
+
 ## Compile and run the project
 
 ```bash

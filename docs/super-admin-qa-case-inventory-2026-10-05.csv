@@ -1,0 +1,317 @@
+Suite,Charter,Case,Verdict,Timestamp UTC,Endpoint,Method,Expected HTTP,Actual HTTP,Observation tag
+API,SA-AUTH,anonymous denied /admin/stats,PASS,2026-10-05T14:01:36.146Z,/admin/stats,GET,401,401,NOTE
+API,SA-AUTH,STUDENT denied /admin/stats,PASS,2026-10-05T14:01:36.151Z,/admin/stats,GET,403,403,NOTE
+API,SA-AUTH,LECTURER denied /admin/stats,PASS,2026-10-05T14:01:36.153Z,/admin/stats,GET,403,403,NOTE
+API,SA-OPS,SUPER_ADMIN read /admin/stats,PASS,2026-10-05T14:01:36.168Z,/admin/stats,GET,200,200,NOTE
+API,SA-OPS,ADMIN read /admin/stats,PASS,2026-10-05T14:01:36.173Z,/admin/stats,GET,200,200,NOTE
+API,SA-AUTH,anonymous denied /admin/users,PASS,2026-10-05T14:01:36.173Z,/admin/users,GET,401,401,NOTE
+API,SA-AUTH,STUDENT denied /admin/users,PASS,2026-10-05T14:01:36.175Z,/admin/users,GET,403,403,NOTE
+API,SA-AUTH,LECTURER denied /admin/users,PASS,2026-10-05T14:01:36.177Z,/admin/users,GET,403,403,NOTE
+API,SA-USERS,SUPER_ADMIN read /admin/users,PASS,2026-10-05T14:01:36.181Z,/admin/users,GET,200,200,NOTE
+API,SA-USERS,ADMIN read /admin/users,PASS,2026-10-05T14:01:36.184Z,/admin/users,GET,200,200,NOTE
+API,SA-AUTH,anonymous denied /admin/sessions,PASS,2026-10-05T14:01:36.185Z,/admin/sessions,GET,401,401,NOTE
+API,SA-AUTH,STUDENT denied /admin/sessions,PASS,2026-10-05T14:01:36.186Z,/admin/sessions,GET,403,403,NOTE
+API,SA-AUTH,LECTURER denied /admin/sessions,PASS,2026-10-05T14:01:36.187Z,/admin/sessions,GET,403,403,NOTE
+API,SA-OPS,SUPER_ADMIN read /admin/sessions,PASS,2026-10-05T14:01:36.193Z,/admin/sessions,GET,200,200,NOTE
+API,SA-OPS,ADMIN read /admin/sessions,PASS,2026-10-05T14:01:36.197Z,/admin/sessions,GET,200,200,NOTE
+API,SA-AUTH,anonymous denied /admin/finance,PASS,2026-10-05T14:01:36.199Z,/admin/finance,GET,401,401,NOTE
+API,SA-AUTH,STUDENT denied /admin/finance,PASS,2026-10-05T14:01:36.202Z,/admin/finance,GET,403,403,NOTE
+API,SA-AUTH,LECTURER denied /admin/finance,PASS,2026-10-05T14:01:36.205Z,/admin/finance,GET,403,403,NOTE
+API,SA-FINANCE,SUPER_ADMIN read /admin/finance,PASS,2026-10-05T14:01:36.209Z,/admin/finance,GET,200,200,NOTE
+API,SA-FINANCE,ADMIN read /admin/finance,PASS,2026-10-05T14:01:36.214Z,/admin/finance,GET,200,200,NOTE
+API,SA-AUTH,anonymous denied /admin/feedback,PASS,2026-10-05T14:01:36.215Z,/admin/feedback,GET,401,401,NOTE
+API,SA-AUTH,STUDENT denied /admin/feedback,PASS,2026-10-05T14:01:36.219Z,/admin/feedback,GET,403,403,NOTE
+API,SA-AUTH,LECTURER denied /admin/feedback,PASS,2026-10-05T14:01:36.221Z,/admin/feedback,GET,403,403,NOTE
+API,SA-OPS,SUPER_ADMIN read /admin/feedback,PASS,2026-10-05T14:01:36.224Z,/admin/feedback,GET,200,200,NOTE
+API,SA-OPS,ADMIN read /admin/feedback,PASS,2026-10-05T14:01:36.225Z,/admin/feedback,GET,200,200,NOTE
+API,SA-AUTH,anonymous denied /admin/audit-logs,PASS,2026-10-05T14:01:36.226Z,/admin/audit-logs,GET,401,401,NOTE
+API,SA-AUTH,STUDENT denied /admin/audit-logs,PASS,2026-10-05T14:01:36.227Z,/admin/audit-logs,GET,403,403,NOTE
+API,SA-AUTH,LECTURER denied /admin/audit-logs,PASS,2026-10-05T14:01:36.229Z,/admin/audit-logs,GET,403,403,NOTE
+API,SA-AUDIT-UI,SUPER_ADMIN read /admin/audit-logs,PASS,2026-10-05T14:01:36.231Z,/admin/audit-logs,GET,200,200,NOTE
+API,SA-AUDIT-UI,ADMIN read /admin/audit-logs,PASS,2026-10-05T14:01:36.233Z,/admin/audit-logs,GET,200,200,NOTE
+API,SA-AUTH,anonymous denied /admin/waitlist,PASS,2026-10-05T14:01:36.234Z,/admin/waitlist,GET,401,401,NOTE
+API,SA-AUTH,STUDENT denied /admin/waitlist,PASS,2026-10-05T14:01:36.235Z,/admin/waitlist,GET,403,403,NOTE
+API,SA-AUTH,LECTURER denied /admin/waitlist,PASS,2026-10-05T14:01:36.237Z,/admin/waitlist,GET,403,403,NOTE
+API,SA-OPS,SUPER_ADMIN read /admin/waitlist,PASS,2026-10-05T14:01:36.239Z,/admin/waitlist,GET,200,200,NOTE
+API,SA-OPS,ADMIN read /admin/waitlist,PASS,2026-10-05T14:01:36.242Z,/admin/waitlist,GET,200,200,NOTE
+API,SA-AUTH,anonymous denied /support/tickets,PASS,2026-10-05T14:01:36.243Z,/support/tickets,GET,401,401,NOTE
+API,SA-AUTH,STUDENT denied /support/tickets,PASS,2026-10-05T14:01:36.244Z,/support/tickets,GET,403,403,NOTE
+API,SA-AUTH,LECTURER denied /support/tickets,PASS,2026-10-05T14:01:36.246Z,/support/tickets,GET,403,403,NOTE
+API,SA-OPS,SUPER_ADMIN read /support/tickets,PASS,2026-10-05T14:01:36.248Z,/support/tickets,GET,200,200,NOTE
+API,SA-OPS,ADMIN read /support/tickets,PASS,2026-10-05T14:01:36.252Z,/support/tickets,GET,200,200,NOTE
+API,SA-AUTH,expired admin token denied,PASS,2026-10-05T14:01:36.253Z,/admin/stats,GET,401,401,NOTE
+API,SA-AUTH,malformed admin token denied,PASS,2026-10-05T14:01:36.253Z,/admin/stats,GET,401,401,NOTE
+API,SA-AUTH,wrong admin password denied,PASS,2026-10-05T14:01:36.309Z,/auth/login,POST,401,401,NOTE
+API,SA-USERS,valid users filter role=STUDENT,PASS,2026-10-05T14:01:36.312Z,/admin/users?role=STUDENT,GET,200,200,NOTE
+API,SA-USERS,valid users filter status=ACTIVE,PASS,2026-10-05T14:01:36.314Z,/admin/users?status=ACTIVE,GET,200,200,NOTE
+API,SA-USERS,valid users filter role=student&status=active,PASS,2026-10-05T14:01:36.316Z,/admin/users?role=student&status=active,GET,200,200,NOTE
+API,SA-USERS,valid users filter role=all&status=all,PASS,2026-10-05T14:01:36.318Z,/admin/users?role=all&status=all,GET,200,200,NOTE
+API,SA-USERS,invalid users filter role=INVALID,FAIL,2026-10-05T14:01:36.321Z,/admin/users?role=INVALID,GET,400,500,BUG
+API,SA-USERS,invalid users filter status=INVALID,FAIL,2026-10-05T14:01:36.323Z,/admin/users?status=INVALID,GET,400,500,BUG
+API,SA-USERS,invalid users filter role=,PASS,2026-10-05T14:01:36.325Z,/admin/users?role=,GET,200,200,NOTE
+API,SA-USERS,invalid users filter role=ADMIN%27%20OR%201%3D1,FAIL,2026-10-05T14:01:36.326Z,/admin/users?role=ADMIN%27%20OR%201%3D1,GET,400,500,BUG
+API,SA-OPS,create lecturer valid,PASS,2026-10-05T14:01:36.384Z,/admin/lecturers,POST,201,201,NOTE
+API,SA-OPS,duplicate lecturer email,PASS,2026-10-05T14:01:36.386Z,/admin/lecturers,POST,409,409,NOTE
+API,SA-OPS,duplicate lecturer email case insensitive,PASS,2026-10-05T14:01:36.389Z,/admin/lecturers,POST,409,409,NOTE
+API,SA-USERS,invalid lecturer input 0,PASS,2026-10-05T14:01:36.390Z,/admin/lecturers,POST,400,400,NOTE
+API,SA-USERS,invalid lecturer input 1,FAIL,2026-10-05T14:01:36.447Z,/admin/lecturers,POST,400,201,BUG
+API,SA-USERS,invalid lecturer input 2,PASS,2026-10-05T14:01:36.449Z,/admin/lecturers,POST,400,400,NOTE
+API,SA-USERS,invalid lecturer input 3,PASS,2026-10-05T14:01:36.451Z,/admin/lecturers,POST,400,400,NOTE
+API,SA-USERS,invalid lecturer input 4,PASS,2026-10-05T14:01:36.452Z,/admin/lecturers,POST,400,400,NOTE
+API,SA-USERS,invalid lecturer input 5,PASS,2026-10-05T14:01:36.454Z,/admin/lecturers,POST,400,400,NOTE
+API,SA-USERS,invalid lecturer input 6,PASS,2026-10-05T14:01:36.455Z,/admin/lecturers,POST,400,400,NOTE
+API,SA-USERS,invalid lecturer input 7,FAIL,2026-10-05T14:01:36.511Z,/admin/lecturers,POST,400,201,RISK
+API,SA-USERS,invalid lecturer input 8,FAIL,2026-10-05T14:01:36.568Z,/admin/lecturers,POST,400,201,RISK
+API,SA-USERS,invalid lecturer input 9,FAIL,2026-10-05T14:01:36.627Z,/admin/lecturers,POST,400,201,RISK
+API,SA-USERS,invalid lecturer input 10,FAIL,2026-10-05T14:01:36.684Z,/admin/lecturers,POST,400,201,BUG
+API,SA-OPS,lecturer unicode accepted,PASS,2026-10-05T14:01:36.740Z,/admin/lecturers,POST,201,201,NOTE
+API,SA-OPS,student cannot create lecturer,PASS,2026-10-05T14:01:36.742Z,/admin/lecturers,POST,403,403,NOTE
+API,SA-USERS,valid assignment,PASS,2026-10-05T14:01:36.751Z,/admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,POST,201,201,NOTE
+API,SA-USERS,valid reassignment,PASS,2026-10-05T14:01:36.757Z,/admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,PATCH,200,200,NOTE
+API,SA-USERS,assignment invalid student,PASS,2026-10-05T14:01:36.759Z,/admin/students/missing/assign-lecturer,POST,404,404,NOTE
+API,SA-USERS,assignment invalid lecturer,PASS,2026-10-05T14:01:36.761Z,/admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,POST,404,404,NOTE
+API,SA-USERS,assignment empty lecturer,PASS,2026-10-05T14:01:36.763Z,/admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,POST,400,400,NOTE
+API,SA-USERS,assignment admin as student rejected,FAIL,2026-10-05T14:01:36.766Z,/admin/students/76cd0bb0-3fee-4827-bc93-82d32b617c00/assign-lecturer,POST,400,201,BUG
+API,SA-OPS,suspend lecturer,FAIL,2026-10-05T14:01:36.769Z,/admin/users/0bfd4e07-9dfe-4317-92c9-78ed2e033b92/status,PATCH,200,200,BUG
+API,SA-AUTH,suspended lecturer stale token denied,PASS,2026-10-05T14:01:36.771Z,/admin/stats,GET,401,401,NOTE
+API,SA-USERS,assignment suspended lecturer rejected,FAIL,2026-10-05T14:01:36.774Z,/admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,POST,400,201,BUG
+API,SA-OPS,lecturer profile status sync,FAIL,2026-10-05T14:01:36.777Z,/admin/users?role=LECTURER,GET,200,200,BUG
+API,SA-OPS,status invalid enum,FAIL,2026-10-05T14:01:36.779Z,/admin/users/0bfd4e07-9dfe-4317-92c9-78ed2e033b92/status,PATCH,400,500,BUG
+API,SA-OPS,status missing,FAIL,2026-10-05T14:01:36.781Z,/admin/users/0bfd4e07-9dfe-4317-92c9-78ed2e033b92/status,PATCH,400,200,BUG
+API,SA-USERS,status user not found,PASS,2026-10-05T14:01:36.783Z,/admin/users/missing/status,PATCH,404,404,NOTE
+API,SA-OPS,reactivate lecturer,FAIL,2026-10-05T14:01:36.788Z,/admin/users/0bfd4e07-9dfe-4317-92c9-78ed2e033b92/status,PATCH,200,200,BUG
+API,SA-USERS,valid working hours,PASS,2026-10-05T14:01:36.792Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,200,200,NOTE
+API,SA-USERS,invalid working hours null,FAIL,2026-10-05T14:01:36.796Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-USERS,"invalid working hours ""text""",FAIL,2026-10-05T14:01:36.799Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-USERS,"invalid working hours [-1,24,99]",FAIL,2026-10-05T14:01:36.802Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-USERS,"invalid working hours [10,10,10,10]",FAIL,2026-10-05T14:01:36.807Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-USERS,invalid working hours [],FAIL,2026-10-05T14:01:36.810Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-OPS,missing lecturer update,PASS,2026-10-05T14:01:36.813Z,/admin/lecturers/missing,PATCH,404,404,NOTE
+API,SA-OPS,support ticket read,PASS,2026-10-05T14:01:36.818Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e,GET,200,200,NOTE
+API,SA-AUTH,support unauthorized lecturer read,PASS,2026-10-05T14:01:36.823Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e,GET,403,403,NOTE
+API,SA-OPS,support missing ticket,PASS,2026-10-05T14:01:36.828Z,/support/tickets/missing,GET,404,404,NOTE
+API,SA-OPS,support admin reply,PASS,2026-10-05T14:01:36.837Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/messages,POST,201,201,NOTE
+API,SA-OPS,support whitespace reply rejected,FAIL,2026-10-05T14:01:36.842Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/messages,POST,400,201,BUG
+API,SA-OPS,support missing reply rejected,FAIL,2026-10-05T14:01:36.845Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/messages,POST,400,500,BUG
+API,SA-OPS,support resolve,PASS,2026-10-05T14:01:36.851Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PATCH,200,200,NOTE
+API,SA-OPS,support reopen,PASS,2026-10-05T14:01:36.856Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PATCH,200,200,NOTE
+API,SA-OPS,support invalid status rejected,FAIL,2026-10-05T14:01:36.860Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PATCH,400,200,BUG
+API,SA-OPS,support student cannot choose admin status,FAIL,2026-10-05T14:01:36.865Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/messages,POST,400,201,BUG
+API,SA-OPS,support invalid role filter,FAIL,2026-10-05T14:01:36.867Z,/support/tickets?role=INVALID,GET,400,500,BUG
+API,SA-OPS,future completion rejected,PASS,2026-10-05T14:01:36.872Z,/bookings/5f1624b4-ab4c-4cad-9334-55eafb5a872d,PATCH,400,400,NOTE
+API,SA-OPS,future absent rejected,FAIL,2026-10-05T14:01:36.883Z,/bookings/5f1624b4-ab4c-4cad-9334-55eafb5a872d/absent,POST,400,201,BUG
+API,SA-OPS,completed absent rejected,PASS,2026-10-05T14:01:36.890Z,/bookings/68bdc220-cf62-412c-bc8a-fe019a861545/absent,POST,400,400,NOTE
+API,SA-OPS,canceled absent rejected,PASS,2026-10-05T14:01:36.894Z,/bookings/6f99b506-22c4-4289-857d-fd28673da979/absent,POST,400,400,NOTE
+API,SA-OPS,lecturer absent retained,FAIL,2026-10-05T14:01:36.899Z,/bookings/cbd15704-7677-4f96-8759-cbdb41cfbc88/absent,POST,400,201,BUG
+API,SA-OPS,session notes update,PASS,2026-10-05T14:01:36.906Z,/bookings/efb570a4-6fe8-4dbc-9fff-a8207de7c6d2,PATCH,200,200,NOTE
+API,SA-OPS,notes max exceeded,PASS,2026-10-05T14:01:36.909Z,/bookings/efb570a4-6fe8-4dbc-9fff-a8207de7c6d2,PATCH,400,400,NOTE
+API,SA-OPS,past session complete,PASS,2026-10-05T14:01:36.912Z,/bookings/efb570a4-6fe8-4dbc-9fff-a8207de7c6d2,PATCH,200,200,NOTE
+API,SA-OPS,completion repeated rejected,PASS,2026-10-05T14:01:36.915Z,/bookings/efb570a4-6fe8-4dbc-9fff-a8207de7c6d2,PATCH,400,400,NOTE
+API,SA-OPS,cancel upcoming session,PASS,2026-10-05T14:01:36.922Z,/bookings/cf969f7e-a8a4-4d0f-aff6-be75be829126,DELETE,200,200,NOTE
+API,SA-OPS,cancel repeated rejected,PASS,2026-10-05T14:01:36.926Z,/bookings/cf969f7e-a8a4-4d0f-aff6-be75be829126,DELETE,400,400,NOTE
+API,SA-FINANCE,payout invalid status,PASS,2026-10-05T14:01:36.929Z,/admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PATCH,400,400,NOTE
+API,SA-FINANCE,payout missing,PASS,2026-10-05T14:01:36.931Z,/admin/payouts/missing/status,PATCH,404,404,NOTE
+API,SA-AUTH,payout student denied,PASS,2026-10-05T14:01:36.934Z,/admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PATCH,403,403,NOTE
+API,SA-FINANCE,payout successful,PASS,2026-10-05T14:01:36.940Z,/admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PATCH,200,200,NOTE
+API,SA-AUTH,payout double process denied,PASS,2026-10-05T14:01:36.943Z,/admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PATCH,400,400,NOTE
+API,SA-FINANCE,payout failed,PASS,2026-10-05T14:01:36.946Z,/admin/payouts/07b867a3-f5f0-42ac-a8c7-07c419020ef7/status,PATCH,200,200,NOTE
+API,SA-FINANCE,concurrent payout processing exactly once,PASS,2026-10-05T14:01:36.950Z,,,,,NOTE
+API,SA-AUTH,STUDENT config write denied /subscriptions/plans,PASS,2026-10-05T14:01:36.953Z,/subscriptions/plans,PATCH,403,403,NOTE
+API,SA-AUTH,LECTURER config write denied /subscriptions/plans,PASS,2026-10-05T14:01:36.955Z,/subscriptions/plans,PATCH,403,403,NOTE
+API,SA-AUTH,STUDENT config write denied /subscriptions/currencies,PASS,2026-10-05T14:01:36.956Z,/subscriptions/currencies,PATCH,403,403,NOTE
+API,SA-AUTH,LECTURER config write denied /subscriptions/currencies,PASS,2026-10-05T14:01:36.958Z,/subscriptions/currencies,PATCH,403,403,NOTE
+API,SA-FINANCE,save valid prices,PASS,2026-10-05T14:01:36.964Z,/subscriptions/plans,PATCH,200,200,NOTE
+API,SA-FINANCE,invalid price 0,PASS,2026-10-05T14:01:36.966Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,invalid price -1,PASS,2026-10-05T14:01:36.968Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,invalid price 0.001,PASS,2026-10-05T14:01:36.969Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,invalid price 10000.01,PASS,2026-10-05T14:01:36.971Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,invalid price 30,PASS,2026-10-05T14:01:36.973Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,invalid price null,PASS,2026-10-05T14:01:36.975Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,duplicate plans,PASS,2026-10-05T14:01:36.977Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,missing plans,PASS,2026-10-05T14:01:36.979Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,valid currencies,PASS,2026-10-05T14:01:36.984Z,/subscriptions/currencies,PATCH,200,200,NOTE
+API,SA-FINANCE,"invalid currency {""lkrPerUnit"":0}",PASS,2026-10-05T14:01:36.986Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-FINANCE,"invalid currency {""lkrPerUnit"":-1}",PASS,2026-10-05T14:01:36.988Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-FINANCE,"invalid currency {""lkrPerUnit"":1000001}",PASS,2026-10-05T14:01:36.990Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-FINANCE,"invalid currency {""rateDate"":""2026-02-30""}",PASS,2026-10-05T14:01:36.991Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-FINANCE,"invalid currency {""rateDate"":""invalid""}",PASS,2026-10-05T14:01:36.992Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-OPS,LKR fixed at one,PASS,2026-10-05T14:01:36.994Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-USERS,audit creation and assignment recorded,PASS,2026-10-05T14:01:36.996Z,/admin/audit-logs,GET,200,200,NOTE
+API,SA-FINANCE,audit suspension and payout recorded,FAIL,2026-10-05T14:01:36.998Z,/admin/audit-logs,GET,200,200,BUG
+API,SA-AUTH,pending admin not authorized,PASS,2026-10-05T14:01:37.001Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,200,200,NOTE
+API,SA-AUTH,pending admin token denied,FAIL,2026-10-05T14:01:37.005Z,/admin/stats,GET,401,200,RISK
+API,SA-AUTH,anonymous write boundary /admin/lecturers,PASS,2026-10-05T14:01:37.009Z,/admin/lecturers,POST,401,401,NOTE
+API,SA-OPS,STUDENT write boundary /admin/lecturers,PASS,2026-10-05T14:01:37.011Z,/admin/lecturers,POST,403,403,NOTE
+API,SA-OPS,LECTURER write boundary /admin/lecturers,PASS,2026-10-05T14:01:37.012Z,/admin/lecturers,POST,403,403,NOTE
+API,SA-AUTH,anonymous write boundary /admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,PASS,2026-10-05T14:01:37.013Z,/admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,PATCH,401,401,NOTE
+API,SA-OPS,STUDENT write boundary /admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,PASS,2026-10-05T14:01:37.015Z,/admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,PATCH,403,403,NOTE
+API,SA-OPS,LECTURER write boundary /admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,PASS,2026-10-05T14:01:37.017Z,/admin/students/224cb77c-4dcb-4024-8c1a-92938c9a6d9e/assign-lecturer,PATCH,403,403,NOTE
+API,SA-AUTH,anonymous write boundary /admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PASS,2026-10-05T14:01:37.018Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,401,401,NOTE
+API,SA-OPS,STUDENT write boundary /admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PASS,2026-10-05T14:01:37.020Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,403,403,NOTE
+API,SA-OPS,LECTURER write boundary /admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PASS,2026-10-05T14:01:37.022Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,403,403,NOTE
+API,SA-AUTH,anonymous write boundary /admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PASS,2026-10-05T14:01:37.023Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,401,401,NOTE
+API,SA-USERS,STUDENT write boundary /admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PASS,2026-10-05T14:01:37.025Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,403,403,NOTE
+API,SA-USERS,LECTURER write boundary /admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PASS,2026-10-05T14:01:37.028Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,403,403,NOTE
+API,SA-AUTH,anonymous write boundary /admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PASS,2026-10-05T14:01:37.029Z,/admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PATCH,401,401,NOTE
+API,SA-FINANCE,STUDENT write boundary /admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PASS,2026-10-05T14:01:37.031Z,/admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PATCH,403,403,NOTE
+API,SA-FINANCE,LECTURER write boundary /admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PASS,2026-10-05T14:01:37.033Z,/admin/payouts/f6ef995a-8ac3-4e8a-984a-70ddd943494b/status,PATCH,403,403,NOTE
+API,SA-AUTH,anonymous write boundary /subscriptions/plans,PASS,2026-10-05T14:01:37.034Z,/subscriptions/plans,PATCH,401,401,NOTE
+API,SA-FINANCE,STUDENT write boundary /subscriptions/plans,PASS,2026-10-05T14:01:37.036Z,/subscriptions/plans,PATCH,403,403,NOTE
+API,SA-FINANCE,LECTURER write boundary /subscriptions/plans,PASS,2026-10-05T14:01:37.037Z,/subscriptions/plans,PATCH,403,403,NOTE
+API,SA-AUTH,anonymous write boundary /subscriptions/currencies,PASS,2026-10-05T14:01:37.039Z,/subscriptions/currencies,PATCH,401,401,NOTE
+API,SA-FINANCE,STUDENT write boundary /subscriptions/currencies,PASS,2026-10-05T14:01:37.040Z,/subscriptions/currencies,PATCH,403,403,NOTE
+API,SA-FINANCE,LECTURER write boundary /subscriptions/currencies,PASS,2026-10-05T14:01:37.042Z,/subscriptions/currencies,PATCH,403,403,NOTE
+API,SA-AUTH,anonymous write boundary /support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PASS,2026-10-05T14:01:37.043Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PATCH,401,401,NOTE
+API,SA-OPS,STUDENT write boundary /support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PASS,2026-10-05T14:01:37.045Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PATCH,403,403,NOTE
+API,SA-OPS,LECTURER write boundary /support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PASS,2026-10-05T14:01:37.046Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PATCH,403,403,NOTE
+API,SA-AUTH,super admin auth identity,PASS,2026-10-05T14:01:37.048Z,/auth/me,GET,200,200,NOTE
+API,SA-AUTH,JWT claim cannot promote student,PASS,2026-10-05T14:01:37.050Z,/admin/stats,GET,403,403,NOTE
+API,SA-AUTH,super admin registration rejected,PASS,2026-10-05T14:01:37.051Z,/auth/register,POST,400,400,NOTE
+API,SA-OPS,status boundary null,FAIL,2026-10-05T14:01:37.054Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,400,500,BUG
+API,SA-OPS,status boundary 23,FAIL,2026-10-05T14:01:37.056Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,400,500,BUG
+API,SA-OPS,"status boundary """"",FAIL,2026-10-05T14:01:37.058Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,400,500,BUG
+API,SA-OPS,"status boundary ""deleted""",FAIL,2026-10-05T14:01:37.061Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,400,500,BUG
+API,SA-OPS,"status boundary "" ACTIVE """,FAIL,2026-10-05T14:01:37.063Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,400,500,BUG
+API,SA-OPS,"status boundary ""INVALID""",FAIL,2026-10-05T14:01:37.069Z,/admin/users/76cd0bb0-3fee-4827-bc93-82d32b617c00/status,PATCH,400,500,BUG
+API,SA-USERS,"availability boundary accepted 0,1,2,3",PASS,2026-10-05T14:01:37.072Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,200,200,NOTE
+API,SA-USERS,"availability boundary accepted 20,21,22,23",PASS,2026-10-05T14:01:37.074Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,200,200,NOTE
+API,SA-USERS,"availability malformed [0.5,1,2,3]",FAIL,2026-10-05T14:01:37.080Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-USERS,"availability malformed [""0"",""1"",""2"",""3""]",FAIL,2026-10-05T14:01:37.082Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-USERS,availability malformed {},FAIL,2026-10-05T14:01:37.084Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-USERS,"availability malformed [0,1,2]",FAIL,2026-10-05T14:01:37.086Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,BUG
+API,SA-USERS,lecturer mass assignment rejected,FAIL,2026-10-05T14:01:37.089Z,/admin/lecturers/6683193d-96ab-482e-8d52-84dcb30364ac,PATCH,400,200,RISK
+API,SA-OPS,support status missing rejected,FAIL,2026-10-05T14:01:37.092Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PATCH,400,200,BUG
+API,SA-OPS,support message numeric rejected,FAIL,2026-10-05T14:01:37.094Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/messages,POST,400,500,BUG
+API,SA-OPS,support overlong reply rejected,FAIL,2026-10-05T14:01:37.097Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/messages,POST,400,201,RISK
+API,SA-AUTH,support student status update denied,PASS,2026-10-05T14:01:37.099Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e/status,PATCH,403,403,NOTE
+API,SA-AUTH,support cross-account read denied,PASS,2026-10-05T14:01:37.103Z,/support/tickets/0e7f1089-0c49-45f7-ac1b-20babf33258e,GET,403,403,NOTE
+API,SA-FINANCE,price inclusive boundary 0.01,PASS,2026-10-05T14:01:37.112Z,/subscriptions/plans,PATCH,200,200,NOTE
+API,SA-FINANCE,price inclusive boundary 10000,PASS,2026-10-05T14:01:37.116Z,/subscriptions/plans,PATCH,200,200,NOTE
+API,SA-FINANCE,plans unknown ID atomic rejection,PASS,2026-10-05T14:01:37.120Z,/subscriptions/plans,PATCH,400,400,NOTE
+API,SA-FINANCE,plans invalid request no partial write,PASS,2026-10-05T14:01:37.121Z,/subscriptions/plans,GET,200,200,NOTE
+API,SA-FINANCE,restore prices,PASS,2026-10-05T14:01:37.131Z,/subscriptions/plans,PATCH,200,200,NOTE
+API,SA-FINANCE,currencies missing payload rejected,PASS,2026-10-05T14:01:37.134Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-FINANCE,currencies duplicate rejected,PASS,2026-10-05T14:01:37.139Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-FINANCE,currencies unknown code rejected,PASS,2026-10-05T14:01:37.141Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-FINANCE,currencies leap date accepted,PASS,2026-10-05T14:01:37.148Z,/subscriptions/currencies,PATCH,200,200,NOTE
+API,SA-FINANCE,currencies non-leap date rejected,PASS,2026-10-05T14:01:37.150Z,/subscriptions/currencies,PATCH,400,400,NOTE
+API,SA-FINANCE,restore currencies,PASS,2026-10-05T14:01:37.154Z,/subscriptions/currencies,PATCH,200,200,NOTE
+API,SA-OPS,weekly stats exclude session 70 days away,FAIL,2026-10-05T14:01:37.160Z,/admin/stats,GET,200,200,BUG
+API,SA-OPS,super admin suspend another owner,FAIL,2026-10-05T14:01:37.284Z,/admin/users/318a0ff6-8960-4116-8f99-0892881bc1bd/status,PATCH,200,200,BUG
+API,SA-AUTH,suspended owner token revoked,PASS,2026-10-05T14:01:37.287Z,/admin/stats,GET,401,401,NOTE
+API,SA-OPS,reactivate owner,FAIL,2026-10-05T14:01:37.290Z,/admin/users/318a0ff6-8960-4116-8f99-0892881bc1bd/status,PATCH,200,200,BUG
+API,SA-AUTH,reactivation does not revive old owner token,FAIL,2026-10-05T14:01:37.293Z,/admin/stats,GET,401,200,RISK
+API,SA-AUTH,soft deleted owner token denied,PASS,2026-10-05T14:01:37.296Z,/admin/stats,GET,401,401,NOTE
+API,SA-AUTH,logout endpoint succeeds,PASS,2026-10-05T14:01:37.405Z,/auth/logout,POST,201,201,NOTE
+API,SA-AUTH,logout revokes bearer token,FAIL,2026-10-05T14:01:37.411Z,/admin/stats,GET,401,200,RISK
+API,SA-USERS,audit actor for owner create and assignment,PASS,2026-10-05T14:01:37.414Z,/admin/audit-logs,GET,200,200,NOTE
+API,SA-FINANCE,audit covers owner status payout and hours,FAIL,2026-10-05T14:01:37.421Z,/admin/audit-logs,GET,200,200,BUG
+API,SA-OPS,sessions all records reachable beyond 200,FAIL,2026-10-05T14:01:37.450Z,/admin/sessions,GET,200,200,BUG
+API,SA-OPS,financial aggregates include all 55 successful payments,PASS,2026-10-05T14:01:37.466Z,/admin/finance,GET,200,200,NOTE
+API,SA-FINANCE,monthly revenue excludes failed payment,PASS,2026-10-05T14:01:37.478Z,/admin/stats,GET,200,200,NOTE
+API,SA-FINANCE,finance all payment records reachable beyond 50,FAIL,2026-10-05T14:01:37.484Z,/admin/finance,GET,200,200,BUG
+API,SA-FINANCE,finance all payout records reachable beyond 50,FAIL,2026-10-05T14:01:37.496Z,/admin/finance,GET,200,200,BUG
+API,SA-AUDIT-UI,audit all records reachable beyond 100,FAIL,2026-10-05T14:01:37.513Z,/admin/audit-logs,GET,200,200,BUG
+API,SA-OPS,feedback all records reachable beyond 200,FAIL,2026-10-05T14:01:37.553Z,/admin/feedback,GET,200,200,BUG
+API,SA-USERS,private response has JSON and no-store /admin/users,FAIL,2026-10-05T14:01:37.560Z,,,,,RISK
+API,SA-OPS,private response has JSON and no-store /admin/sessions,FAIL,2026-10-05T14:01:37.565Z,,,,,RISK
+API,SA-FINANCE,private response has JSON and no-store /admin/finance,FAIL,2026-10-05T14:01:37.567Z,,,,,RISK
+API,SA-OPS,private response has JSON and no-store /admin/feedback,FAIL,2026-10-05T14:01:37.573Z,,,,,RISK
+API,SA-AUDIT-UI,private response has JSON and no-store /admin/audit-logs,FAIL,2026-10-05T14:01:37.575Z,,,,,RISK
+API,SA-OPS,private response has JSON and no-store /admin/waitlist,FAIL,2026-10-05T14:01:37.576Z,,,,,RISK
+API,SA-OPS,12 concurrent dashboard reads return 200,PASS,2026-10-05T14:01:37.598Z,,,,,NOTE
+Browser,SA-AUDIT-UI,dashboard-1440,FAIL,2026-10-05T13:57:14.732Z,,,,,BUG
+Browser,SA-USERS,users-1440,FAIL,2026-10-05T13:57:15.738Z,,,,,BUG
+Browser,SA-AUDIT-UI,sessions-1440,FAIL,2026-10-05T13:57:16.754Z,,,,,BUG
+Browser,SA-FINANCE,finance-1440,PASS,2026-10-05T13:57:17.715Z,,,,,NOTE
+Browser,SA-AUDIT-UI,feedback-1440,PASS,2026-10-05T13:57:18.689Z,,,,,NOTE
+Browser,SA-AUDIT-UI,audit-1440,PASS,2026-10-05T13:57:19.620Z,,,,,NOTE
+Browser,SA-FINANCE,config-1440,PASS,2026-10-05T13:57:20.543Z,,,,,NOTE
+Browser,SA-AUDIT-UI,requests-1440,FAIL,2026-10-05T13:57:21.053Z,,,,,BUG
+Browser,SA-AUDIT-UI,dashboard-768,FAIL,2026-10-05T13:57:22.082Z,,,,,BUG
+Browser,SA-USERS,users-768,FAIL,2026-10-05T13:57:22.997Z,,,,,BUG
+Browser,SA-AUDIT-UI,sessions-768,FAIL,2026-10-05T13:57:23.913Z,,,,,BUG
+Browser,SA-FINANCE,finance-768,PASS,2026-10-05T13:57:24.796Z,,,,,NOTE
+Browser,SA-AUDIT-UI,feedback-768,FAIL,2026-10-05T13:57:25.705Z,,,,,BUG
+Browser,SA-AUDIT-UI,audit-768,PASS,2026-10-05T13:57:26.562Z,,,,,NOTE
+Browser,SA-FINANCE,config-768,PASS,2026-10-05T13:57:27.406Z,,,,,NOTE
+Browser,SA-AUDIT-UI,requests-768,PASS,2026-10-05T13:57:27.841Z,,,,,NOTE
+Browser,SA-AUDIT-UI,dashboard-390,FAIL,2026-10-05T13:57:28.728Z,,,,,BUG
+Browser,SA-USERS,users-390,PASS,2026-10-05T13:57:29.679Z,,,,,NOTE
+Browser,SA-AUDIT-UI,sessions-390,FAIL,2026-10-05T13:57:30.572Z,,,,,BUG
+Browser,SA-FINANCE,finance-390,PASS,2026-10-05T13:57:31.451Z,,,,,NOTE
+Browser,SA-AUDIT-UI,feedback-390,FAIL,2026-10-05T13:57:32.343Z,,,,,BUG
+Browser,SA-AUDIT-UI,audit-390,FAIL,2026-10-05T13:57:33.219Z,,,,,BUG
+Browser,SA-FINANCE,config-390,PASS,2026-10-05T13:57:34.076Z,,,,,NOTE
+Browser,SA-AUDIT-UI,requests-390,FAIL,2026-10-05T13:57:34.530Z,,,,,BUG
+Browser,SA-OPS,owner-financial-controls,PASS,2026-10-05T13:57:35.407Z,,,,,NOTE
+Browser,SA-AUTH,stale-staff-preference-owner-navigation,FAIL,2026-10-05T13:57:36.230Z,,,,,BUG
+Browser,SA-AUDIT-UI,mobile-all-owner-routes-reachable,FAIL,2026-10-05T13:57:37.120Z,,,,,BUG
+Browser,SA-USERS,users-search-case-and-role-filter,PASS,2026-10-05T13:57:37.906Z,,,,,NOTE
+Browser,SA-OPS,admins-filter-includes-super-admin,FAIL,2026-10-05T13:57:38.741Z,,,,,BUG
+Browser,SA-USERS,users-create-lecturer-persist,PASS,2026-10-05T13:59:01.414Z,,,,,NOTE
+Browser,SA-USERS,users-dialog-escape,FAIL,2026-10-05T13:59:03.596Z,,,,,BUG
+Browser,SA-USERS,users-suspend-reactivate,PASS,2026-10-05T13:59:04.500Z,,,,,NOTE
+Browser,SA-FINANCE,config-price-save-reload,PASS,2026-10-05T13:59:05.497Z,,,,,NOTE
+Browser,SA-FINANCE,config-price-min-max-step,PASS,2026-10-05T13:59:06.015Z,,,,,NOTE
+Browser,SA-FINANCE,config-save-failure-retain-retry,PASS,2026-10-05T13:59:06.356Z,,,,,NOTE
+Browser,SA-FINANCE,config-currency-save-reload-LKR-fixed,PASS,2026-10-05T13:59:12.420Z,,,,,NOTE
+Browser,SA-FINANCE,finance-csv-download,PASS,2026-10-05T13:59:12.896Z,,,,,NOTE
+Browser,SA-OPS,sessions-csv-download,PASS,2026-10-05T13:59:13.764Z,,,,,NOTE
+Browser,SA-FINANCE,finance-payout-process-persist,PASS,2026-10-05T13:59:25.382Z,,,,,NOTE
+Browser,SA-OPS,feedback-filters-and-safe-markup,PASS,2026-10-05T13:59:26.445Z,,,,,NOTE
+Browser,SA-OPS,feedback-rating-announced,FAIL,2026-10-05T13:59:27.326Z,,,,,BUG
+Browser,SA-AUDIT-UI,audit-search-owner-creation,PASS,2026-10-05T13:59:28.109Z,,,,,NOTE
+Browser,SA-OPS,requests-reply-resolve-reopen,PASS,2026-10-05T13:59:28.887Z,,,,,NOTE
+Browser,SA-OPS,requests-whitespace-disabled,PASS,2026-10-05T13:59:31.120Z,,,,,NOTE
+Browser,SA-OPS,requests-dialog-escape,FAIL,2026-10-05T13:59:32.068Z,,,,,BUG
+Browser,SA-OPS,sessions-notes-private-hidden,PASS,2026-10-05T13:59:33.026Z,,,,,NOTE
+Browser,SA-OPS,sessions-lecturer-absent-status,FAIL,2026-10-05T13:59:33.938Z,,,,NO_SHOW_STUDENT,BUG
+Browser,SA-OPS,dashboard-outage-recovery,PASS,2026-10-05T13:59:46.614Z,,,,,NOTE
+Browser,SA-USERS,users-outage-recovery,PASS,2026-10-05T13:59:48.535Z,,,,,NOTE
+Browser,SA-OPS,sessions-outage-recovery,FAIL,2026-10-05T13:59:50.464Z,,,,,BUG
+Browser,SA-FINANCE,finance-outage-recovery,PASS,2026-10-05T13:59:52.385Z,,,,,NOTE
+Browser,SA-OPS,feedback-outage-recovery,PASS,2026-10-05T13:59:54.333Z,,,,,NOTE
+Browser,SA-AUDIT-UI,audit-outage-recovery,PASS,2026-10-05T13:59:56.248Z,,,,,NOTE
+Browser,SA-FINANCE,config-outage-recovery,PASS,2026-10-05T13:59:58.194Z,,,,,NOTE
+Browser,SA-OPS,requests-outage-recovery,FAIL,2026-10-05T13:59:59.609Z,,,,,BUG
+Browser,SA-FINANCE,currency-outage-visible,FAIL,2026-10-05T14:00:01.525Z,,,,,BUG
+Browser,SA-AUTH,student-config-denied-before-controls,FAIL,2026-10-05T14:00:01.813Z,,,,student sees privileged configuration controls,BUG
+Browser,SA-AUTH,logout-revisit-private-route,PASS,2026-10-05T14:00:12.630Z,,,,,NOTE
+Browser,SA-OPS,sessions-cancel-reason,PASS,2026-10-05T14:01:34.723Z,,,,,NOTE
+Browser,SA-AUTH,anonymous-admin-redirect,FAIL,2026-10-05T14:01:35.720Z,,,,anonymous configuration controls rendered,BUG
+Browser,SA-OPS,requests-role-search-filter,PASS,2026-10-05T14:01:47.316Z,,,,,NOTE
+Browser,SA-OPS,sessions-filter-empty-disables-export,PASS,2026-10-05T14:01:48.206Z,,,,,NOTE
+Browser,SA-USERS,users-empty-state,PASS,2026-10-05T14:01:48.988Z,,,,,NOTE
+Browser,SA-OPS,sessions-empty-state,PASS,2026-10-05T14:01:49.771Z,,,,,NOTE
+Browser,SA-OPS,feedback-empty-state,PASS,2026-10-05T14:01:50.559Z,,,,,NOTE
+Browser,SA-AUDIT-UI,audit-empty-state,PASS,2026-10-05T14:01:51.343Z,,,,,NOTE
+Browser,SA-OPS,requests-empty-state,PASS,2026-10-05T14:01:52.127Z,,,,,NOTE
+Browser,SA-FINANCE,finance-zero-state-and-export,PASS,2026-10-05T14:02:03.740Z,,,,,NOTE
+Browser,SA-AUDIT-UI,notifications-keyboard-escape,FAIL,2026-10-05T14:02:04.584Z,,,,,BUG
+Browser,SA-AUDIT-UI,sidebar-collapse-accessible-expand,FAIL,2026-10-05T14:02:05.413Z,,,,,BUG
+Browser,SA-AUDIT-UI,dashboard-320-reflow,PASS,2026-10-05T14:02:06.326Z,,,,,NOTE
+Browser,SA-FINANCE,config-320-reflow,PASS,2026-10-05T14:02:07.132Z,,,,,NOTE
+Browser,SA-AUDIT-UI,requests-320-reflow,PASS,2026-10-05T14:02:07.530Z,,,,,NOTE
+Browser,SA-AUDIT-UI,feedback-320-reflow,FAIL,2026-10-05T14:02:08.320Z,,,,,BUG
+Browser,SA-OPS,sessions-csv-protects-formulas-and-quotes,FAIL,2026-10-05T14:02:09.129Z,,,,,BUG
+Browser,SA-FINANCE,finance-failed-process-retains-pending,PASS,2026-10-05T14:02:09.981Z,,,,,NOTE
+Browser,SA-OPS,enquiries-csv-formula-and-quotes,PASS,2026-10-05T14:02:47.780Z,,,,,NOTE
+Browser,SA-USERS,users-assignment-and-shifts-persist,PASS,2026-10-05T14:02:48.610Z,,,,,NOTE
+Browser,SA-OPS,waitlist-outage-visible,PASS,2026-10-05T14:02:53.512Z,,,,,NOTE
+Browser,SA-OPS,expired-owner-session-redirects,PASS,2026-10-05T14:03:36.776Z,,,,,NOTE
+Browser,SA-AUTH,student-config-save-backend-denied,PASS,2026-10-05T14:03:37.293Z,,,,,NOTE
+Browser,SA-FINANCE,config-loading-shown-before-data,PASS,2026-10-05T14:03:37.863Z,,,,,NOTE
+Browser,SA-FINANCE,config-single-save-while-pending,PASS,2026-10-05T14:03:38.172Z,,,,,NOTE
+Contract,SA-AUTH,response contract /auth/me,PASS,2026-10-05T14:03:38.831Z,,,,200,NOTE
+Contract,SA-USERS,response contract /admin/users,PASS,2026-10-05T14:03:38.841Z,,,,200,NOTE
+Contract,SA-OPS,response contract /admin/stats,PASS,2026-10-05T14:03:38.847Z,,,,200,NOTE
+Contract,SA-OPS,response contract /admin/sessions,PASS,2026-10-05T14:03:38.849Z,,,,200,NOTE
+Contract,SA-FINANCE,response contract /admin/finance,PASS,2026-10-05T14:03:38.852Z,,,,200,NOTE
+Contract,SA-OPS,response contract /admin/feedback,PASS,2026-10-05T14:03:38.854Z,,,,200,NOTE
+Contract,SA-AUDIT-UI,response contract /admin/audit-logs,PASS,2026-10-05T14:03:38.856Z,,,,200,NOTE
+Contract,SA-OPS,response contract /admin/waitlist,PASS,2026-10-05T14:03:38.857Z,,,,200,NOTE
+Contract,SA-OPS,response contract /support/tickets,PASS,2026-10-05T14:03:38.859Z,,,,200,NOTE
+Contract,SA-FINANCE,response contract /subscriptions/plans,PASS,2026-10-05T14:03:38.860Z,,,,200,NOTE
+Contract,SA-FINANCE,response contract /subscriptions/currencies,PASS,2026-10-05T14:03:38.860Z,,,,200,NOTE
+Contract,SA-FINANCE,monthly plan revenue counts only successful payments,PASS,2026-10-05T14:03:38.862Z,,,,,NOTE

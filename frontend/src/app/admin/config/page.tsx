@@ -1,115 +1,38 @@
 'use client';
-
-import { Save } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api';
+import { useSubscriptionPlans } from '@/lib/subscription-plans';
+import { toast } from '@/components/ui/toast';
+import { studentUi } from '@/components/student/student-dashboard-ui';
 
 export default function AdminConfigPage() {
-  return (
-    <div className="space-y-6 animate-fade-in max-w-3xl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Configuration</h1>
-        <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] shadow-sm transition-all">
-          <Save className="h-4 w-4" /> Save All
-        </button>
-      </div>
-
-      {/* Pricing — Noorani Qaida */}
-      <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-stone-950">Beginner: Noorani Qaida Pricing (USD/month)</h2>
-          <span className="text-xs font-mono text-[#095F46] font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">8 or 12 sessions</span>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">Standard Plan (2 / week · 8 sessions)</label>
-            <input type="number" defaultValue={59} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-[#095F46] uppercase tracking-wider mb-1.5">Fast Track Plan (3 / week · 12 sessions)</label>
-            <input type="number" defaultValue={89} className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/20 text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-        </div>
-      </div>
-
-      {/* Pricing — Tajweed Quran Recitation */}
-      <div className="p-6 rounded-xl border-2 border-[#095F46]/30 bg-white shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-stone-950">Intermediate: Tajweed Recitation Pricing (USD/month)</h2>
-          <span className="text-xs font-bold text-white bg-[#095F46] px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px]">Popular</span>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">Standard Plan (2 / week · 8 sessions)</label>
-            <input type="number" defaultValue={59} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-[#095F46] uppercase tracking-wider mb-1.5">Fast Track Plan (3 / week · 12 sessions)</label>
-            <input type="number" defaultValue={89} className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/20 text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-        </div>
-      </div>
-
-      {/* Pricing — Hifz Memorization */}
-      <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-stone-950">Advanced: Hifz Memorization Pricing (USD/month)</h2>
-          <span className="text-xs font-mono text-[#095F46] font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">8 or 12 sessions</span>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">Standard Plan (2 / week · 8 sessions)</label>
-            <input type="number" defaultValue={59} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-[#095F46] uppercase tracking-wider mb-1.5">Fast Track Plan (3 / week · 12 sessions)</label>
-            <input type="number" defaultValue={89} className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/20 text-stone-950 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-        </div>
-      </div>
-
-      {/* Session Rules */}
-      <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">
-        <h2 className="font-semibold mb-4 text-stone-950">Session & Scheduling Rules</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-stone-700">Session Duration (minutes)</label>
-            <input type="number" defaultValue={45} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-stone-700">Standard Plan Sessions (monthly)</label>
-            <input type="number" defaultValue={8} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-[#095F46]">Fast Track Sessions (monthly)</label>
-            <input type="number" defaultValue={12} className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/20 text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5 text-stone-700">Min Gap Between Sessions (days)</label>
-            <input type="number" defaultValue={2} className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#095F46]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Free Reschedule Window (hours)</label>
-            <input type="number" defaultValue={12} className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Min Booking Lead Time (hours)</label>
-            <input type="number" defaultValue={12} className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Lecturer Rate per Session (LKR)</label>
-            <input type="number" defaultValue={1250} className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Payout Cycle</label>
-            <select className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
-              <option>Bi-weekly</option><option>Monthly</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Payment Processing Fee (%)</label>
-            <input type="number" defaultValue={3} step={0.1} className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const queryClient = useQueryClient();
+  const { data: plans = [], isPending, isError, refetch } = useSubscriptionPlans(false);
+  const save = useMutation({
+    mutationFn: (prices: { id: string; monthlyUsd: number; monthlyLkr: number }[]) => apiFetch('/subscriptions/plans', { method: 'PATCH', body: JSON.stringify({ prices }) }),
+    onSuccess: data => { queryClient.setQueryData(['subscriptionPlans'], data); queryClient.invalidateQueries({ queryKey: ['adminFinance'] }); toast.success('Prices saved', 'Sri Lankan and international prices are now available for new plan selections.'); },
+    onError: error => toast.error('Unable to save prices', error.message),
+  });
+  if (isPending) return <p role="status">Loading configuration…</p>;
+  if (isError) return <p role="alert">Unable to load configuration. <button onClick={() => refetch()} className="underline">Retry</button></p>;
+  if (!plans.length) return <p>No subscription plans have been configured.</p>;
+  return <form key={JSON.stringify(plans)} onSubmit={event => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    save.mutate(plans.map(plan => ({ id: plan.id, monthlyUsd: Number(form.get(`${plan.id}-USD`)), monthlyLkr: Number(form.get(`${plan.id}-LKR`)) })));
+  }} className="w-full space-y-5">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Monthly plan prices</h2><p className="mt-1 text-sm text-[#56635c]">Set Sri Lankan prices in LKR and international prices in USD separately.</p></div><button disabled={save.isPending} className={studentUi.primaryButton}>{save.isPending ? 'Saving…' : 'Save all prices'}</button></div>
+    {plans.some(plan => plan.monthlyLkr === null) && <p role="status" className="text-sm text-[#56635c]">Enter the Sri Lankan prices before saving. Local prices are not derived from USD.</p>}
+    <section className="grid gap-4 lg:grid-cols-3">
+      {plans.filter(plan => plan.tier === 'Standard').map(standard => {
+        const accelerated = plans.find(plan => plan.courseId === standard.courseId && plan.tier === 'Fast Track');
+        return <article key={standard.id} className="rounded-xl border border-[#d6e0db] bg-white p-4">
+          <h3 className="text-lg font-semibold">{standard.course}</h3>
+          <div className="mt-4 space-y-5">{[standard, accelerated].filter(plan => !!plan).map(plan => <fieldset key={plan.id}><legend className="text-sm font-semibold">{plan.tier} · {plan.sessions / 4} classes/week</legend><div className="mt-2 grid grid-cols-2 gap-3">{(['LKR', 'USD'] as const).map(code => <label key={code} className="block text-sm text-[#56635c]">{code === 'LKR' ? 'Sri Lanka · LKR' : 'International · USD'}<input name={`${plan.id}-${code}`} aria-label={`${standard.course} ${plan.tier} monthly price in ${code}`} type="number" required min="0.01" max={code === 'LKR' ? '10000000' : '10000'} step="0.01" defaultValue={(code === 'LKR' ? plan.monthlyLkr : plan.monthlyUsd) ?? ''} disabled={save.isPending} className={`${studentUi.field} mt-2`} /></label>)}</div></fieldset>)}</div>
+        </article>;
+      })}
+    </section>
+    <p className="text-sm text-[#56635c]">Exchange rates update automatically in the backend. View the rate, its date and converted amounts in Finance.</p>
+    <section className="rounded-xl border border-[#d6e0db] bg-white p-5"><h2 className="font-semibold">Session & scheduling rules</h2><dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">{[['Session duration', '40 minutes'], ['Standard sessions', '8 per month'], ['Fast Track sessions', '12 per month'], ['Booking notice', '12 hours'], ['Free rescheduling notice', '12 hours']].map(([label, value]) => <div key={label}><dt className="text-sm text-[#56635c]">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</dl></section>
+  </form>;
 }

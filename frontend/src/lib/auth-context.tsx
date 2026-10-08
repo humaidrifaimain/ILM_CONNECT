@@ -1,5 +1,6 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiFetch, setAuthToken } from './api';
 
@@ -22,6 +23,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = (userData: User, token?: string) => {
+    queryClient.clear();
     setUser(userData);
     if (typeof window !== 'undefined') {
       localStorage.setItem('ilm_user', JSON.stringify(userData));

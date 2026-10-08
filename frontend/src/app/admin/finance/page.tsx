@@ -1,19 +1,22 @@
 'use client';
 
-import { DollarSign, Download, TrendingUp, TrendingDown, CheckCircle } from 'lucide-react';
+import { Download, CheckCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { downloadCsv } from '@/lib/download';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { ExchangeRatesPanel } from '@/components/admin/exchange-rates-panel';
 
 export default function AdminFinancePage() {
   const queryClient = useQueryClient();
-  const { data: finance, isLoading } = useQuery({
+  const { data: finance, isLoading, isError: financeError } = useQuery({
     queryKey: ['adminFinance'],
     queryFn: () => apiFetch('/admin/finance'),
+    refetchInterval: 30000,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
     queryKey: ['adminStats'],
     queryFn: () => apiFetch('/admin/stats'),
   });
@@ -26,63 +29,71 @@ export default function AdminFinancePage() {
       });
       await queryClient.invalidateQueries({ queryKey: ['adminFinance'] });
       await queryClient.invalidateQueries({ queryKey: ['adminStats'] });
-      toast.success('Payout Processed', 'Lecturer payout has been marked as successful.');
-    } catch (err: any) {
-      toast.error('Payout Failed', err?.message || 'Failed to process payout');
+      toast.success('Payout recorded', 'This records an external payment; no money is transferred by this app.');
+    } catch (err: unknown) {
+      toast.error('Payout Failed', err instanceof Error ? err.message : 'Failed to process payout');
     }
   };
 
-  if (isLoading || !finance || !stats) {
+  if (financeError || statsError) return <p role="alert">Unable to load financial data. Please refresh to retry.</p>;
+
+  if (isLoading || statsLoading || !finance || !stats) {
     return <LoadingScreen message="Loading Financial Data..." subtitle="Calculating revenues, profit margins, and payouts" fullScreen />;
   }
+
+  if (
+    !Array.isArray(finance.revenueByPlan) ||
+    !Array.isArray(finance.payouts) ||
+    ![stats.revenueThisMonth, stats.payoutsThisMonth, stats.profitThisMonth].every(
+      (value) => typeof value === 'number' && Number.isFinite(value),
+    )
+  ) {
+    return <p role="alert">Financial data is incompatible with this dashboard. Check that the frontend API URL points to the matching backend deployment.</p>;
+  }
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Financial Reports</h1>
         <button
-          onClick={() => toast.info('Export Started', 'Generating financial statements CSV download...')}
+          onClick={() => downloadCsv([['Monthly summary', 'Amount LKR'], ['Revenue', stats.revenueThisMonth], ['Payouts', stats.payoutsThisMonth], ['Net before fees', stats.profitThisMonth], [], ['Plan', 'Paying students', 'Revenue LKR'], ...finance.revenueByPlan.map((row: { tier: string; students: number; revenue: number }) => [row.tier, row.students, row.revenue]), [], ['Payout ID', 'Lecturer ID', 'Date', 'Amount LKR', 'Status'], ...finance.payouts.map((p: { id: string; lecturerId: string; initiatedAt: string; amountLkr: number; status: string }) => [p.id, p.lecturerId, p.initiatedAt, p.amountLkr, p.status])], 'finance-summary.csv')}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]"
         >
           <Download className="h-4 w-4" /> Export CSV
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Revenue', value: `Rs. ${(stats.revenueThisMonth/1000).toFixed(0)}K`, trend: '+12%', up: true },
-          { label: 'Lecturer Payouts', value: `Rs. ${(stats.payoutsThisMonth/1000).toFixed(0)}K`, trend: '+8%', up: true },
-          { label: 'Net Profit', value: `Rs. ${(stats.profitThisMonth/1000).toFixed(0)}K`, trend: '+18%', up: true },
-          { label: 'Payment Processing', value: `Rs. ${(stats.revenueThisMonth*0.03/1000).toFixed(0)}K`, trend: '3%', up: false },
+          { label: 'Revenue this month', value: `Rs. ${stats.revenueThisMonth.toLocaleString()}` },
+          { label: 'Lecturer payouts this month', value: `Rs. ${stats.payoutsThisMonth.toLocaleString()}` },
+          { label: 'Net before processing fees', value: `Rs. ${stats.profitThisMonth.toLocaleString()}` },
         ].map((m) => (
           <div key={m.label} className="p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
             <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1">{m.label}</div>
             <div className="text-xl font-bold">{m.value}</div>
-            <div className={`flex items-center gap-1 text-xs mt-1 ${m.up ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
-              {m.up ? <TrendingUp className="h-3 w-3" /> : <DollarSign className="h-3 w-3" />} {m.trend}
-            </div>
+
           </div>
         ))}
       </div>
 
+      <ExchangeRatesPanel rates={finance.exchangeRates ?? []} plans={finance.pricing ?? []} />
+
       {/* Revenue breakdown chart */}
       <div className="p-6 rounded-xl border border-stone-200/90 bg-white shadow-xs">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-stone-950">Revenue by Course & Plan</h2>
-          <span className="text-xs text-stone-500 font-medium">Standard (2/wk) vs Fast Track (3/wk)</span>
+          <h2 className="font-bold text-stone-950">Revenue by Plan</h2>
+          <span className="text-xs text-stone-500 font-medium">Successful payments this month</span>
         </div>
         <div className="space-y-4">
-          {[
-            { tier: 'Intermediate: Tajweed Recitation (Fast Track & Standard)', students: 68, revenue: 1120000, color: 'from-[#095F46] to-emerald-600' },
-            { tier: 'Beginner: Noorani Qaida (Fast Track & Standard)', students: 54, revenue: 860000, color: 'from-emerald-700 to-teal-500' },
-            { tier: 'Advanced: Hifz Memorization (Fast Track & Standard)', students: 32, revenue: 580000, color: 'from-stone-800 to-stone-600' },
-          ].map((t) => (
+          {finance.revenueByPlan.length === 0 && <p className="text-sm text-stone-500">No successful payments this month. Revenue: Rs. 0.</p>}
+          {finance.revenueByPlan.map((t: { tier: string; students: number; revenue: number }) => (
             <div key={t.tier}>
               <div className="flex items-center justify-between text-sm mb-1.5">
                 <span className="font-semibold text-stone-900">{t.tier} <span className="text-stone-500 font-normal">({t.students} students)</span></span>
-                <span className="font-bold text-stone-950">Rs. {(t.revenue/1000).toFixed(0)}K</span>
+                <span className="font-bold text-stone-950">Rs. {t.revenue.toLocaleString()}</span>
               </div>
               <div className="h-3 rounded-full bg-stone-100">
-                <div className={`h-full rounded-full bg-gradient-to-r ${t.color}`} style={{ width: `${(t.revenue / 1200000) * 100}%` }} />
+                <div className="h-full rounded-full bg-[#095F46]" style={{ width: `${stats.revenueThisMonth > 0 ? Math.min(100, t.revenue / stats.revenueThisMonth * 100) : 0}%` }} />
               </div>
             </div>
           ))}
@@ -93,7 +104,7 @@ export default function AdminFinancePage() {
       <div>
         <h2 className="font-semibold text-lg mb-4">Recent Payouts</h2>
         <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden">
-          {finance.payouts.map((p: any, i: number) => (
+          {finance.payouts.map((p: { id: string; lecturerId: string; method: string; initiatedAt: string; amountLkr: number; status: string }, i: number) => (
             <div key={p.id} className={`flex items-center justify-between px-5 py-3.5 text-sm ${i > 0 ? 'border-t border-[hsl(var(--border))]' : ''}`}>
               <div className="flex flex-col">
                 <span className="font-medium">Lecturer {p.lecturerId.substring(0, 8)}</span>
