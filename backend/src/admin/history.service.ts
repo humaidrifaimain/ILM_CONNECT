@@ -19,6 +19,8 @@ export class HistoryService {
   async getHistory(id: string) {
     return this.prisma.$transaction((tx) => this.readHistory(tx, id), {
       isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      maxWait: 10_000,
+      timeout: 15_000,
     });
   }
 

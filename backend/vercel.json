@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "npm run deploy:prepare",
   "builds": [
     {
       "src": "api/index.ts",

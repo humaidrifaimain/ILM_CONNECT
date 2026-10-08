@@ -7,8 +7,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.build.json --incremental false",
-    "db:migrate": "prisma migrate deploy",
+    "db:migrate": "node scripts/migrate-deploy.cjs",
     "deploy:prepare": "npm run db:migrate && npm run build",
+    "vercel-build": "npm run deploy:prepare",
     "postinstall": "npx prisma generate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
