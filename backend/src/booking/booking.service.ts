@@ -555,7 +555,7 @@ export class BookingService {
       select: { id: true, startsAt: true, status: true, student: { select: { fullName: true } }, notes: { select: { sharedNotes: true } } },
       orderBy: { startsAt: 'asc' },
     });
-    return sessions.filter(session => session.status === SessionStatus.IN_PROGRESS || (session.notes?.sharedNotes.trim().length || 0) < 30);
+    return sessions.filter(session => (session.notes?.sharedNotes.trim().length || 0) < 30);
   }
 
   async markStudentAbsent(

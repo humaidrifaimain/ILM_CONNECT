@@ -111,10 +111,24 @@ async function run() {
   assert.equal(studentBookings.find(item => item.id === active.id).notes.internalNotes, undefined);
   passed('Admin and student receive shared notes with private lecturer notes excluded');
 
+  const savedActive = await session(student, lecturer, 'IN_PROGRESS');
+  await request('/bookings/' + savedActive.id, lecturer, 'PATCH', { notes: note });
+  assert.equal((await db.sessionNotes.findUnique({ where: { sessionId: savedActive.id } })).sharedNotes, note);
+  assert.ok(!(await request('/bookings/lecturer/pending-notes', lecturer)).some(item => item.id === savedActive.id));
+  passed('Previously saved in-progress feedback is not requested again');
+
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, timezoneId: 'Asia/Colombo' });
   const page = await context.newPage(); page.on('pageerror', error => runtimeErrors.push(error.message));
   await login(page, lecturer, 'lecturer/dashboard');
+  await expect(page.getByRole('dialog', { name: 'Lesson feedback required' })).toBeHidden();
+  await page.getByRole('button', { name: 'Logout', exact: true }).click();
+  await page.waitForURL('**/auth/signin');
+  await login(page, lecturer, 'lecturer/dashboard');
+  await expect(page.getByRole('dialog', { name: 'Lesson feedback required' })).toBeHidden();
+  await page.reload();
+  await expect(page.getByRole('dialog', { name: 'Lesson feedback required' })).toBeHidden();
+  passed('Saved feedback stays resolved after logout, login and reload');
   const pending = await session(student, lecturer);
   await page.reload();
   const dialog = page.getByRole('dialog', { name: 'Lesson feedback required' });
@@ -165,6 +179,12 @@ async function run() {
   await page.getByRole('link', { name: 'Sessions', exact: true }).first().click();
   await page.waitForURL('**/lecturer/sessions');
   passed('Successful save unlocks dashboard navigation');
+  const savedContext = await browser.newContext(); const savedPage = await savedContext.newPage();
+  await login(savedPage, lecturer, 'lecturer/dashboard');
+  await expect(savedPage.getByRole('dialog', { name: 'Lesson feedback required' })).toBeHidden();
+  assert.equal((await db.sessionNotes.findUnique({ where: { sessionId: pending.id } })).sharedNotes, note);
+  await savedContext.close();
+  passed('Popup submission remains saved in a fresh browser login');
   const manual = await session(student, lecturer, 'SCHEDULED');
   await page.goto(web + '/lecturer/sessions/' + manual.id + '/room');
   await page.getByRole('button', { name: 'End Session', exact: true }).waitFor();

@@ -74,3 +74,23 @@ describe('Session notes and completion ownership', () => {
     expect(notifications.dispatchLessonFeedback).not.toHaveBeenCalled();
   });
 });
+
+describe('Pending lesson feedback', () => {
+  const prisma = { session: { findMany: jest.fn() } };
+  const service = new BookingService(prisma as unknown as PrismaService, {} as NotificationService);
+  it('does not request saved feedback again for completed or in-progress sessions', async () => {
+    const note = 'The student improved pronunciation and should practise the letters at home.';
+    prisma.session.findMany.mockResolvedValue([
+      { id: 'saved-active', status: 'IN_PROGRESS', notes: { sharedNotes: note } },
+      { id: 'saved-completed', status: 'COMPLETED', notes: { sharedNotes: note } },
+      { id: 'missing-active', status: 'IN_PROGRESS', notes: null },
+      { id: 'missing-completed', status: 'COMPLETED', notes: null },
+      { id: 'short', status: 'COMPLETED', notes: { sharedNotes: '  Short  ' } },
+    ]);
+    await expect(service.getPendingLessonNotes('lecturer')).resolves.toEqual([
+      expect.objectContaining({ id: 'missing-active' }),
+      expect.objectContaining({ id: 'missing-completed' }),
+      expect.objectContaining({ id: 'short' }),
+    ]);
+  });
+});
