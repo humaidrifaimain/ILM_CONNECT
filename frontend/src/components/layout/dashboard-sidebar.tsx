@@ -107,12 +107,18 @@ export function DashboardMobileNav() {
   }
   const items = pathname.startsWith('/admin') && ['ADMIN', 'SUPER_ADMIN'].includes(user.role) ? adminNav : pathname.startsWith('/lecturer') && user.role === 'LECTURER' ? lecturerNav : [];
   if (!items.length) return null;
-  return <nav aria-label={user.role === 'LECTURER' ? 'Lecturer pages' : 'Admin pages'} className="grid grid-cols-2 gap-1 border-b border-[#d6e0db] bg-white px-3 py-2 sm:grid-cols-4 lg:hidden">
+  const isAdmin = pathname.startsWith('/admin');
+  const navigation = <nav aria-label={user.role === 'LECTURER' ? 'Lecturer pages' : 'Admin pages'} className={`grid grid-cols-2 gap-1 bg-white px-3 py-2 sm:grid-cols-4 lg:hidden ${isAdmin ? '' : 'border-b border-[#d6e0db]'}`}>
     {items.map(item => {
       const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-      return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#095F46] ${active ? 'bg-[#095F46] text-white' : 'text-[#202823] hover:bg-[#eef4f1]'}`}>{item.label}</Link>;
+      return <Link key={item.href} href={item.href} onClick={event => event.currentTarget.closest('details')?.removeAttribute('open')} aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#095F46] ${active ? 'bg-[#095F46] text-white' : 'text-[#202823] hover:bg-[#eef4f1]'}`}>{item.label}</Link>;
     })}
   </nav>;
+  if (!isAdmin) return navigation;
+  return <details className="border-b border-[#d6e0db] bg-white px-3 py-2 lg:hidden" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }}>
+    <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-3 text-sm font-semibold text-[#202823] focus-visible:outline-2 focus-visible:outline-[#095F46]"><Menu className="h-4 w-4" aria-hidden="true" />Menu</summary>
+    {navigation}
+  </details>;
 }
 
 export default function DashboardSidebar() {

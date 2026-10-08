@@ -12,6 +12,7 @@ async function check(name, work) {
   checks.push({ name, passed: true, at: new Date().toISOString() });
   console.log(`PASS ${name}`);
 }
+
 (async () => {
   const fixture = JSON.parse(await fs.readFile(path.join(out, 'fixture.json')));
   const browser = await chromium.launch({ headless: true });
@@ -33,87 +34,34 @@ async function check(name, work) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  const region = (name) => page.getByRole('region', { name, exact: true });
+  const tab = (name) =>
+    page.getByRole('tab', { name: new RegExp(`^${name}(?: \\d+)?$`) });
+  const openStudent = () =>
+    page.getByRole('button', { name: /History Student العربية/ }).click();
+  async function screenshot(name) {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: path.join(out, name), fullPage: true });
+  }
   try {
     await page.goto(`${base}/admin/history`);
-    await check('Sidebar entry and Students/Lecturers tabs', async () => {
-      await expect(
-        page.getByRole('heading', { name: 'People & History', exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole('link', { name: 'People & History', exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole('tab', { name: 'Students', exact: true }),
-      ).toHaveAttribute('aria-selected', 'true');
-      await expect(
-        page.getByRole('tab', { name: 'Lecturers', exact: true }),
-      ).toBeVisible();
-    });
     await check(
-      'Student full record, totals, payments, assessments, notes, support and activity',
+      'Full-width people directory and sidebar navigation',
       async () => {
-        await page
-          .getByRole('button', { name: /History Student العربية/ })
-          .click();
-        const summary = page.getByRole('region', {
-          name: 'History Student العربية',
-          exact: true,
-        });
-        await expect(summary).toContainText('Sessions attended');
         await expect(
-          summary.getByText('36,000.00', { exact: false }),
+          page.getByRole('heading', { name: 'People & History', exact: true }),
         ).toBeVisible();
         await expect(
-          page.getByRole('region', { name: 'Payment history', exact: true }),
-        ).toContainText('refunded');
-        await expect(
-          page.getByRole('region', { name: 'Assessment history', exact: true }),
-        ).toContainText('85/100');
-        const sessions = page.getByRole('region', {
-          name: 'Session history',
-          exact: true,
-        });
-        await sessions.getByText(/1 Oct 2026.*completed/).click();
-        await expect(
-          sessions.getByText('Internal notes: QA internal note', {
-            exact: true,
-          }),
+          page.getByRole('link', { name: 'People & History', exact: true }),
         ).toBeVisible();
-        const support = page.getByRole('region', {
-          name: 'Support & assignment requests',
-          exact: true,
-        });
-        await support.getByText('Conversation (1)', { exact: true }).click();
-        await expect(
-          support.getByText('QA support message', { exact: true }),
-        ).toBeVisible();
-        const activity = page.getByRole('region', {
-          name: 'Account activity',
-          exact: true,
-        });
-        await activity.getByText(/admin assigned lecturer/).click();
-        await expect(
-          activity.getByText(fixture.lecturer.id, { exact: true }),
-        ).toBeVisible();
-        const reports = page.getByRole('region', {
-          name: 'Progress reports',
-          exact: true,
-        });
-        await reports.getByText(/2026-10.*History Lecturer/).click();
-        await expect(
-          reports
-            .getByRole('group')
-            .filter({ hasText: 'History Lecturer' })
-            .getByText('Clear reading', { exact: true }),
-        ).toBeVisible();
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await page.screenshot({
-          path: path.join(out, 'student-desktop.png'),
-          fullPage: true,
-        });
+        await expect(tab('Students')).toHaveAttribute('aria-selected', 'true');
+        await expect(region('Student directory')).toBeVisible();
+        assert((await region('Student directory').boundingBox()).width > 1000);
+        await expect(region('Account & profile')).toHaveCount(0);
+        await screenshot('directory-desktop.png');
       },
     );
-    await check('Search and no-match state', async () => {
+    await check('Search, no matches and clear-search action', async () => {
       await page
         .getByLabel('Search students', { exact: true })
         .fill('no-such-person');
@@ -121,162 +69,397 @@ async function check(name, work) {
         page.getByText('No people match your search.', { exact: true }),
       ).toBeVisible();
       await page
-        .getByLabel('Search students', { exact: true })
-        .fill(fixture.student.email);
+        .getByRole('button', { name: 'Clear search', exact: true })
+        .click();
       await expect(
         page.getByRole('button', { name: /History Student العربية/ }),
       ).toBeVisible();
-      await page.getByLabel('Search students', { exact: true }).fill('');
-    });
-    await check('Empty profile clears previous student records', async () => {
-      await page.getByRole('button', { name: /Empty Student/ }).click();
-      await expect(
-        page.getByRole('region', { name: 'Empty Student', exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByText('No payments recorded.', { exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByText('No sessions recorded.', { exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole('region', { name: 'Assessment history', exact: true }),
-      ).toContainText('No assessment results recorded.');
-    });
-    await check('Keyboard tab switching and selection reset', async () => {
-      await page.getByRole('tab', { name: 'Students', exact: true }).focus();
-      await page.keyboard.press('ArrowRight');
-      await expect(
-        page.getByRole('tab', { name: 'Lecturers', exact: true }),
-      ).toBeFocused();
-      await expect(
-        page.getByRole('tab', { name: 'Lecturers', exact: true }),
-      ).toHaveAttribute('aria-selected', 'true');
-      await expect(
-        page.getByRole('region', { name: 'Select a person', exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole('region', { name: 'Empty Student', exact: true }),
-      ).toHaveCount(0);
+      await page
+        .getByLabel('Search students', { exact: true })
+        .fill('History Student');
     });
     await check(
-      'Lecturer earnings, payouts, students, assessment and feedback records',
+      'Selecting a person replaces directory with focused full-width profile',
       async () => {
-        await page.getByRole('button', { name: /History Lecturer/ }).click();
-        const summary = page.getByRole('region', {
-          name: 'History Lecturer',
-          exact: true,
-        });
-        await expect(summary).toContainText('Amount owed');
+        await openStudent();
+        await expect(page).toHaveURL(
+          new RegExp(`person=${fixture.student.id}`),
+        );
+        await expect(region('Student directory')).toHaveCount(0);
         await expect(
-          summary.getByText('7,000.00', { exact: false }),
-        ).toBeVisible();
-        await expect(
-          summary.getByText('4,500.00', { exact: false }),
-        ).toBeVisible();
-        await expect(
-          page.getByRole('region', { name: 'Payout history', exact: true }),
-        ).toContainText('QA bank failure');
-        await expect(
-          page.getByRole('region', {
-            name: 'Session block earnings',
+          page.getByRole('heading', {
+            name: 'History Student العربية',
             exact: true,
           }),
-        ).toContainText('paid out');
-        await expect(
-          page.getByRole('region', {
-            name: 'Authored course assessments',
-            exact: true,
-          }),
-        ).toContainText('Authored QA assessment');
-        await expect(
-          page.getByRole('region', { name: 'Student feedback', exact: true }),
-        ).toContainText('Helpful lesson');
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await page.screenshot({
-          path: path.join(out, 'lecturer-desktop.png'),
-          fullPage: true,
-        });
+        ).toBeFocused();
+        await expect(region('History Student العربية')).toContainText(
+          'LKR 36,000.00',
+        );
+        await expect(region('Account & profile')).toBeVisible();
+        await expect(region('Session history')).toHaveCount(0);
+        await expect(region('Payment history')).toHaveCount(0);
+        assert(
+          (await region('History Student العربية').boundingBox()).width > 1000,
+        );
+        await screenshot('student-desktop.png');
       },
     );
-    await check('Assigned student opens student history', async () => {
-      await page
-        .getByRole('region', { name: 'Assigned students', exact: true })
-        .getByRole('button', { name: 'History Student العربية', exact: true })
-        .click();
+    await check('Account reference uses keyboard disclosure', async () => {
+      await page.getByText('Show account ID', { exact: true }).focus();
+      await page.keyboard.press('Enter');
       await expect(
-        page.getByRole('tab', { name: 'Students', exact: true }),
-      ).toHaveAttribute('aria-selected', 'true');
-      await expect(
-        page.getByRole('region', {
-          name: 'History Student العربية',
+        region('Account & profile').getByText(fixture.student.id, {
           exact: true,
         }),
       ).toBeVisible();
     });
     await check(
-      'Mobile student and lecturer profiles do not overflow',
+      'Payments tab reveals only billing, with all statuses and totals',
       async () => {
-        await page.setViewportSize({ width: 375, height: 812 });
+        await tab('Payments').click();
+        await expect(region('Payment history')).toContainText('refunded');
+        await expect(region('Payment history')).toContainText(
+          'Successful payments',
+        );
+        await expect(region('Subscription history')).toBeVisible();
+        await expect(region('Account & profile')).toHaveCount(0);
+        await expect(region('Session history')).toHaveCount(0);
+        await region('Payment history')
+          .getByText('Payment references', { exact: true })
+          .first()
+          .click();
         await expect(
-          page.getByRole('region', {
-            name: 'History Student العربية',
+          region('Payment history')
+            .getByText(/Gateway reference:/)
+            .first(),
+        ).toBeVisible();
+        await screenshot('student-payments-desktop.png');
+      },
+    );
+    await check(
+      'Sessions tab exposes notes and status history directly',
+      async () => {
+        await tab('Sessions').click();
+        await expect(region('Session history')).toContainText('7 total');
+        await region('Session history')
+          .getByText(/1 Oct 2026.*completed/)
+          .click();
+        await expect(
+          region('Session history').getByText(
+            'Internal notes: QA internal note',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        await expect(region('Payment history')).toHaveCount(0);
+      },
+    );
+    await check(
+      'Assessments tab groups scores, reports and certificates',
+      async () => {
+        await tab('Assessments').click();
+        await expect(region('Assessment history')).toContainText('85/100');
+        await expect(region('Certificates')).toContainText('History QA course');
+        await region('Progress reports')
+          .getByText(/2026-10.*History Lecturer/)
+          .click();
+        await expect(
+          region('Progress reports')
+            .getByRole('group')
+            .filter({ hasText: 'History Lecturer' })
+            .getByText('Clear reading', { exact: true }),
+        ).toBeVisible();
+      },
+    );
+    await check(
+      'Activity tab groups requests, conversations and account events',
+      async () => {
+        await tab('Activity').click();
+        await expect(region('Course requests')).toContainText('accepted');
+        await region('Support & assignment requests')
+          .getByText('Conversation (1)', { exact: true })
+          .click();
+        await expect(
+          region('Support & assignment requests').getByText(
+            'QA support message',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        await region('Account activity')
+          .getByText(/admin assigned lecturer/)
+          .click();
+        await expect(
+          region('Account activity').getByText(fixture.lecturer.id, {
             exact: true,
           }),
         ).toBeVisible();
-        assert(
-          await page.evaluate(
-            () => document.documentElement.scrollWidth <= window.innerWidth,
-          ),
-        );
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await page.screenshot({
-        path: path.join(out, 'student-mobile.png'),
-          fullPage: true,
-        });
-        await page.getByRole('tab', { name: 'Lecturers', exact: true }).click();
-        await page.getByRole('button', { name: /History Lecturer/ }).click();
-        await expect(
-          page.getByRole('region', { name: 'History Lecturer', exact: true }),
-        ).toBeVisible();
-        assert(
-          await page.evaluate(
-            () => document.documentElement.scrollWidth <= window.innerWidth,
-          ),
-        );
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await page.screenshot({
-        path: path.join(out, 'lecturer-mobile.png'),
-          fullPage: true,
-        });
       },
     );
-    await check('History failure has working retry', async () => {
+    await check(
+      'Section tabs support arrows, wrapping, Home and End',
+      async () => {
+        await tab('Overview').focus();
+        await page.keyboard.press('ArrowLeft');
+        await expect(tab('Activity')).toBeFocused();
+        await page.keyboard.press('ArrowRight');
+        await expect(tab('Overview')).toBeFocused();
+        await page.keyboard.press('End');
+        await expect(tab('Activity')).toHaveAttribute('aria-selected', 'true');
+        await page.keyboard.press('Home');
+        await expect(tab('Overview')).toBeFocused();
+        await expect(region('Account & profile')).toBeVisible();
+      },
+    );
+    await check(
+      'Back to directory preserves search and profile URLs survive reload',
+      async () => {
+        await page
+          .getByRole('button', { name: 'Back to students', exact: true })
+          .click();
+        await expect(
+          page.getByLabel('Search students', { exact: true }),
+        ).toHaveValue('History Student');
+        await expect(
+          page.getByRole('button', { name: /Empty Student/ }),
+        ).toHaveCount(0);
+        await openStudent();
+        await expect(page).toHaveURL(
+          new RegExp(`person=${fixture.student.id}`),
+        );
+        await page.reload();
+        await expect(region('History Student العربية')).toBeVisible();
+        await expect(tab('Overview')).toHaveAttribute('aria-selected', 'true');
+        await page
+          .getByRole('button', { name: 'Back to students', exact: true })
+          .click();
+        await page.getByLabel('Search students', { exact: true }).fill('');
+      },
+    );
+    await check('Directory role tabs support keyboard switching', async () => {
+      await tab('Students').focus();
+      await page.keyboard.press('End');
+      await expect(tab('Lecturers')).toBeFocused();
+      await expect(region('Lecturer directory')).toBeVisible();
+      await page.keyboard.press('Home');
+      await expect(tab('Students')).toBeFocused();
+      await page.keyboard.press('ArrowRight');
+      await expect(tab('Lecturers')).toHaveAttribute('aria-selected', 'true');
+    });
+    await check(
+      'Lecturer overview and Earnings keep the payout breakdown separate',
+      async () => {
+        await page.getByRole('button', { name: /History Lecturer/ }).click();
+        await expect(region('History Lecturer')).toContainText('LKR 7,000.00');
+        await expect(region('Payout history')).toHaveCount(0);
+        await screenshot('lecturer-desktop.png');
+        await tab('Earnings').click();
+        await expect(region('Payout history')).toContainText('LKR 4,500.00');
+        await expect(region('Payout history')).toContainText('QA bank failure');
+        await expect(region('Session block earnings')).toContainText(
+          'paid out',
+        );
+        await region('Payout history')
+          .getByText('Payout reference & blocks', { exact: true })
+          .first()
+          .click();
+        await region('Session block earnings')
+          .getByText('Block & session references', { exact: true })
+          .first()
+          .click();
+        await screenshot('lecturer-earnings-desktop.png');
+        await tab('Sessions').click();
+        await expect(region('Student feedback')).toContainText(
+          'Helpful lesson',
+        );
+        await tab('Assessments').click();
+        await expect(region('Authored course assessments')).toContainText(
+          'Authored QA assessment',
+        );
+        await tab('Activity').click();
+        await expect(region('Account activity')).toBeVisible();
+      },
+    );
+    await check(
+      'Assigned student opens with clean section state and browser Back works',
+      async () => {
+        await tab('Students').click();
+        await expect(region('Assigned students')).toContainText(
+          '2 currently assigned',
+        );
+        await region('Assigned students')
+          .getByRole('button', { name: 'History Student العربية', exact: true })
+          .click();
+        await expect(region('History Student العربية')).toBeVisible();
+        await expect(tab('Overview')).toHaveAttribute('aria-selected', 'true');
+        await expect(tab('Earnings')).toHaveCount(0);
+        await page.goBack();
+        await expect(region('History Lecturer')).toBeVisible();
+        await page
+          .getByRole('button', { name: 'Back to lecturers', exact: true })
+          .click();
+        await expect(region('Lecturer directory')).toBeVisible();
+      },
+    );
+    await check(
+      'Empty lecturer profile retains working navigation',
+      async () => {
+        await page.getByRole('button', { name: /Empty Lecturer/ }).click();
+        await expect(region('Empty Lecturer')).toBeVisible();
+        await tab('Earnings').click();
+        await expect(region('Payout history')).toContainText(
+          'No payout requests recorded.',
+        );
+        await tab('Students').click();
+        await expect(region('Assigned students')).toContainText(
+          'No students currently assigned.',
+        );
+        await page
+          .getByRole('button', { name: 'Back to lecturers', exact: true })
+          .click();
+      },
+    );
+    await check(
+      '375px and 320px layouts contain the page and keep navigation sticky',
+      async () => {
+        await page.setViewportSize({ width: 375, height: 812 });
+        await screenshot('directory-mobile.png');
+        await page.getByRole('button', { name: /History Lecturer/ }).click();
+        await expect(region('History Lecturer')).toBeVisible();
+        await tab('Earnings').click();
+        assert(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+          ),
+        );
+        await screenshot('lecturer-mobile.png');
+        await page
+          .getByRole('button', { name: 'Back to lecturers', exact: true })
+          .click();
+        await tab('Students').click();
+        await openStudent();
+        await expect(region('History Student العربية')).toBeVisible();
+        await screenshot('student-mobile.png');
+        await page.setViewportSize({ width: 320, height: 740 });
+        await tab('Payments').click();
+        await expect(region('Payment history')).toBeVisible();
+        assert(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+          ),
+        );
+        await page.evaluate(() =>
+          window.scrollTo(0, document.body.scrollHeight),
+        );
+        const box = await page
+          .getByRole('tablist', { name: 'Record sections', exact: true })
+          .boundingBox();
+        assert(
+          box.y >= 71 && box.y <= 73,
+          `Section navigation must stay below the topbar: ${box.y}`,
+        );
+        await tab('Overview').click();
+        await expect(region('Account & profile')).toBeVisible();
+        await page
+          .getByRole('button', { name: 'Back to students', exact: true })
+          .click();
+      },
+    );
+    await check(
+      'Empty student profile retains zero totals and category empty states',
+      async () => {
+        await page.getByRole('button', { name: /Empty Student/ }).click();
+        await expect(region('Empty Student')).toBeVisible();
+        await tab('Payments').click();
+        await expect(region('Payment history')).toContainText(
+          'No payments recorded.',
+        );
+        await expect(
+          region('Payment history').getByText('0', { exact: true }),
+        ).toBeVisible();
+        await tab('Sessions').click();
+        await expect(region('Session history')).toContainText(
+          'No sessions recorded.',
+        );
+        await tab('Assessments').click();
+        await expect(region('Assessment history')).toContainText(
+          'No assessment results recorded.',
+        );
+        await page
+          .getByRole('button', { name: 'Back to students', exact: true })
+          .click();
+      },
+    );
+    await check(
+      'Loading can be cancelled without stale data replacing the next person',
+      async () => {
+        await expect(region('Student directory')).toBeVisible();
+        await expect(page).not.toHaveURL(/person=/);
+        await page.reload();
+        let release;
+        const gate = new Promise((resolve) => {
+          release = resolve;
+        });
+        const pattern = `**/admin/users/${fixture.student.id}/history`;
+        await page.route(pattern, async (route) => {
+          await gate;
+          await route.continue();
+        });
+        await openStudent();
+        await expect(
+          page.getByText('Loading history...', { exact: true }),
+        ).toBeVisible();
+        await page
+          .getByRole('button', { name: 'Back to students', exact: true })
+          .click();
+        await page.getByRole('button', { name: /Empty Student/ }).click();
+        await expect(region('Empty Student')).toBeVisible();
+        const response = page.waitForResponse((response) =>
+          response.url().includes(`/admin/users/${fixture.student.id}/history`),
+        );
+        release();
+        await response;
+        await expect(region('Empty Student')).toBeVisible();
+        await expect(region('History Student العربية')).toHaveCount(0);
+        await page.unroute(pattern);
+        await page
+          .getByRole('button', { name: 'Back to students', exact: true })
+          .click();
+      },
+    );
+    await check('History error offers Retry and Back', async () => {
+      await expect(region('Student directory')).toBeVisible();
+      await expect(page).not.toHaveURL(/person=/);
+      await page.reload();
       await page.route('**/admin/users/*/history', (route) =>
         route.fulfill({
           status: 503,
           contentType: 'application/json',
-          body: JSON.stringify({ message: 'QA unavailable' }),
+          body: '{"message":"QA unavailable"}',
         }),
       );
-      await page.getByRole('button', { name: /Empty Lecturer/ }).click();
+      await page.getByRole('button', { name: /Empty Student/ }).click();
+      await expect(region('History unavailable')).toBeVisible({
+        timeout: 20000,
+      });
       await expect(
-        page.getByRole('region', { name: 'History unavailable', exact: true }),
-      ).toBeVisible({ timeout: 20000 });
+        page.getByRole('button', { name: 'Back to students', exact: true }),
+      ).toBeVisible();
       await page.unroute('**/admin/users/*/history');
       await page
         .getByRole('button', { name: 'Retry history', exact: true })
         .click();
-      await expect(
-        page.getByRole('region', { name: 'Empty Lecturer', exact: true }),
-      ).toBeVisible();
+      await expect(region('Empty Student')).toBeVisible();
+      await page
+        .getByRole('button', { name: 'Back to students', exact: true })
+        .click();
     });
-    await check('Directory failure has working retry', async () => {
+    await check('Directory error offers a working Retry', async () => {
+      await expect(region('Student directory')).toBeVisible();
+      await expect(page).not.toHaveURL(/person=/);
       await page.route('**/admin/users?role=*', (route) =>
         route.fulfill({
           status: 503,
           contentType: 'application/json',
-          body: JSON.stringify({ message: 'QA unavailable' }),
+          body: '{"message":"QA unavailable"}',
         }),
       );
       await page.reload();
@@ -291,43 +474,6 @@ async function check(name, work) {
         page.getByRole('button', { name: /History Student العربية/ }),
       ).toBeVisible();
     });
-    await check(
-      'Slow old profile response cannot replace newly selected profile',
-      async () => {
-        let release;
-        const gate = new Promise((resolve) => {
-          release = resolve;
-        });
-        const routePattern = `**/admin/users/${fixture.student.id}/history`;
-        await page.route(routePattern, async (route) => {
-          await gate;
-          await route.continue();
-        });
-        await page
-          .getByRole('button', { name: /History Student العربية/ })
-          .click();
-        await expect(page.getByText('Loading history...', { exact: true })).toBeVisible();
-        await page.getByRole('button', { name: /Empty Student/ }).click();
-        await expect(
-          page.getByRole('region', { name: 'Empty Student', exact: true }),
-        ).toBeVisible();
-        const response = page.waitForResponse((response) =>
-          response.url().includes(`/admin/users/${fixture.student.id}/history`),
-        );
-        release();
-        await response;
-        await expect(
-          page.getByRole('region', { name: 'Empty Student', exact: true }),
-        ).toBeVisible();
-        await expect(
-          page.getByRole('region', {
-            name: 'History Student العربية',
-            exact: true,
-          }),
-        ).toHaveCount(0);
-        await page.unroute(routePattern);
-      },
-    );
     await check('Empty directory state', async () => {
       await page.route('**/admin/users?role=*', (route) =>
         route.fulfill({
@@ -342,53 +488,32 @@ async function check(name, work) {
       ).toBeVisible();
       await page.unroute('**/admin/users?role=*');
       await page.reload();
-      await expect(
-        page.getByRole('button', { name: /History Student العربية/ }),
-      ).toBeVisible();
-    });
-    await check('Tab Home and End keyboard controls', async () => {
-      await page.getByRole('tab', { name: 'Students', exact: true }).focus();
-      await page.keyboard.press('End');
-      await expect(
-        page.getByRole('tab', { name: 'Lecturers', exact: true }),
-      ).toBeFocused();
-      await page.keyboard.press('Home');
-      await expect(
-        page.getByRole('tab', { name: 'Students', exact: true }),
-      ).toBeFocused();
     });
     await check(
-      '320px viewport and long account references remain contained',
+      'Finance and sidebar links work from the Earnings section',
       async () => {
-        await page.setViewportSize({ width: 320, height: 740 });
+        await tab('Lecturers').click();
+        await page.getByRole('button', { name: /History Lecturer/ }).click();
+        await tab('Earnings').click();
         await page
-          .getByRole('button', { name: /History Student العربية/ })
+          .getByRole('link', { name: 'Manage payouts in Finance', exact: true })
           .click();
+        await expect(page).toHaveURL(`${base}/admin/finance`);
+        await page.getByText('Menu', { exact: true }).click();
+        await page
+          .getByRole('link', { name: 'People & History', exact: true })
+          .click();
+        await expect(page).toHaveURL(`${base}/admin/history`);
+        await page.getByText('Menu', { exact: true }).click();
         await expect(
-          page.getByRole('region', {
-            name: 'History Student العربية',
-            exact: true,
-          }),
+          page.getByRole('navigation', { name: 'Admin pages', exact: true }),
         ).toBeVisible();
-        assert(
-          await page.evaluate(
-            () => document.documentElement.scrollWidth <= window.innerWidth,
-          ),
-        );
+        await page.keyboard.press('Escape');
+        await expect(
+          page.getByRole('navigation', { name: 'Admin pages', exact: true }),
+        ).not.toBeVisible();
       },
     );
-    await check('Finance link and sidebar navigation work', async () => {
-      await page.getByRole('tab', { name: 'Lecturers', exact: true }).click();
-      await page.getByRole('button', { name: /History Lecturer/ }).click();
-      await page
-        .getByRole('link', { name: 'Manage payouts in Finance', exact: true })
-        .click();
-      await expect(page).toHaveURL(`${base}/admin/finance`);
-      await page
-        .getByRole('link', { name: 'People & History', exact: true })
-        .click();
-      await expect(page).toHaveURL(`${base}/admin/history`);
-    });
     await check('No browser runtime errors', async () =>
       assert.deepEqual(errors, []),
     );
@@ -402,5 +527,5 @@ async function check(name, work) {
   }
 })().catch((error) => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

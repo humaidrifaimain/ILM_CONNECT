@@ -11,7 +11,7 @@ export interface HistoryUser {
   gender?: string;
   dateOfBirth?: string;
   deletedAt?: string;
-  studentProfile?: Person;
+  studentProfile?: Person & { currentTier?: string; assignedLecturer?: Person };
   lecturerProfile?: Person;
 }
 export interface PaymentRecord {
