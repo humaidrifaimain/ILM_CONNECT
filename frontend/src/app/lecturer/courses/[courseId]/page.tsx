@@ -38,7 +38,7 @@ export default function LecturerCourseDetailPage() {
   const queryClient = useQueryClient();
   const courseId = params.courseId as string;
 
-  const [activeTab, setActiveTab] = useState<'content' | 'permissions' | 'matrix' | 'assessments'>('permissions');
+  const [activeTab, setActiveTab] = useState<'content' | 'permissions' | 'assessments'>('permissions');
   const [studentSearch, setStudentSearch] = useState('');
   const [previewLesson, setPreviewLesson] = useState<any | null>(null);
   const [selectedStudentForModal, setSelectedStudentForModal] = useState<any | null>(null);
@@ -311,18 +311,6 @@ export default function LecturerCourseDetailPage() {
             </span>
           </button>
 
-          <button
-            aria-pressed={activeTab === 'matrix'}
-            onClick={() => setActiveTab('matrix')}
-            className={`course-tab flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors focus-visible:outline-2 focus-visible:outline-[#095F46] ${
-              activeTab === 'matrix'
-                ? 'border-[hsl(var(--primary))] bg-[#f0f5f2] text-[hsl(var(--primary))]'
-                : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'
-            }`}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Access Matrix</span>
-          </button>
           <button aria-pressed={activeTab === 'assessments'} onClick={() => setActiveTab('assessments')} className={`course-tab min-h-11 border-b-2 px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#095F46] ${activeTab === 'assessments' ? 'border-[#095F46] bg-[#f0f5f2] text-[#095F46]' : 'border-transparent text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]'}`}>Assessments</button>
         </div>
 
@@ -642,93 +630,6 @@ export default function LecturerCourseDetailPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: ACCESS MATRIX (GRID VIEW) */}
-      {activeTab === 'matrix' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold">Permissions Matrix</h2>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-                Overview of unlocked lessons across all students. Click any cell to toggle access for that student.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                <Check className="h-3.5 w-3.5" /> Unlocked / Granted
-              </span>
-              <span className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
-                <Lock className="h-3.5 w-3.5" /> Locked
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-x-auto shadow-sm">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted)/0.3)]">
-                  <th className="py-3 px-4 text-left font-semibold text-[hsl(var(--muted-foreground))] min-w-[180px]">
-                    Student
-                  </th>
-                  {allLessons.map(l => (
-                    <th key={l.id} className="py-3 px-3 text-center font-semibold text-[hsl(var(--muted-foreground))] min-w-[70px]">
-                      L{l.globalIndex}
-                    </th>
-                  ))}
-                  <th className="py-3 px-4 text-right font-semibold text-[hsl(var(--muted-foreground))] min-w-[100px]">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[hsl(var(--border))]">
-                {(students as any[]).map(student => {
-                  const sId = student.userId || student.id;
-                  const access = getStudentAccessInfo(student);
-
-                  return (
-                    <tr key={sId} className="hover:bg-[hsl(var(--muted)/0.2)] transition-colors">
-                      <td className="py-3 px-4 font-semibold text-[hsl(var(--foreground))]">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-lg bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))] flex items-center justify-center font-bold text-xs">
-                            {(student.fullName || 'S').substring(0, 1).toUpperCase()}
-                          </div>
-                          <span className="truncate max-w-[140px]">{student.fullName}</span>
-                        </div>
-                      </td>
-                      {allLessons.map(lesson => {
-                        const isUnlocked = access.unlockedLessonIds.has(lesson.id);
-                        return (
-                          <td key={lesson.id} className="py-3 px-3 text-center">
-                            <button
-                              onClick={() => updateAccessMutation.mutate({ studentId: sId, lessonId: lesson.id })}
-                              title={`Click to set access up to Lesson ${lesson.globalIndex}`}
-                              className={`p-1.5 rounded-lg transition-all ${
-                                isUnlocked
-                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200'
-                                  : 'bg-[hsl(var(--muted)/0.4)] text-[hsl(var(--muted-foreground)/0.4)] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
-                              }`}
-                            >
-                              {isUnlocked ? <Check className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                            </button>
-                          </td>
-                        );
-                      })}
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => fullAccessMutation.mutate({ studentId: sId })}
-                          className="text-[11px] font-semibold text-[hsl(var(--primary))] hover:underline"
-                        >
-                          Unlock All
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
