@@ -83,6 +83,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/requests', label: 'Requests', icon: ClipboardList },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/history', label: 'People & History', icon: FileText },
   { href: '/admin/sessions', label: 'Sessions', icon: Clock },
   { href: '/admin/feedback', label: 'Feedback', icon: MessageSquare },
   { href: '/admin/finance', label: 'Finance', icon: BarChart3 },

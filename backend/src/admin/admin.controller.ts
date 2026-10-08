@@ -4,13 +4,20 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { HistoryService } from './history.service';
 import { CreateLecturerDto, AssignLecturerDto, UpdateLecturerDto, UpdateUserStatusDto } from './dto/create-lecturer.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly adminService: AdminService, private readonly historyService: HistoryService) {}
+
+  @Get('users/:id/history')
+  @Header('Cache-Control', 'no-store')
+  getHistory(@Param('id') id: string) {
+    return this.historyService.getHistory(id);
+  }
 
   @Get('waitlist')
   @Header('Cache-Control', 'no-store')
