@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { LiveKitRoom } from '@livekit/components-react';
 import '@livekit/components-styles';
@@ -11,6 +11,8 @@ import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { InteractiveClassroom } from '@/components/classroom/interactive-classroom';
 import { LiveClassroom } from '@/components/classroom/live-classroom';
+import { useClassroomConnection } from '@/hooks/use-classroom-connection';
+import { useRequiredLessonFeedback, useRegisterLessonFeedbackSession } from '@/components/lecturer/required-lesson-feedback';
 
 interface SessionInfo {
   id: string;
@@ -44,15 +46,46 @@ export default function LecturerSessionRoom({
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isReopening, setIsReopening] = useState(false);
+  const requestFeedback = useRequiredLessonFeedback();
+  const registerFeedbackSession = useRegisterLessonFeedbackSession();
+  useEffect(() => {
+    if (state !== 'connected' || !tokenData) return;
+    registerFeedbackSession({ ...tokenData.session, student: { fullName: tokenData.session.studentName } });
+    return () => registerFeedbackSession(null);
+  }, [state, tokenData, registerFeedbackSession]);
+  const leaveClassroom = useCallback(() => {
+    const session = tokenData?.session || sessionInfo;
+    if (!session) { router.push('/lecturer/sessions'); return; }
+    void (async () => {
+      try {
+        const sessions = await apiFetch('/bookings/lecturer');
+        const current = sessions.find((item: { id: string; status: string; notes?: { sharedNotes: string } | null }) => item.id === session.id);
+        if (current && (!['SCHEDULED', 'IN_PROGRESS', 'COMPLETED'].includes(current.status) || (current.status === 'COMPLETED' && (current.notes?.sharedNotes.trim().length || 0) >= 30))) {
+          router.push('/lecturer/sessions');
+          return;
+        }
+      } catch {}
+      requestFeedback({ ...session, student: { fullName: session.studentName } });
+    })();
+  }, [router, requestFeedback, tokenData, sessionInfo]);
+  const reportConnectionError = useCallback((err: Error) => {
+    console.error('LiveKit connection error:', err);
+    setError(err.message || 'Failed to connect to the classroom');
+    setState('error');
+  }, []);
+  const { handleLeave, handleError, handleConnected, handleDisconnected } = useClassroomConnection(leaveClassroom, reportConnectionError);
 
   useEffect(() => {
+    let active = true;
     (async () => {
       try {
         const data = await apiFetch(`/livekit/token/${sessionId}`);
+        if (!active) return;
         setSessionInfo(data.session);
         setTokenData(data);
         setState('connected');
       } catch (err: any) {
+        if (!active) return;
         if (err.data?.session) {
           setSessionInfo(err.data.session);
         }
@@ -60,6 +93,7 @@ export default function LecturerSessionRoom({
         setState('error');
       }
     })();
+    return () => { active = false; };
   }, [sessionId]);
 
   const handleReopenAndStart = async () => {
@@ -186,7 +220,7 @@ export default function LecturerSessionRoom({
         sessionInfo={tokenData.session}
         userRole="lecturer"
         warning={tokenData.warning}
-        onLeave={() => router.push('/lecturer/sessions')}
+        onLeave={handleLeave}
       />
     );
   }
@@ -198,18 +232,15 @@ export default function LecturerSessionRoom({
       connect={true}
       video={true}
       audio={true}
-      onError={(err) => {
-        console.error('LiveKit connection error:', err);
-        setError(err.message || 'Failed to connect to LiveKit video server');
-        setState('error');
-      }}
-      onDisconnected={() => router.push('/lecturer/sessions')}
+      onError={handleError}
+      onConnected={handleConnected}
+      onDisconnected={handleDisconnected}
       style={{ height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 50 }}
     >
       <LiveClassroom
         sessionInfo={tokenData.session}
         userRole="lecturer"
-        onLeave={() => router.push('/lecturer/sessions')}
+        onLeave={handleLeave}
       />
     </LiveKitRoom>
   );

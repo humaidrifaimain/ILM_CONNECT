@@ -1,0 +1,113 @@
+.section {
+  position: relative;
+  z-index: 10;
+  padding-block: 4rem;
+  border-bottom: 1px solid #dedfd8;
+  background: #fbfbf9;
+}
+
+.tint { background: #f3f5f0; }
+
+.heading {
+  max-width: 22ch;
+  font-size: 1.875rem;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  color: #172b23;
+}
+
+.intro {
+  max-width: 54ch;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #52574f;
+}
+
+.centerIntro {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.pillarsIntro { display: grid; gap: 1.25rem; }
+.pillarsGrid { display: grid; gap: 2rem; }
+.pillar {
+  min-width: 0;
+  padding: clamp(1.25rem, 2.2vw, 1.75rem);
+  border: 1px solid #d4d9ce;
+  border-radius: 1rem;
+  background: #fff;
+}
+.pillarMeta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem 1rem; margin-bottom: 1.75rem; }
+.number { color: #095f46; font-size: 0.875rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.arabic { font-family: var(--font-amiri), serif; font-size: 1.625rem; line-height: 1.5; color: #095f46; }
+.itemHeading,
+.vettingHeading,
+.promiseHeading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+  color: #172b23;
+}
+.itemHeading { margin-bottom: 0.875rem; }
+.caption { margin-bottom: 1rem; color: #52574f; font-size: 0.875rem; line-height: 1.5; }
+.body { color: #52574f; font-size: 1rem; line-height: 1.7; }
+.vettingGrid { display: grid; gap: 2rem; }
+.vettingItem { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; gap: 0.875rem 0.75rem; min-width: 0; }
+.vettingNumber { display: flex; align-items: center; gap: 0.5rem; padding-top: 0.2rem; align-self: start; }
+.rule { width: 1.5rem; height: 1px; background: #aabbb0; }
+.vettingDescription { grid-column: 2; }
+.matchRow { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1.5rem; padding-top: 1.75rem; border-top: 1px solid #cbd4cb; }
+.matchButton { min-height: 44px; flex-shrink: 0; padding: 0.75rem 1.5rem; font-size: 0.875rem; }
+.matchButton:focus-visible { outline: 2px solid #095f46; outline-offset: 4px; }
+.pathwayLayout { display: grid; align-items: center; gap: 2.5rem; }
+.pathwayGrid { display: grid; gap: 1px; border: 1px solid #d4d9ce; border-radius: 1rem; background: #d4d9ce; overflow: hidden; }
+.milestone { min-width: 0; padding: 1.75rem; background: #f7f7f1; }
+.milestoneMeta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.375rem 1rem; margin-bottom: 1.25rem; }
+.phase { color: #095f46; font-size: 0.875rem; font-weight: 700; }
+.course { color: #52574f; font-size: 0.875rem; }
+.number, .phase, .course { line-height: 1.5; }
+.parentsGrid { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 2rem; }
+.promise { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; width: 100%; max-width: 360px; aspect-ratio: 1; padding: 1.25rem; border-radius: 50%; border: 1px solid #aabbb0; background: #fcfcf9; text-align: center; transition: border-color 220ms ease, background-color 220ms ease, translate 220ms ease; }
+.promiseContent { display: flex; flex-direction: column; align-items: center; max-width: 260px; }
+.promiseNumber { position: absolute; top: 7%; right: 7%; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #095f46; color: #fff; font-weight: 700; font-size: 0.875rem; outline: 5px solid #f3f5f0; }
+.promiseIcon { width: 32px; height: 32px; margin-bottom: 1rem; color: #095f46; stroke-width: 1.8; }
+.promiseHeading { margin-bottom: 0.875rem; }
+.matchTitle { font-size: 1rem; font-weight: 700; color: #172b23; }
+.matchDescription { margin-top: 0.5rem; }
+
+@media (min-width: 640px) {
+  .section { padding-block: 5rem; }
+  .heading { font-size: 2.25rem; }
+  .itemHeading, .vettingHeading, .promiseHeading { font-size: 1.375rem; }
+  .vettingHeading { min-height: 2.7em; }
+  .vettingGrid, .pathwayGrid, .parentsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .parentsGrid .promise:last-child { grid-column: 1 / -1; width: calc((100% - 2rem) / 2); }
+}
+
+@media (min-width: 900px) {
+  .pillarsIntro { grid-template-columns: 1.15fr 1fr; align-items: end; gap: 4rem; }
+  .pillarsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .section { padding-block: 6rem; }
+  .heading { font-size: 2.625rem; }
+  .promise { padding: 1.75rem; }
+  .vettingGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pathwayLayout { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 4rem; }
+  .parentsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-bottom: 2rem; }
+  .parentsGrid .promise:last-child { grid-column: auto; width: 100%; }
+  .promise:nth-child(2) { top: 2rem; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .promise:hover { border-color: #095f46; background: #fff; translate: 0 -4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promise { transition: none; }
+  .promise:hover { translate: none; }
+}

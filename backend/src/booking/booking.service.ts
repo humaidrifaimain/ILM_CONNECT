@@ -3,6 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/booking.dto';
 import { SessionStatus, SlotStatus, Role } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
+import { publicLecturerSelect } from '../profile/profile.service';
+import { Prisma } from '@prisma/client';
+import { lecturerConflictWindow, SESSION_MINUTES } from '../availability/session-timing';
 
 @Injectable()
 export class BookingService {
@@ -31,7 +34,26 @@ export class BookingService {
     }
 
     const startsAt = new Date(dto.startsAt);
-    const endsAt = new Date(startsAt.getTime() + 40 * 60 * 1000); // 40 minutes session
+    if (!Number.isFinite(startsAt.getTime())) throw new BadRequestException('Choose a valid session date');
+    const endsAt = new Date(startsAt.getTime() + SESSION_MINUTES * 60 * 1000);
+    const session = await this.prisma.$transaction(async tx => {
+    for (const key of [`lecturer:${lecturerId}`, `student:${studentId}`].sort()) {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
+    }
+    if (isStudent || isLecturer) {
+      const studentProfile = await tx.studentProfile.findUnique({
+        where: { userId: studentId },
+        select: { assignedLecturerId: true },
+      });
+
+      if (!studentProfile?.assignedLecturerId) {
+        throw new BadRequestException('Lecturer is not assigned yet. Please contact support.');
+      }
+
+      if (studentProfile.assignedLecturerId !== lecturerId) {
+        throw new ForbiddenException('You can only book sessions for the assigned lecturer and student');
+      }
+    }
 
     // Enforce booking time limits (cannot book less than 12 hours in advance)
     const now = new Date();
@@ -41,21 +63,27 @@ export class BookingService {
     }
 
     // Check student subscription status
-    const subscription = await this.prisma.subscription.findFirst({
+    const subscription = await tx.subscription.findFirst({
       where: {
         studentId,
         status: 'ACTIVE',
+        currentPeriodStart: { lte: now },
+        currentPeriodEnd: { gt: now },
       },
+      orderBy: { currentPeriodEnd: 'desc' },
     });
     if (!subscription) {
       throw new BadRequestException('Student does not have an active subscription');
     }
+    if (startsAt < subscription.currentPeriodStart || endsAt > subscription.currentPeriodEnd) {
+      throw new BadRequestException('Choose a session within your active subscription period');
+    }
 
-    // Check student weekly allowance
-    await this.validateThreeDayGap(studentId, startsAt);
+    // Check student weekly/daily allowance
+    await this.validateBookingAllowance(studentId, startsAt, subscription.tier, tx);
 
     // Check if student already has an overlapping session
-    const studentOverlap = await this.prisma.session.findFirst({
+    const studentOverlap = await tx.session.findFirst({
       where: {
         studentId,
         status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] },
@@ -77,7 +105,7 @@ export class BookingService {
     }
 
     // Find and check availability slot
-    const slot = await this.prisma.availabilitySlot.findFirst({
+    const slot = await tx.availabilitySlot.findFirst({
       where: {
         lecturerId,
         startsAt: { lte: startsAt },
@@ -90,26 +118,17 @@ export class BookingService {
       throw new BadRequestException('Lecturer is not available at the requested time');
     }
 
-    // Check if lecturer has any overlapping session
-    const overlappingSession = await this.prisma.session.findFirst({
+    // The lecturer lock also serializes bookings in the surrounding break window.
+    const overlappingSession = await tx.session.findFirst({
       where: {
         lecturerId,
         status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] },
-        OR: [
-          {
-            startsAt: { lte: startsAt },
-            endsAt: { gt: startsAt },
-          },
-          {
-            startsAt: { lt: endsAt },
-            endsAt: { gte: endsAt },
-          },
-        ],
+        ...lecturerConflictWindow(startsAt, endsAt),
       },
     });
 
     if (overlappingSession) {
-      throw new BadRequestException('Lecturer already has a scheduled session at this time');
+      throw new BadRequestException('Leave at least 10 minutes before and after the lecturer’s other sessions');
     }
 
     // Create session ID first so we can build the LiveKit room name
@@ -117,8 +136,7 @@ export class BookingService {
     const livekitRoomName = `ilm-session-${sessionId}`;
 
     // Book slot and session
-    const [session] = await this.prisma.$transaction([
-      this.prisma.session.create({
+    const session = await tx.session.create({
         data: {
           id: sessionId,
           studentId,
@@ -128,12 +146,14 @@ export class BookingService {
           status: SessionStatus.SCHEDULED,
           livekitRoomName,
         },
-      }),
-      this.prisma.availabilitySlot.update({
-        where: { id: slot.id },
+      });
+    const claimed = await tx.availabilitySlot.updateMany({
+        where: { id: slot.id, status: SlotStatus.OPEN },
         data: { status: SlotStatus.BOOKED },
-      }),
-    ]);
+      });
+    if (claimed.count !== 1) throw new BadRequestException('This slot has just been booked. Choose another time');
+    return session;
+    }, { maxWait: 10000, timeout: 30000 });
 
     // Create Audit Log
     await this.prisma.auditLog.create({
@@ -170,15 +190,14 @@ export class BookingService {
         minute: '2-digit',
       });
 
-      if (isLecturer) {
-        // Lecturer booked session -> Student is the recipient!
+      if (isLecturer || isStudent) {
         await this.notificationService.dispatchBookingNotification({
           eventType: 'BOOKING_CONFIRMED',
           sessionId: session.id,
           actor: {
-            id: lecturerId,
-            name: lecturerName,
-            role: 'LECTURER',
+            id: isLecturer ? lecturerId : studentId,
+            name: isLecturer ? lecturerName : studentName,
+            role: isLecturer ? 'LECTURER' : 'STUDENT',
           },
           recipient: {
             id: studentId,
@@ -190,23 +209,8 @@ export class BookingService {
           sessionDate: startsAt,
           sessionTimeFormatted,
         });
-
-        // In-app confirmation for Lecturer
-        await this.notificationService.createNotification(
-          lecturerId,
-          'BOOKING_CONFIRMED',
-          {
-            sessionId: session.id,
-            title: 'Session Scheduled',
-            message: `You scheduled a session with ${studentName} for ${startsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${sessionTimeFormatted}.`,
-            actorId: lecturerId,
-            actorName: lecturerName,
-            actorRole: 'LECTURER',
-            sessionDate: startsAt.toISOString(),
-          },
-          'IN_APP',
-        );
-      } else {
+      }
+      if (!isLecturer) {
         // Student booked session -> Lecturer is the recipient!
         if (lecturerUser) {
           await this.notificationService.dispatchBookingNotification({
@@ -228,24 +232,6 @@ export class BookingService {
             sessionTimeFormatted,
           });
         }
-
-        // Also notify Student across In-App, Email, and WhatsApp
-        if (studentUser) {
-          await this.notificationService.createNotification(
-            studentId,
-            'BOOKING_CONFIRMED',
-            {
-              sessionId: session.id,
-              title: 'Session Confirmed',
-              message: `Your session with ${lecturerName} has been booked for ${startsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${sessionTimeFormatted}.`,
-              actorId: studentId,
-              actorName: studentName,
-              actorRole: 'STUDENT',
-              sessionDate: startsAt.toISOString(),
-            },
-            'IN_APP',
-          );
-        }
       }
     } catch (notifErr: any) {
       this.logger.error(`Error dispatching booking notifications: ${notifErr.message}`);
@@ -254,7 +240,12 @@ export class BookingService {
     return session;
   }
 
-  async validateThreeDayGap(studentId: string, bookingDate: Date) {
+  async validateBookingAllowance(studentId: string, bookingDate: Date, tier: string, db: Prisma.TransactionClient | PrismaService = this.prisma, excludeSessionId?: string) {
+    // Determine limits based on tier
+    const isPremium = /PREMIUM|FAST[\s_-]*TRACK/i.test(tier || '');
+    const weeklyLimit = isPremium ? 3 : 2;
+    const dailyLimit = 1;
+
     // Determine start and end of week (Monday to Sunday)
     const day = bookingDate.getDay();
     const diffToMonday = day === 0 ? -6 : 1 - day; // Adjust to Monday
@@ -267,10 +258,17 @@ export class BookingService {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
+    const startOfDay = new Date(bookingDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(bookingDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
     // Fetch existing sessions in this week
-    const existingSessions = await this.prisma.session.findMany({
+    const existingSessions = await db.session.findMany({
       where: {
         studentId,
+        ...(excludeSessionId ? { id: { not: excludeSessionId } } : {}),
         status: {
           in: [
             SessionStatus.SCHEDULED,
@@ -285,9 +283,17 @@ export class BookingService {
       },
     });
 
-    // Allow students to book multiple sessions per week (up to 7 sessions)
-    if (existingSessions.length >= 7) {
-      throw new BadRequestException('Maximum weekly session allowance reached (7 sessions per week)');
+    const bookedThisWeek = existingSessions.length;
+    const bookedThisDay = existingSessions.filter(
+      s => s.startsAt >= startOfDay && s.startsAt <= endOfDay
+    ).length;
+
+    if (bookedThisWeek >= weeklyLimit) {
+      throw new BadRequestException(`Maximum weekly session allowance reached (${weeklyLimit} sessions per week for ${isPremium ? 'Fast Track' : 'Standard'} plan)`);
+    }
+
+    if (bookedThisDay >= dailyLimit) {
+      throw new BadRequestException(`Maximum daily session allowance reached (${dailyLimit} session per day)`);
     }
   }
 
@@ -462,7 +468,12 @@ export class BookingService {
 
     return this.prisma.session.findMany({
       where: { studentId },
-      include: { lecturer: true },
+      include: {
+        lecturer: { select: publicLecturerSelect },
+        lesson: { include: { module: { include: { learningPath: true } } } },
+        notes: { select: { id: true, sessionId: true, lecturerId: true, topicsCovered: true, homework: true, studentProgressRating: true, sharedNotes: true } },
+        rating: true,
+      },
       orderBy: { startsAt: 'asc' },
     });
   }
@@ -491,29 +502,71 @@ export class BookingService {
     });
   }
 
-  async updateBooking(id: string, data: { notes?: string; status?: string }) {
-    const session = await this.prisma.session.findUnique({ where: { id } });
+  async updateBooking(id: string, data: { notes?: string; status?: string }, user: { id: string; role: Role }) {
+    const session = await this.prisma.session.findUnique({ where: { id }, include: { notes: true } });
     if (!session) throw new NotFoundException('Session not found');
+    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN && session.lecturerId !== user.id) throw new ForbiddenException('This session is not assigned to you');
+    if (data.notes !== undefined && (typeof data.notes !== 'string' || data.notes.length > 10000)) throw new BadRequestException('Invalid session notes');
+    const cleanNotes = data.notes?.trim();
+    if ((data.status === SessionStatus.COMPLETED || (session.status === SessionStatus.COMPLETED && data.notes !== undefined)) && (!cleanNotes || cleanNotes.length < 30)) {
+      throw new BadRequestException('Write at least 30 characters of lesson feedback before completing the session');
+    }
+    if (data.status && data.status !== SessionStatus.COMPLETED) throw new BadRequestException('Use the cancellation, rescheduling, or attendance action to change session status');
+    if (data.status === SessionStatus.COMPLETED && (session.startsAt > new Date() || ![SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS, SessionStatus.COMPLETED].includes(session.status as any))) throw new BadRequestException('Only a started active session can be completed');
 
-    return this.prisma.session.update({
+    const result = await this.prisma.$transaction(async tx => {
+      for (const key of [`lecturer:${session.lecturerId}`, `student:${session.studentId}`].sort()) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
+      }
+      const current = await tx.session.findUnique({ where: { id }, include: { notes: true } });
+      if (!current) throw new NotFoundException('Session not found');
+      if (data.status === SessionStatus.COMPLETED && ![SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS, SessionStatus.COMPLETED].includes(current.status as any)) throw new BadRequestException('This session is no longer active');
+      if (current.status === SessionStatus.COMPLETED && data.notes !== undefined && (!cleanNotes || cleanNotes.length < 30)) throw new BadRequestException('Write at least 30 characters of lesson feedback');
+      if (data.status === SessionStatus.COMPLETED && current.status !== SessionStatus.COMPLETED) {
+        const changed = await tx.session.updateMany({ where: { id, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, startsAt: { lte: new Date() } }, data: { status: SessionStatus.COMPLETED } });
+        if (changed.count !== 1) {
+          const current = await tx.session.findUnique({ where: { id } });
+          if (current?.status !== SessionStatus.COMPLETED) throw new BadRequestException('This session is no longer active');
+        }
+      }
+    const updated = await tx.session.update({
       where: { id },
       data: {
         notes: data.notes !== undefined ? {
           upsert: {
-            create: { lecturerId: session.lecturerId, topicsCovered: '', homework: '', studentProgressRating: 0, internalNotes: '', sharedNotes: data.notes },
-            update: { sharedNotes: data.notes }
+            create: { lecturerId: session.lecturerId, topicsCovered: '', homework: '', studentProgressRating: 0, internalNotes: '', sharedNotes: cleanNotes! },
+            update: { sharedNotes: cleanNotes }
           }
         } : undefined,
-        status: data.status ? (data.status as any) : undefined,
       },
     });
+    return { updated, shouldNotify: !!cleanNotes && cleanNotes.length >= 30 && (data.status === SessionStatus.COMPLETED || current.status === SessionStatus.COMPLETED) && (current.status !== SessionStatus.COMPLETED || (current.notes?.sharedNotes.trim().length || 0) < 30) };
+    });
+    if (result.shouldNotify) {
+      try { await this.notificationService.dispatchLessonFeedback(id, cleanNotes!); }
+      catch (error) { this.logger.error(`Lesson feedback notification failed for ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`); }
+    }
+    return result.updated;
+  }
+
+  async getPendingLessonNotes(lecturerId: string) {
+    const sessions = await this.prisma.session.findMany({
+      where: { lecturerId, status: { in: [SessionStatus.COMPLETED, SessionStatus.IN_PROGRESS] } },
+      select: { id: true, startsAt: true, status: true, student: { select: { fullName: true } }, notes: { select: { sharedNotes: true } } },
+      orderBy: { startsAt: 'asc' },
+    });
+    return sessions.filter(session => (session.notes?.sharedNotes.trim().length || 0) < 30);
   }
 
   async markStudentAbsent(
     user: { id: string; role?: Role },
     sessionId: string,
     reason?: string,
+    absentRole: 'student' | 'lecturer' = 'student',
+    options?: { onlyIfNeverJoined: boolean; closeMeeting: () => Promise<void> },
   ) {
+    if (!['student', 'lecturer'].includes(absentRole)) throw new BadRequestException('Choose student or lecturer absence');
+    if (reason !== undefined && (typeof reason !== 'string' || reason.length > 1000)) throw new BadRequestException('Attendance reason must be text up to 1,000 characters');
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
       include: {
@@ -534,6 +587,8 @@ export class BookingService {
         'Only the assigned lecturer or an administrator can mark attendance.'
       );
     }
+    if (absentRole === 'lecturer' && !isAdmin) throw new ForbiddenException('Only administrators can record lecturer absence');
+    if (session.startsAt > new Date()) throw new BadRequestException('Attendance can only be recorded after the session starts');
 
     if (session.status === SessionStatus.COMPLETED) {
       throw new BadRequestException('Cannot mark an already completed session as absent.');
@@ -543,56 +598,69 @@ export class BookingService {
       throw new BadRequestException('Cannot mark a canceled session as absent.');
     }
 
-    if (session.status === SessionStatus.NO_SHOW_STUDENT) {
-      throw new BadRequestException('This session has already been marked as student absent.');
+    if (session.status === SessionStatus.NO_SHOW_STUDENT || session.status === SessionStatus.NO_SHOW_LECTURER) {
+      throw new BadRequestException('Attendance has already been recorded');
     }
 
-    const noteReason = reason?.trim() || 'Student did not attend scheduled session.';
+    const noteReason = reason?.trim() || `${absentRole === 'student' ? 'Student' : 'Lecturer'} did not attend the scheduled session.`;
+    const status = absentRole === 'lecturer' ? SessionStatus.NO_SHOW_LECTURER : SessionStatus.NO_SHOW_STUDENT;
+    const eventType = absentRole === 'lecturer' ? 'SESSION_LECTURER_NO_SHOW' : 'SESSION_STUDENT_NO_SHOW';
 
-    const updatedSession = await this.prisma.session.update({
-      where: { id: sessionId },
-      data: {
-        status: SessionStatus.NO_SHOW_STUDENT,
-        notes: {
-          upsert: {
-            create: {
-              lecturerId: session.lecturerId,
-              topicsCovered: 'Session conducted · Student was absent',
-              homework: '',
-              studentProgressRating: 0,
-              internalNotes: noteReason,
-              sharedNotes: `Marked absent by instructor: ${noteReason}`,
-            },
-            update: {
-              sharedNotes: `Marked absent by instructor: ${noteReason}`,
-              internalNotes: noteReason,
+    const updatedSession = await this.prisma.$transaction(async tx => {
+      if (options?.onlyIfNeverJoined) {
+        for (const key of [`lecturer:${session.lecturerId}`, `student:${session.studentId}`].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
+        const current = await tx.session.findUniqueOrThrow({ where: { id: sessionId } });
+        const waitStartedAt = current.meetingStartedAt ? Math.max(+current.startsAt, +current.meetingStartedAt) : null;
+        if (current.studentJoinedAt || waitStartedAt === null || Date.now() < waitStartedAt + 15 * 60_000 || (current.attendancePromptAfter && new Date() < current.attendancePromptAfter)) throw new BadRequestException('Student attendance changed or the waiting period has not ended');
+      }
+      const claimed = await tx.session.updateMany({ where: { id: sessionId, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, ...(options?.onlyIfNeverJoined ? { studentJoinedAt: null } : {}) }, data: { status } });
+      if (claimed.count !== 1) throw new BadRequestException('Attendance has already been recorded or the session is no longer active');
+      if (options) await options.closeMeeting();
+      const updated = await tx.session.update({
+        where: { id: sessionId },
+        data: {
+          status,
+          notes: {
+            upsert: {
+              create: {
+                lecturerId: session.lecturerId,
+                topicsCovered: absentRole === 'student' ? 'Session conducted · Student was absent' : 'Session not conducted · Lecturer was absent',
+                homework: '',
+                studentProgressRating: 0,
+                internalNotes: noteReason,
+                sharedNotes: noteReason,
+              },
+              update: {
+                sharedNotes: noteReason,
+                internalNotes: noteReason,
+              },
             },
           },
         },
-      },
-      include: {
-        student: true,
-        lecturer: true,
-        notes: true,
-      },
-    });
-
-    // Write audit log
-    await this.prisma.auditLog.create({
-      data: {
-        actorId: user.id,
-        action: 'SESSION_STUDENT_NO_SHOW',
-        entity: 'SESSION',
-        entityId: sessionId,
-        details: {
-          markedBy: user.id,
-          reason: reason || 'Lecturer marked student absent',
-          studentId: session.studentId,
+        include: {
+          student: true,
+          lecturer: true,
+          notes: true,
         },
-      },
-    });
+      });
 
-    // Dispatch notification to student
+      await tx.auditLog.create({
+        data: {
+          actorId: user.id,
+          action: eventType,
+          entity: 'SESSION',
+          entityId: sessionId,
+          details: {
+            markedBy: user.id,
+            reason: noteReason,
+            absentRole,
+            studentId: session.studentId,
+          },
+        },
+      });
+      return updated;
+    }, options ? { maxWait: 10_000, timeout: 15_000 } : undefined);
+
     try {
       const studentName = session.student?.fullName || session.student?.user?.email?.split('@')[0] || 'Student';
       const lecturerName = session.lecturer?.fullName || 'Your Lecturer';
@@ -608,12 +676,12 @@ export class BookingService {
       })}`;
 
       await this.notificationService.dispatchBookingNotification({
-        eventType: 'SESSION_STUDENT_NO_SHOW' as any,
+        eventType,
         sessionId,
         actor: {
           id: user.id,
-          name: lecturerName,
-          role: 'LECTURER',
+          name: isAdmin ? 'Administrator' : lecturerName,
+          role: user.role || Role.LECTURER,
         },
         recipient: {
           id: session.studentId,
@@ -624,7 +692,7 @@ export class BookingService {
         },
         sessionDate: session.startsAt,
         sessionTimeFormatted,
-        reason: reason || 'Student did not attend the scheduled classroom session.',
+        reason: noteReason,
       });
     } catch (notifErr: any) {
       this.logger.error(`Failed to dispatch student absent notification: ${notifErr.message}`);
@@ -681,6 +749,7 @@ export class BookingService {
     }
 
     // Lecturer: Allowed >= 6 hours before start, OR within 6 hours after session end
+    if ([SessionStatus.COMPLETED, SessionStatus.NO_SHOW_LECTURER].includes(session.status as any)) throw new BadRequestException('This session has already concluded and cannot be rescheduled');
     if (isLecturer && !isAdmin) {
       if (session.status === SessionStatus.CANCELED) {
         throw new BadRequestException('Canceled sessions cannot be rescheduled');
@@ -696,14 +765,33 @@ export class BookingService {
     }
 
     const newStartsAt = new Date(newStartsAtISO);
-    const newEndsAt = new Date(newStartsAt.getTime() + 40 * 60 * 1000); // 40 minutes session
+    if (typeof newStartsAtISO !== 'string' || !Number.isFinite(newStartsAt.getTime())) throw new BadRequestException('Choose a valid reschedule date');
+    const newEndsAt = new Date(newStartsAt.getTime() + SESSION_MINUTES * 60 * 1000);
 
     if (newStartsAt <= new Date()) {
       throw new BadRequestException('Cannot reschedule to a past time');
     }
+    if (isStudent && !isAdmin && +newStartsAt < +now + 12 * 60 * 60 * 1000) throw new BadRequestException('Choose a new time at least 12 hours from now');
 
-    // Check availability slot for new time before releasing the old slot.
-    const newSlot = await this.prisma.availabilitySlot.findFirst({
+    const oldStartsAt = session.startsAt;
+    const updated = await this.prisma.$transaction(async tx => {
+    for (const key of [`lecturer:${session.lecturerId}`, `student:${session.studentId}`].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
+    const current = await tx.session.findUniqueOrThrow({ where: { id: sessionId } });
+    if (current.status !== session.status || +current.startsAt !== +session.startsAt) throw new BadRequestException('The session has changed. Refresh and try again');
+    const subscription = await tx.subscription.findFirst({ where: {
+      studentId: session.studentId, status: 'ACTIVE', currentPeriodStart: { lte: now }, currentPeriodEnd: { gt: now },
+    }, orderBy: { currentPeriodEnd: 'desc' } });
+    if (!subscription || newStartsAt < subscription.currentPeriodStart || newEndsAt > subscription.currentPeriodEnd) throw new BadRequestException('Choose a session within your active subscription period');
+    await this.validateBookingAllowance(session.studentId, newStartsAt, subscription.tier, tx, sessionId);
+    const overlap = await tx.session.findFirst({ where: {
+      id: { not: sessionId }, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] },
+      OR: [
+        { lecturerId: session.lecturerId, ...lecturerConflictWindow(newStartsAt, newEndsAt) },
+        { studentId: session.studentId, startsAt: { lt: newEndsAt }, endsAt: { gt: newStartsAt } },
+      ],
+    } });
+    if (overlap) throw new BadRequestException('Choose a free time with at least a 10-minute lecturer break between sessions');
+    const newSlot = await tx.availabilitySlot.findFirst({
       where: {
         lecturerId: session.lecturerId,
         startsAt: { lte: newStartsAt },
@@ -717,7 +805,7 @@ export class BookingService {
     }
 
     // Release old availability slot back to OPEN if it exists
-    const oldSlot = await this.prisma.availabilitySlot.findFirst({
+    const oldSlot = await tx.availabilitySlot.findFirst({
       where: {
         lecturerId: session.lecturerId,
         startsAt: session.startsAt,
@@ -725,29 +813,29 @@ export class BookingService {
     });
 
     if (oldSlot) {
-      await this.prisma.availabilitySlot.update({
+      await tx.availabilitySlot.update({
         where: { id: oldSlot.id },
         data: { status: SlotStatus.OPEN },
       });
     }
 
-    await this.prisma.availabilitySlot.update({
-      where: { id: newSlot.id },
+    const claimed = await tx.availabilitySlot.updateMany({
+      where: { id: newSlot.id, status: SlotStatus.OPEN },
       data: { status: SlotStatus.BOOKED },
     });
-
-    const oldStartsAt = session.startsAt;
-
-    // Update the session times
-    const updated = await this.prisma.session.update({
+    if (claimed.count !== 1) throw new BadRequestException('This slot has just been booked. Choose another time');
+    return tx.session.update({
       where: { id: sessionId },
       data: {
         startsAt: newStartsAt,
         endsAt: newEndsAt,
+        meetingStartedAt: null,
+        rescheduledAt: new Date(),
         status: SessionStatus.SCHEDULED,
       },
-      include: { lecturer: true, student: true },
+      include: { lecturer: { select: publicLecturerSelect }, student: true },
     });
+    }, { maxWait: 10000, timeout: 15000 });
 
     await this.prisma.auditLog.create({
       data: {
@@ -799,19 +887,19 @@ export class BookingService {
           sessionDate: newStartsAt,
           sessionTimeFormatted,
           previousTimeFormatted,
+          previousStartsAt: oldStartsAt,
           reason,
         });
       }
 
-      // If Lecturer rescheduled -> Student is recipient
-      if (isLecturer || isAdmin) {
+      if (isLecturer || isAdmin || isStudent) {
         await this.notificationService.dispatchBookingNotification({
           eventType: 'BOOKING_RESCHEDULED',
           sessionId,
           actor: {
             id: user.id,
-            name: lecturerName,
-            role: 'LECTURER',
+            name: isStudent ? studentName : lecturerName,
+            role: isStudent ? 'STUDENT' : 'LECTURER',
           },
           recipient: {
             id: session.studentId,
@@ -823,6 +911,7 @@ export class BookingService {
           sessionDate: newStartsAt,
           sessionTimeFormatted,
           previousTimeFormatted,
+          previousStartsAt: oldStartsAt,
           reason,
         });
       }

@@ -7,9 +7,9 @@ import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 
 const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/about', label: 'About Us' },
-  { href: '/pricing', label: 'Pricing' },
+  { href: '/', label: 'HOME' },
+  { href: '/about', label: 'ABOUT US' },
+  { href: '/pricing', label: 'PRICING' },
 ];
 
 export default function Header() {
@@ -81,13 +81,13 @@ export default function Header() {
                 backgroundColor: 'transparent',
               }
         }
-        className={`pointer-events-auto grid w-full max-w-7xl grid-cols-[1fr_auto_1fr] items-center rounded-full px-5 transition-all duration-300 sm:px-7 ${
+        className={`pointer-events-auto flex w-full max-w-7xl items-center justify-between rounded-full px-5 transition-all duration-300 sm:px-7 ${
           scrolled
             ? 'min-h-[62px] border border-white/90 shadow-[0_12px_36px_rgba(0,0,0,0.10),0_2px_6px_rgba(0,0,0,0.04),inset_0_1px_1.5px_rgba(255,255,255,1)] sm:min-h-[64px]'
             : 'min-h-[66px] border border-transparent shadow-none sm:min-h-[68px]'
         }`}
       >
-        <Link href="/" className="col-start-1 row-start-1 flex items-center justify-self-start" aria-label="ILMBIT home">
+        <Link href="/" className="flex items-center" aria-label="ILMBIT home">
           <span className="relative block h-[52px] w-[40px] sm:h-[56px] sm:w-[42px]">
             <Image
               src="/images/ilmbit-logo-white.png"
@@ -115,51 +115,49 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Center: Desktop Navigation Links */}
-        <nav className="col-start-2 row-start-1 hidden h-11 items-center gap-8 justify-self-center md:flex">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            let linkColorClass = '';
-            if (showWhiteNav) {
-              linkColorClass = isActive
-                ? 'font-bold text-[#10BF8D]'
-                : 'font-semibold text-white/80 hover:text-white';
-            } else if (scrolled) {
-              linkColorClass = isActive
-                ? 'font-bold text-[#095F46]'
-                : 'font-semibold text-stone-600 hover:text-stone-950';
-            } else {
-              // Transparent on light page
-              linkColorClass = isActive
-                ? 'font-bold text-[#095F46]'
-                : 'font-semibold text-stone-700 hover:text-stone-950';
-            }
+        {/* Right side: Desktop Links right-aligned with Get Started button */}
+        <div className="hidden md:flex items-center gap-7 lg:gap-8">
+          <nav className="flex h-11 items-center gap-6 lg:gap-8">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              let linkColorClass = '';
+              if (showWhiteNav) {
+                linkColorClass = isActive
+                  ? '!font-light text-[#EAD08A]'
+                  : '!font-light text-white/80 hover:text-white';
+              } else if (scrolled) {
+                linkColorClass = isActive
+                  ? '!font-normal text-[#095F46]'
+                  : '!font-light text-stone-600 hover:text-stone-950';
+              } else {
+                linkColorClass = isActive
+                  ? '!font-normal text-[#095F46]'
+                  : '!font-light text-stone-700 hover:text-stone-950';
+              }
 
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`inline-flex h-11 items-center text-sm tracking-[-0.01em] transition-colors ${linkColorClass}`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`inline-flex h-11 items-center text-xs lg:text-[13px] tracking-[0.08em] uppercase transition-colors ${linkColorClass}`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
 
-        {/* Right: Actions */}
-        <div className="col-start-3 row-start-1 hidden items-center justify-self-end md:flex">
           <Link
             href="/about#waitlist"
-            className="brand-button brand-button-primary min-h-10 px-5 text-[13px]"
+            className="brand-button brand-button-primary min-h-10 px-5 text-xs tracking-wider uppercase !font-light"
           >
-            Get Started
+            GET STARTED
           </Link>
         </div>
 
         {/* Mobile menu toggle */}
         <button
-          className={`brand-icon-button col-start-3 row-start-1 justify-self-end transition-colors md:hidden ${
+          className={`brand-icon-button transition-colors md:hidden ${
             showWhiteNav
               ? 'text-white/80 hover:bg-white/10 hover:text-white'
               : 'text-stone-800 hover:bg-stone-100/80'
@@ -197,12 +195,12 @@ export default function Header() {
               let itemClass = '';
               if (showWhiteNav) {
                 itemClass = isActive
-                  ? 'text-emerald-400 bg-emerald-950/80 font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-white/10';
+                  ? 'text-[#EAD08A] bg-white/10 !font-light'
+                  : 'text-stone-300 hover:text-white hover:bg-white/10 !font-light';
               } else {
                 itemClass = isActive
-                  ? 'text-stone-950 bg-stone-200/60 font-bold'
-                  : 'text-stone-700 hover:bg-stone-100/70';
+                  ? 'text-stone-950 bg-stone-200/60 !font-normal'
+                  : 'text-stone-700 hover:bg-stone-100/70 !font-light';
               }
 
               return (
@@ -210,7 +208,7 @@ export default function Header() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`block px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${itemClass}`}
+                  className={`block px-3 py-2.5 rounded-xl text-xs tracking-[0.08em] uppercase transition-colors ${itemClass}`}
                 >
                   {link.label}
                 </Link>
@@ -222,11 +220,22 @@ export default function Header() {
               }`}
             >
               <Link
-                href="/about#waitlist"
+                href="/auth/signin"
                 onClick={() => setMobileOpen(false)}
-                className="brand-button brand-button-primary w-full"
+                className={`mb-2 flex min-h-11 w-full items-center justify-center rounded-full px-4 text-sm font-bold transition-colors ${
+                  showWhiteNav
+                    ? 'text-white hover:bg-white/10'
+                    : 'text-stone-700 hover:bg-stone-100'
+                }`}
               >
-                Get Started
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
+                onClick={() => setMobileOpen(false)}
+                className="brand-button brand-button-primary w-full text-xs tracking-wider uppercase !font-light"
+              >
+                GET STARTED
               </Link>
             </div>
           </div>

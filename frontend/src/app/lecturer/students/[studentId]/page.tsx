@@ -1,5 +1,6 @@
 'use client';
 
+import { RecordAssessment } from '@/components/classroom/record-assessment';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
@@ -198,7 +199,7 @@ export default function StudentDetailPage() {
     : (progressReports || []).flatMap((r: any) => r.contentJson?.assessments || []);
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl">
+    <div className="space-y-6 animate-fade-in w-full">
       <Link href="/lecturer/students" className="inline-flex items-center gap-1.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Students
       </Link>
@@ -211,7 +212,7 @@ export default function StudentDetailPage() {
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-1">{profile.fullName}</h1>
+            <h2 className="text-2xl font-bold mb-1">{profile.fullName}</h2>
             <div className="flex flex-wrap gap-3 text-sm text-[hsl(var(--muted-foreground))]">
               {profile.user?.email && <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{profile.user.email}</span>}
               {profile.country && <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" />{profile.country}</span>}
@@ -247,7 +248,7 @@ export default function StudentDetailPage() {
         <StatCard icon={Calendar} label="Total Sessions" value={stats.totalSessions} color="bg-blue-500/10 text-blue-600 dark:text-blue-400" />
         <StatCard icon={CheckCircle2} label="Completed" value={stats.completedCount} color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" />
         <StatCard icon={Clock} label="Upcoming" value={stats.upcomingCount} color="bg-amber-500/10 text-amber-700 dark:text-amber-400" />
-        <StatCard icon={Star} label="Avg Progress Rating" value={stats.avgStudentRating ? `${stats.avgStudentRating}/5` : '—'} color="bg-purple-500/10 text-purple-600 dark:text-purple-400" />
+        <StatCard icon={Star} label="Avg Progress Rating" value={stats.avgStudentRating ? `${stats.avgStudentRating}/5` : 'No ratings'} color="bg-purple-500/10 text-purple-600 dark:text-purple-400" />
       </div>
 
       {/* Curriculum Progress */}
@@ -258,7 +259,7 @@ export default function StudentDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
             <div className="p-3 rounded-xl bg-[hsl(var(--muted)/0.4)] border border-[hsl(var(--border))]">
               <div className="text-xs text-[hsl(var(--muted-foreground))] mb-1 flex items-center gap-1.5"><Layers className="h-3.5 w-3.5" /> Learning Path</div>
-              <div className="text-sm font-semibold">{progress.currentLearningPath?.title || '—'}</div>
+              <div className="text-sm font-semibold">{progress.currentLearningPath?.title || 'No course assigned'}</div>
               <div className="text-xs text-[hsl(var(--muted-foreground))]">{progress.currentLearningPath?.level}</div>
             </div>
             <div className="p-3 rounded-xl bg-[hsl(var(--muted)/0.4)] border border-[hsl(var(--border))]">
@@ -326,6 +327,7 @@ export default function StudentDetailPage() {
       {/* Quizzes & Assessments */}
       <div>
         <SectionHeader icon={ClipboardList} title="Quizzes & Assessments" count={assessments.length} />
+        <RecordAssessment studentId={studentId} enabled={!!progress} />
         {assessments.length === 0 ? (
           <div className="p-8 rounded-2xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--card)/0.5)] text-center">
             <div className="h-12 w-12 rounded-2xl bg-[hsl(var(--primary)/0.1)] flex items-center justify-center mx-auto mb-3">
@@ -362,7 +364,7 @@ export default function StudentDetailPage() {
                           ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                           : isMedium
                           ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                          : 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20'
                       }`}>
                         {a.score}/{a.maxScore || 100} {a.grade && `· ${a.grade}`}
                       </div>

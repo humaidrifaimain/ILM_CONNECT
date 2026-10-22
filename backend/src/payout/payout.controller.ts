@@ -11,6 +11,9 @@ import { Role } from '@prisma/client';
 export class PayoutController {
   constructor(private readonly payoutService: PayoutService) {}
 
+  @Get('balance')
+  getBalance(@Request() req: any) { return this.payoutService.getBalance(req.user.id); }
+
   @Get('me')
   getMyPayouts(@Request() req: any) {
     return this.payoutService.getMyPayouts(req.user.id);

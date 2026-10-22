@@ -1,0 +1,23 @@
+'use client';
+import { downloadCsv } from '@/lib/download';
+import type { PricingCurrency } from '@/lib/pricing-currency';
+import type { SubscriptionPlan } from '@/lib/subscription-plans';
+
+type FinancePlan = SubscriptionPlan & { internationalLkr: number | null };
+const lkr = (value: number | null) => value === null ? 'Unavailable' : new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(value);
+const time = (value: string | null) => value ? new Date(value).toLocaleString('en-GB', { timeZone: 'Asia/Colombo', dateStyle: 'medium', timeStyle: 'short' }) : 'Not retrieved';
+const rateValue = (value: number) => `LKR ${new Intl.NumberFormat('en', { minimumFractionDigits: 2, maximumFractionDigits: 8 }).format(value)}`;
+
+export function ExchangeRatesPanel({ rates, plans }: { rates: PricingCurrency[]; plans: FinancePlan[] }) {
+  const foreign = rates.filter(rate => rate.code !== 'LKR');
+  const usd = foreign.find(rate => rate.code === 'USD');
+  return <section className="space-y-4 rounded-xl border border-[#d6e0db] bg-white p-4 sm:p-6">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold text-stone-950">Exchange rates & plan values</h2><p className="mt-1 text-sm text-[#56635c]">Daily reference rates checked automatically every five minutes. Retrieval times are in Sri Lanka time.</p></div><button onClick={() => downloadCsv([['Currency', 'LKR per unit', 'Rate date', 'Retrieved at UTC', 'Source', 'Status'], ...foreign.map(rate => [rate.code, rate.available ? rate.lkrPerUnit : '', rate.rateDate, rate.fetchedAt ?? '', rate.source ?? '', !rate.available ? 'Unavailable' : rate.stale ? 'Stale' : 'Latest retrieved']), [], ['Course', 'Tier', 'Sri Lankan price LKR', 'International price USD', 'International equivalent LKR', 'USD rate', 'Rate date', 'Retrieved at UTC'], ...plans.map(plan => [plan.course, plan.tier, plan.monthlyLkr ?? '', plan.monthlyUsd, plan.internationalLkr ?? '', usd?.lkrPerUnit ?? '', usd?.rateDate ?? '', usd?.fetchedAt ?? ''])], 'exchange-rates-and-prices.csv')} className="min-h-10 rounded-lg border border-[#d6e0db] px-3 text-sm font-medium text-[#095F46] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#095F46]">Export rates & prices</button></div>
+    {!foreign.length && <p role="status" className="text-sm text-[#56635c]">No verified exchange rates have been retrieved yet.</p>}
+    {foreign.some(rate => !rate.available || rate.stale) && <p role="status" className="text-sm text-[#854d0e]">Some rates are unavailable or could not be refreshed. Converted plan values are hidden until a current rate is available.</p>}
+    <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{foreign.map(rate => <div key={rate.code} className="border-l-2 border-[#d6e0db] pl-3"><dt className="text-sm text-[#56635c]">1 {rate.code}</dt><dd className="mt-1 break-words text-lg font-semibold">{rate.available ? rateValue(rate.lkrPerUnit) : 'Unavailable'}</dd><dd className="mt-2 text-xs leading-5 text-[#56635c]">{rate.source ?? 'No verified source'}<br />Rate date: {rate.available ? rate.rateDate : 'Unavailable'}<br />Retrieved: {time(rate.fetchedAt)}<br />{!rate.available ? 'Awaiting first update' : rate.stale ? 'Stale snapshot' : 'Latest retrieved snapshot'}</dd></div>)}</dl>
+    <div className="border-t border-[#d6e0db] pt-4"><h3 className="text-sm font-semibold">Monthly plan values</h3><p className="mt-1 text-xs text-[#56635c]">International LKR equivalents use the USD rate above. Recorded payment revenue keeps the amount collected.</p>
+      {!plans.length ? <p className="mt-3 text-sm text-[#56635c]">No plans configured.</p> : <div tabIndex={0} aria-label="Monthly plan values, scroll horizontally for all amounts" className="mt-3 overflow-x-auto focus-visible:outline-2 focus-visible:outline-[#095F46]"><table className="w-full text-left text-sm"><thead className="text-[#56635c]"><tr>{['Plan', 'Sri Lanka · LKR', 'International · USD', 'International equivalent · LKR'].map(label => <th key={label} className="px-3 py-2 font-medium">{label}</th>)}</tr></thead><tbody>{plans.map(plan => <tr key={plan.id} className="border-t border-[#d6e0db]"><th scope="row" className="px-3 py-3 font-medium">{plan.course}<span className="block text-xs font-normal text-[#56635c]">{plan.tier}</span></th><td className="px-3 py-3">{plan.monthlyLkr === null ? 'Not configured' : lkr(plan.monthlyLkr)}</td><td className="px-3 py-3">{new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(plan.monthlyUsd)}</td><td className="px-3 py-3">{lkr(plan.internationalLkr)}</td></tr>)}</tbody></table></div>}
+    </div>
+  </section>;
+}

@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SessionStatus } from '@prisma/client';
+import { MeetingClockService, MEETING_MS } from './meeting-clock.service';
+import { StudentAttendanceService } from './student-attendance.service';
 
 @Controller('livekit')
 @UseGuards(JwtAuthGuard)
@@ -14,7 +16,27 @@ export class LivekitController {
     private readonly livekitService: LivekitService,
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly meetingClock: MeetingClockService,
+    private readonly attendance: StudentAttendanceService,
   ) {}
+
+  @Get('clock/:sessionId')
+  getClock(@Req() req: any, @Param('sessionId') sessionId: string) { return this.meetingClock.snapshot(req.user, sessionId); }
+
+  @Post('start/:sessionId')
+  startClock(@Req() req: any, @Param('sessionId') sessionId: string) { return this.meetingClock.start(req.user, sessionId); }
+
+  @Get('attendance/:sessionId')
+  getAttendance(@Req() req: any, @Param('sessionId') id: string) { return this.attendance.snapshot(req.user, id); }
+
+  @Post('attendance/:sessionId/heartbeat')
+  reportConnection(@Req() req: any, @Param('sessionId') id: string) { return this.attendance.heartbeat(req.user, id); }
+
+  @Post('attendance/:sessionId/wait')
+  waitForStudent(@Req() req: any, @Param('sessionId') id: string) { return this.attendance.wait(req.user, id); }
+
+  @Post('attendance/:sessionId/absent')
+  markStudentAbsent(@Req() req: any, @Param('sessionId') id: string) { return this.attendance.markAbsent(req.user, id); }
 
   /**
    * POST /livekit/reopen/:sessionId
@@ -38,31 +60,27 @@ export class LivekitController {
     const isLecturer = session.lecturerId === userId;
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
-    if (!isStudent && !isLecturer && !isAdmin) {
+    if (!isLecturer && !isAdmin) {
       throw new ForbiddenException('You are not authorized to reopen this session');
     }
+    if (![SessionStatus.CANCELED, SessionStatus.NO_SHOW_STUDENT].includes(session.status as any)) throw new BadRequestException('Only canceled sessions or student absences can be reopened');
 
     const now = new Date();
     const startsAt = new Date(session.startsAt);
     const newStatus = now >= startsAt ? SessionStatus.IN_PROGRESS : SessionStatus.SCHEDULED;
 
-    const updatedSession = await this.prisma.session.update({
+    const updatedSession = await this.prisma.$transaction(async tx => {
+    for (const key of [`lecturer:${session.lecturerId}`, `student:${session.studentId}`].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`;
+    const overlap = await tx.session.findFirst({ where: { id: { not: sessionId }, status: { in: [SessionStatus.SCHEDULED, SessionStatus.IN_PROGRESS] }, startsAt: { lt: session.endsAt }, endsAt: { gt: session.startsAt }, OR: [{ lecturerId: session.lecturerId }, { studentId: session.studentId }] } });
+    if (overlap) throw new BadRequestException('Another session occupies this time');
+    const changed = await tx.session.updateMany({ where: { id: sessionId, status: session.status }, data: { status: newStatus, meetingStartedAt: null, studentJoinedAt: null, studentLastSeenAt: null, studentLeftAt: null, attendancePromptAfter: null, attendanceResetAt: new Date(), livekitRoomName: `${this.livekitService.getRoomName(sessionId)}-${now.getTime()}` } });
+    if (changed.count !== 1) throw new BadRequestException('The session status has changed. Refresh and try again');
+    await tx.availabilitySlot.updateMany({ where: { lecturerId: session.lecturerId, startsAt: { lte: session.startsAt }, endsAt: { gte: session.endsAt } }, data: { status: 'BOOKED' } });
+    return tx.session.findUniqueOrThrow({
       where: { id: sessionId },
-      data: { status: newStatus },
       include: { student: true, lecturer: true },
     });
-
-    try {
-      await this.prisma.availabilitySlot.updateMany({
-        where: {
-          lecturerId: session.lecturerId,
-          startsAt: session.startsAt,
-        },
-        data: { status: 'BOOKED' },
-      });
-    } catch (e) {
-      // Non-critical if slot doesn't exist
-    }
+    });
 
     return {
       success: true,
@@ -115,16 +133,19 @@ export class LivekitController {
 
     const now = new Date();
     const startsAt = new Date(session.startsAt);
+    if ([SessionStatus.COMPLETED, SessionStatus.NO_SHOW_LECTURER].includes(session.status as any)) throw new BadRequestException('This session has concluded');
+    if (isStudent) {
+      const subscription = await this.prisma.subscription.findFirst({ where: {
+        studentId: userId, status: 'ACTIVE', currentPeriodStart: { lte: now }, currentPeriodEnd: { gt: now },
+      } });
+      if (!subscription) throw new ForbiddenException('An active subscription is required to join a class');
+    }
 
     // 3. Verify the session is in a joinable state or reopen if requested
     if (session.status === SessionStatus.CANCELED || session.status === SessionStatus.NO_SHOW_STUDENT) {
       if (reopen === 'true') {
-        const newStatus = now >= startsAt ? SessionStatus.IN_PROGRESS : SessionStatus.SCHEDULED;
-        session = await this.prisma.session.update({
-          where: { id: sessionId },
-          data: { status: newStatus },
-          include: { student: true, lecturer: true },
-        });
+        await this.reopenSession(req, sessionId);
+        session = await this.prisma.session.findUniqueOrThrow({ where: { id: sessionId }, include: { student: true, lecturer: true } });
       } else {
         throw new BadRequestException({
           message: 'This session has been canceled',
@@ -142,25 +163,18 @@ export class LivekitController {
       }
     }
 
-    // 4. Check join window: 30 min before start to 2 hours after start
-    const joinWindowStart = new Date(startsAt.getTime() - 30 * 60 * 1000); // 30 min before
-    const joinWindowEnd = new Date(startsAt.getTime() + 2 * 60 * 60 * 1000); // 2 hours after start
+    if (session.meetingStartedAt && Date.now() >= +session.meetingStartedAt + MEETING_MS) {
+      await this.meetingClock.finishExpired(sessionId);
+      throw new BadRequestException('This meeting has reached its 45-minute limit');
+    }
 
-    // if (now < joinWindowStart) {
-    //   const minutesUntil = Math.ceil((joinWindowStart.getTime() - now.getTime()) / 60000);
-    //   throw new BadRequestException(`Session room opens ${minutesUntil} minutes before the start time. Please come back later.`);
-    // }
-
-    // if (now > joinWindowEnd) {
-    //   throw new BadRequestException('The join window for this session has expired');
-    // }
-
-    // 5. Update session status to IN_PROGRESS if it's still SCHEDULED and within start time
     if (session.status === SessionStatus.SCHEDULED && now >= startsAt) {
-      await this.prisma.session.update({
-        where: { id: sessionId },
+      await this.prisma.session.updateMany({
+        where: { id: sessionId, status: SessionStatus.SCHEDULED },
         data: { status: SessionStatus.IN_PROGRESS },
       });
+      session = await this.prisma.session.findUniqueOrThrow({ where: { id: sessionId }, include: { student: true, lecturer: true } });
+      if (session.status !== SessionStatus.IN_PROGRESS) throw new BadRequestException('This session is no longer active');
     }
 
     // 6. Ensure LiveKit room name is assigned and persisted

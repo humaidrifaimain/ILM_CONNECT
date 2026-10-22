@@ -1,5 +1,8 @@
 'use client';
 
+import { apiFetch } from '@/lib/api';
+import { useSubscriptionPlans } from '@/lib/subscription-plans';
+import { CurrencySelector, usePricingCurrency } from '@/lib/pricing-currency';
 import { useState } from 'react';
 import Image from 'next/image';
 import { X, Check, Loader2, ArrowRight, ChevronDown } from 'lucide-react';
@@ -23,11 +26,15 @@ export default function WaitlistModal({
   onClose,
   defaultCourse = 'Tajweed Quran Recitation',
 }: WaitlistModalProps) {
+  const { data: plans = [] } = useSubscriptionPlans();
+  const { format } = usePricingCurrency();
+  const [error, setError] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneCountry, setPhoneCountry] = useState<CountryCallingCode>(() => getCountryCallingCode('LK'));
   const [course, setCourse] = useState(defaultCourse);
+  const price = (tier: string) => { const plan = plans.find(item => item.course === course && item.tier === tier); return plan ? format(plan) : 'Price unavailable'; };
   const [pace, setPace] = useState<'standard' | 'fast-track'>('standard');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,31 +45,14 @@ export default function WaitlistModal({
     if (!fullName || !email) return;
 
     setIsSubmitting(true);
+    setError('');
     const formattedPhone = formatInternationalPhone(phone, phoneCountry);
 
-    // Simulate connection / store locally until backend email provider is connected
     try {
-      const waitlistEntry = {
-        fullName,
-        email,
-        phone: formattedPhone,
-        rawPhone: phone,
-        phoneCountry: phoneCountry.name,
-        phoneCountryCode: phoneCountry.iso2,
-        phoneDialCode: phoneCountry.dialCode,
-        course,
-        pace,
-        notes,
-        submittedAt: new Date().toISOString(),
-      };
-      // Store in localStorage for persistence
-      if (typeof window !== 'undefined') {
-        const existing = JSON.parse(localStorage.getItem('ilm_waitlist_entries') || '[]');
-        existing.push(waitlistEntry);
-        localStorage.setItem('ilm_waitlist_entries', JSON.stringify(existing));
-      }
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await apiFetch('/auth/waitlist', { method: 'POST', body: JSON.stringify({ fullName, email, phone: formattedPhone, country: phoneCountry.name, course, pace, notes }), skipRedirect: true });
       setIsSubmitted(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to join the waitlist. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -84,16 +74,7 @@ export default function WaitlistModal({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={handleResetAndClose}
-          className="fixed inset-0 bg-stone-950/70 backdrop-blur-md transition-opacity"
-        />
-
+      <dialog ref={node => { if (node && !node.open) node.showModal(); }} onCancel={handleResetAndClose} aria-labelledby="waitlist-modal-title" className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border-0 bg-transparent p-0 backdrop:bg-stone-950/70 backdrop:backdrop-blur-md">
         {/* Modal Window Card */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
@@ -124,8 +105,8 @@ export default function WaitlistModal({
                   className="h-[52px] w-auto flex-shrink-0 object-contain"
                 />
                 <div>
-                  <h3 className="text-xl sm:text-2xl font-black text-stone-950 tracking-tight">
-                    Join Priority Waitlist
+                  <h3 id="waitlist-modal-title" className="text-xl sm:text-2xl font-black text-stone-950 tracking-tight">
+                    Request a trial
                   </h3>
                   <p className="text-xs text-stone-500 font-medium">
                     Reserve your spot for 1:1 online sessions
@@ -138,6 +119,7 @@ export default function WaitlistModal({
               </p>
 
               {/* Form */}
+              <div className="mb-4"><CurrencySelector /></div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
@@ -221,6 +203,7 @@ export default function WaitlistModal({
                     </div>
                   </div>
                 </div>
+                <p className="text-sm text-[#56635c]">{price(pace === 'standard' ? 'Standard' : 'Fast Track')}/month after your trial</p>
 
                 <div>
                   <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1.5">
@@ -236,7 +219,8 @@ export default function WaitlistModal({
                 </div>
 
                 <div className="pt-2">
-                  <button
+                  {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+                <button
                     type="submit"
                     disabled={isSubmitting}
                     className="brand-button brand-button-primary h-12 w-full"
@@ -244,11 +228,11 @@ export default function WaitlistModal({
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Joining Priority Waitlist...</span>
+                        <span>Sending request…</span>
                       </>
                     ) : (
                       <>
-                        <span>Join Priority Waitlist</span>
+                        <span>Request a trial</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -269,8 +253,8 @@ export default function WaitlistModal({
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-[#095F46] shadow-inner">
                 <Check className="h-8 w-8 stroke-[3]" />
               </div>
-              <h3 className="text-2xl font-black text-stone-950 mb-2">
-                Alhamdulillah, You&apos;re on the Waitlist!
+              <h3 id="waitlist-modal-title" className="text-2xl font-black text-stone-950 mb-2">
+                Your trial request is registered
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 max-w-sm mx-auto leading-relaxed mb-6">
                 We have registered <span className="font-bold text-stone-900">{fullName}</span> for{' '}
@@ -287,7 +271,7 @@ export default function WaitlistModal({
             </motion.div>
           )}
         </motion.div>
-      </div>
+      </dialog>
     </Portal>
   );
 }

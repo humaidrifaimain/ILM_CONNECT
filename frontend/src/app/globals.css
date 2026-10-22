@@ -141,7 +141,20 @@ textarea {
 }
 
 button {
-  border-radius: var(--radius-action);
+  border-radius: 0.5rem;
+}
+
+nav a[aria-current="page"],
+nav a:hover {
+  border-radius: 0.5rem;
+}
+
+.course-tab {
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.conversation-row {
+  border-radius: 0.5rem;
 }
 
 .home-hero-section {
@@ -161,9 +174,13 @@ button {
   }
 }
 
-a[class*="bg-[#095F46]"],
-a[class*="bg-[hsl(var(--primary))]"] {
+a[class*="bg-[#095F46]"]:not(.hero-bottom-marquee),
+a[class*="bg-[hsl(var(--primary))]"]:not(.hero-bottom-marquee) {
   border-radius: var(--radius-action);
+}
+
+.hero-bottom-marquee {
+  border-radius: 0 !important;
 }
 
 h1,
@@ -563,3 +580,27 @@ p {
   box-shadow: 5px -5px 0 5px #f6f8f6;
   pointer-events: none;
 }
+
+/* Hero Section Bottom Infinite Scroll Marquee */
+@keyframes heroMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+.animate-hero-marquee {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  animation: heroMarquee 32s linear infinite;
+  will-change: transform;
+}
+
+/* Synchronized hover: pause both tracks together via parent so they never desynchronize or overlap */
+.hero-bottom-marquee:hover .animate-hero-marquee {
+  animation-play-state: paused;
+}
+

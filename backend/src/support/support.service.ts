@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '@prisma/client';
 
@@ -6,12 +6,19 @@ import { Role } from '@prisma/client';
 export class SupportService {
   constructor(private prisma: PrismaService) {}
 
+  private validateStatus(status: unknown): asserts status is string {
+    if (typeof status !== 'string' || !['PENDING', 'IN_REVIEW', 'RESOLVED'].includes(status)) throw new BadRequestException('Choose PENDING, IN_REVIEW or RESOLVED');
+  }
+
   async createSupportTicket(userId: string, type: string, reason?: string) {
+    const categories = ['LECTURER_CHANGE', 'TECHNICAL_ISSUE', 'BOOKING_SESSION', 'BILLING_PAYMENT', 'COURSE_MATERIALS', 'FEEDBACK_SUGGESTION', 'GENERAL_SUPPORT', 'TECHNICAL_LIVEKIT', 'STUDENT_REASSIGNMENT', 'PAYOUT_EARNINGS', 'AVAILABILITY_SCHEDULE', 'CURRICULUM_MATERIALS', 'GENERAL_LECTURER_SUPPORT'];
+    if (typeof type !== 'string' || !categories.includes(type)) throw new BadRequestException('Choose a support category');
+    if (typeof reason !== 'string' || !reason.trim() || reason.length > 10000) throw new BadRequestException('Describe your inquiry in 1 to 10,000 characters');
     return this.prisma.supportTicket.create({
       data: {
         userId,
         type,
-        reason,
+        reason: reason.trim(),
         status: 'PENDING',
       },
       include: {
@@ -53,9 +60,11 @@ export class SupportService {
   async getAllTickets(status?: string, role?: string) {
     const where: any = {};
     if (status && status !== 'ALL') {
+      this.validateStatus(status);
       where.status = status;
     }
     if (role && role !== 'ALL') {
+      if (!Object.values(Role).includes(role as Role)) throw new BadRequestException('Invalid requester role');
       where.user = { role: role as Role };
     }
 
@@ -73,6 +82,9 @@ export class SupportService {
                 country: true,
                 phone: true,
                 currentTier: true,
+                preferredHours: true,
+                assignedLecturerId: true,
+                assignedLecturer: { select: { userId: true, fullName: true } },
               },
             },
             lecturerProfile: {
@@ -106,6 +118,9 @@ export class SupportService {
                 country: true,
                 phone: true,
                 currentTier: true,
+                preferredHours: true,
+                assignedLecturerId: true,
+                assignedLecturer: { select: { userId: true, fullName: true } },
               },
             },
             lecturerProfile: {
@@ -133,16 +148,22 @@ export class SupportService {
   }
 
   async addTicketMessage(id: string, user: any, messageText: string, newStatus?: string) {
+    if (typeof messageText !== 'string' || !messageText.trim() || messageText.length > 10000) throw new BadRequestException('Write a reply between 1 and 10,000 characters');
+    const isAdmin = user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+    if (newStatus !== undefined) {
+      this.validateStatus(newStatus);
+      if (!isAdmin) throw new ForbiddenException('Only administrators can choose a ticket status');
+    }
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
     });
 
     if (!ticket) throw new NotFoundException('Support ticket not found');
 
-    const isAdmin = user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
     if (!isAdmin && ticket.userId !== user.id) {
       throw new ForbiddenException('You cannot reply to this ticket');
     }
+    await this.requireAssignmentToResolve(ticket, newStatus);
 
     let senderName = 'Support Desk';
     if (isAdmin) {
@@ -187,8 +208,10 @@ export class SupportService {
   }
 
   async updateTicketStatus(id: string, status: string) {
+    this.validateStatus(status);
     const ticket = await this.prisma.supportTicket.findUnique({ where: { id } });
     if (!ticket) throw new NotFoundException('Ticket not found');
+    await this.requireAssignmentToResolve(ticket, status);
 
     return this.prisma.supportTicket.update({
       where: { id },
@@ -209,5 +232,11 @@ export class SupportService {
         },
       },
     });
+  }
+
+  private async requireAssignmentToResolve(ticket: { type: string; userId: string }, status?: string) {
+    if (ticket.type !== 'STUDENT_REGISTRATION' || status !== 'RESOLVED') return;
+    const profile = await this.prisma.studentProfile.findUnique({ where: { userId: ticket.userId }, select: { assignedLecturerId: true } });
+    if (!profile?.assignedLecturerId) throw new BadRequestException('Assign a lecturer from this request before resolving it');
   }
 }

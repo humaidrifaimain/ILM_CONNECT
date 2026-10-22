@@ -1,0 +1,70 @@
+.patternBackground {
+  position: relative;
+  isolation: isolate;
+}
+
+.patternBackground::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url('/images/islamic-pattern.png');
+  background-repeat: repeat;
+  background-size: 560px 560px;
+  filter: grayscale(1);
+  opacity: 0.03;
+}
+
+.faqItem {
+  overflow: hidden;
+  border: 1px solid #d4d9ce;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.open { border-color: #095f46; }
+
+.question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  min-height: 64px;
+  padding: 1.125rem 1.25rem;
+  text-align: left;
+  font-family: var(--font-subtext);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #172b23;
+  cursor: pointer;
+}
+
+.questionText { min-width: 0; font-family: inherit; }
+.open .question { color: #095f46; }
+.question:focus-visible { outline: 2px solid #095f46; outline-offset: -5px; border-radius: 1rem; }
+.chevron { flex-shrink: 0; width: 20px; height: 20px; color: #095f46; transition: rotate 180ms ease; }
+.expandedChevron { rotate: 180deg; }
+
+.answerPanel { overflow: hidden; }
+
+.answer {
+  margin-inline: 1.25rem;
+  padding-block: 1rem 1.25rem;
+  border-top: 1px solid #e4e7df;
+  font-family: var(--font-subtext);
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #52574f;
+}
+
+@media (min-width: 640px) {
+  .question { padding-inline: 1.5rem; }
+  .answer { margin-inline: 1.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron { transition: none; }
+}

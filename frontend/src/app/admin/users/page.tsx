@@ -1,22 +1,23 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Search, Shield, UserX, UserCheck, Key, Eye, UserPlus, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Search, UserX, UserCheck, UserPlus, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
 import { toast } from '@/components/ui/toast';
 import { TableSkeleton } from '@/components/ui/loading-screen';
 
+interface UserRecord { id: string; email: string; role: string; status: string; studentProfile?: { fullName: string; preferredHours?: number[]; assignedLecturer?: { fullName: string } | null }; lecturerProfile?: { fullName: string; specializations: string[]; hourlyAvailabilityJson: number[] }; }
+interface DisplayUser extends UserRecord { name: string; roleLower: string; statusLower: string; assignedScholar?: string; specializations?: string[]; timeshift: number[]; }
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<any>(null);
-  const [assignmentSuccess, setAssignmentSuccess] = useState(false);
   const [showAddLecturerModal, setShowAddLecturerModal] = useState(false);
   const [addLecturerSuccess, setAddLecturerSuccess] = useState(false);
 
-  const [selectedLecturerForEdit, setSelectedLecturerForEdit] = useState<any>(null);
+  const [selectedLecturerForEdit, setSelectedLecturerForEdit] = useState<DisplayUser | null>(null);
   const [editShiftsSuccess, setEditShiftsSuccess] = useState(false);
   const [editLecturerShifts, setEditLecturerShifts] = useState<string[]>([]);
 
@@ -26,10 +27,13 @@ export default function AdminUsersPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [specializations, setSpecializations] = useState('Tajweed, Hifz, Fiqh');
-  const [hourlyRate, setHourlyRate] = useState('1250');
-  const [sendInviteEmail, setSendInviteEmail] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const dialogRef = useDialogAccessibility(showAddLecturerModal || !!selectedLecturerForEdit, () => {
+    if (isSubmitting) return;
+    setShowAddLecturerModal(false);
+    setSelectedLecturerForEdit(null);
+  });
 
   // Timeshifts: 10 to 2, 2 to 6, and 6 to 10 (each unlocks 40-min slots in lecturer portal)
   const TIMESHIFTS = [
@@ -98,32 +102,24 @@ export default function AdminUsersPage() {
   };
 
   // Fetch real users from database
-  const { data: dbUsers = [], isLoading, error } = useQuery({
+  const { data: dbUsers = [], isLoading, error } = useQuery<UserRecord[]>({
     queryKey: ['adminUsers'],
     queryFn: () => apiFetch('/admin/users'),
   });
 
-  // Fetch real lecturers from database for assignment
-  const { data: dbLecturers = [] } = useQuery({
-    queryKey: ['profileLecturers'],
-    queryFn: () => apiFetch('/profile/lecturers'),
-  });
-
-  const closeModal = useCallback(() => setSelectedStudentForAssignment(null), []);
   const closeEditModal = useCallback(() => setSelectedLecturerForEdit(null), []);
 
   useEffect(() => {
-    if (!selectedStudentForAssignment && !selectedLecturerForEdit) return;
+    if (!selectedLecturerForEdit) return;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => { 
       if (e.key === 'Escape') {
-        closeModal(); 
         closeEditModal();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
-  }, [selectedStudentForAssignment, selectedLecturerForEdit, closeModal, closeEditModal]);
+  }, [selectedLecturerForEdit, closeEditModal]);
 
   const handleCreateLecturer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,8 +153,6 @@ export default function AdminUsersPage() {
           email: email.trim(),
           password: password.trim() || undefined,
           specializations: specs.length ? specs : ['Quran Recitation'],
-          hourlyRate: Number(hourlyRate) || 1250,
-          sendInvitationEmail: sendInviteEmail,
           hourlyAvailabilityJson: calculatedHours,
         }),
       });
@@ -179,8 +173,8 @@ export default function AdminUsersPage() {
       setPassword('');
       setSpecializations('Tajweed, Hifz, Fiqh');
       setSelectedShifts(['10-2']);
-    } catch (err: any) {
-      const msg = err.message || 'Failed to create lecturer account';
+    } catch (err: unknown) {
+      const msg = (err instanceof Error ? err.message : '') || 'Failed to create lecturer account';
       setErrorMessage(msg);
       toast.error('Creation Failed', msg);
     } finally {
@@ -188,26 +182,9 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleAssignLecturer = async (lecturerUserId: string) => {
-    if (!selectedStudentForAssignment) return;
-    try {
-      await apiFetch(`/admin/students/${selectedStudentForAssignment.id}/assign-lecturer`, {
-        method: 'POST',
-        body: JSON.stringify({ lecturerId: lecturerUserId }),
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
-      setAssignmentSuccess(true);
-      toast.success('Lecturer Assigned', 'Student has been assigned to the selected lecturer.');
-      closeModal();
-      setTimeout(() => setAssignmentSuccess(false), 3000);
-    } catch (err: any) {
-      toast.error('Assignment Failed', err.message || 'Failed to assign lecturer');
-    }
-  };
-
   const handleEditLecturerShifts = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedLecturerForEdit) return;
     setIsSubmitting(true);
     try {
       const calculatedHours = Array.from(
@@ -230,15 +207,15 @@ export default function AdminUsersPage() {
       toast.success('Shifts Updated', 'Lecturer working shifts have been updated.');
       closeEditModal();
       setTimeout(() => setEditShiftsSuccess(false), 3000);
-    } catch (err: any) {
-      toast.error('Update Failed', err.message || 'Failed to update shifts');
+    } catch (err: unknown) {
+      toast.error('Update Failed', (err instanceof Error ? err.message : '') || 'Failed to update shifts');
     } finally {
       setIsSubmitting(false);
     }
   };
 
 
-  const handleToggleUserStatus = async (user: any) => {
+  const handleToggleUserStatus = async (user: UserRecord) => {
     const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     try {
       await apiFetch(`/admin/users/${user.id}/status`, {
@@ -250,13 +227,13 @@ export default function AdminUsersPage() {
         newStatus === 'ACTIVE' ? 'User Activated' : 'User Suspended',
         `Account status updated to ${newStatus.toLowerCase()}.`
       );
-    } catch (err: any) {
-      toast.error('Update Failed', err.message || 'Failed to update user status');
+    } catch (err: unknown) {
+      toast.error('Update Failed', (err instanceof Error ? err.message : '') || 'Failed to update user status');
     }
   };
 
   // Transform and filter real users
-  const transformedUsers = dbUsers.map((u: any) => {
+  const transformedUsers = dbUsers.map((u) => {
     const name =
       u.studentProfile?.fullName ||
       u.lecturerProfile?.fullName ||
@@ -275,13 +252,13 @@ export default function AdminUsersPage() {
     };
   });
 
-  const filtered = transformedUsers.filter((u: any) => {
+  const filtered = transformedUsers.filter((u) => {
     const matchSearch =
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
     const matchRole =
       roleFilter === 'all' ||
-      u.roleLower === roleFilter.toLowerCase();
+      u.roleLower === roleFilter.toLowerCase() || (roleFilter === 'admin' && u.role === 'SUPER_ADMIN');
     return matchSearch && matchRole;
   });
 
@@ -290,7 +267,6 @@ export default function AdminUsersPage() {
       <div className="space-y-6 animate-fade-in p-6 lg:p-8">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[hsl(var(--foreground))]">User Management</h1>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
               Live records from PostgreSQL database ({transformedUsers.length} total users)
             </p>
@@ -360,7 +336,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((u: any) => (
+                {filtered.map((u) => (
                   <tr key={u.id} className="border-b border-[hsl(var(--border))] last:border-0 hover:bg-[hsl(var(--muted)/0.4)] transition-colors">
                     <td className="py-3 px-5">
                       <div className="flex items-center gap-3">
@@ -391,7 +367,7 @@ export default function AdminUsersPage() {
                         u.assignedScholar ? (
                           <span className="text-[hsl(var(--foreground))] font-medium">Assigned: {u.assignedScholar}</span>
                         ) : (
-                          <span className="text-amber-600 dark:text-amber-400 font-medium">Unassigned</span>
+                          <span className="text-amber-800 dark:text-amber-400 font-medium">Unassigned</span>
                         )
                       ) : u.role === 'LECTURER' ? (
                         <div>
@@ -401,7 +377,7 @@ export default function AdminUsersPage() {
                               : 'Quran & Islamic Studies'}
                           </div>
                           {Array.isArray(u.timeshift) && u.timeshift.length > 0 && (
-                            <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
+                            <div className="text-[10px] text-amber-800 dark:text-amber-400 mt-0.5 font-medium">
                               ⏰ Shift: {formatShiftName(u.timeshift)}
                             </div>
                           )}
@@ -425,21 +401,10 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="py-3 px-5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {u.role === 'STUDENT' && (
-                          <button
-                            onClick={() => setSelectedStudentForAssignment(u)}
-                            className="p-1.5 rounded-lg bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.2)] transition-colors flex items-center gap-1.5 px-3 mr-1"
-                            title={u.assignedScholar ? "Reassign Scholar" : "Assign Lecturer"}
-                          >
-                            <UserPlus className="h-3.5 w-3.5" />
-                            <span className="text-xs font-semibold hidden md:block">{u.assignedScholar ? "Reassign Scholar" : "Assign Scholar"}</span>
-                          </button>
-                        )}
                         {u.role === 'LECTURER' && (
                           <button
                             onClick={() => {
                               setSelectedLecturerForEdit(u);
-                              
                               // Determine active shifts for lecturer
                               const shifts = [];
                               const hours = u.timeshift || [];
@@ -479,67 +444,6 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Assign Lecturer Modal */}
-      {selectedStudentForAssignment && (
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          onClick={closeModal}
-        >
-          <div
-            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-fade-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">{selectedStudentForAssignment.assignedScholar ? "Reassign Scholar" : "Assign Scholar"}</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
-              Select a vetted scholar for <strong className="text-[hsl(var(--foreground))]">{selectedStudentForAssignment.name}</strong>.
-            </p>
-
-            <div className="space-y-2.5 mb-6 max-h-[320px] overflow-y-auto pr-1">
-              {dbLecturers.length === 0 ? (
-                <div className="text-center py-6 text-sm text-[hsl(var(--muted-foreground))]">
-                  No lecturers registered yet. Click &quot;Add Lecturer&quot; first.
-                </div>
-              ) : (
-                dbLecturers.map((l: any) => (
-                  <button
-                    key={l.userId}
-                    onClick={() => handleAssignLecturer(l.userId)}
-                    className="w-full flex items-center justify-between p-3 rounded-xl border border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.05)] transition-all text-left group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-[#095F46] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {l.fullName?.slice(0, 2).toUpperCase() || 'LC'}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-sm group-hover:text-[hsl(var(--primary))] transition-colors">
-                          {l.fullName}
-                        </div>
-                        <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                          {Array.isArray(l.specializations)
-                            ? l.specializations.join(', ')
-                            : l.user?.email || 'Scholar'}
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-semibold text-[hsl(var(--primary))] opacity-0 group-hover:opacity-100 transition-opacity">
-                      Select →
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-
-            <button
-              onClick={closeModal}
-              className="w-full py-2.5 rounded-xl text-sm font-medium border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Add Lecturer Modal */}
       {showAddLecturerModal && (
         <div
@@ -548,10 +452,15 @@ export default function AdminUsersPage() {
           onClick={() => !isSubmitting && setShowAddLecturerModal(false)}
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-lecturer-title"
+            tabIndex={-1}
             className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-lg w-full p-6 animate-fade-in max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Create Lecturer Account</h3>
+            <h3 id="create-lecturer-title" className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Create Lecturer Account</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
               Directly onboard a vetted scholar into the database.
             </p>
@@ -568,6 +477,7 @@ export default function AdminUsersPage() {
                 <div>
                   <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">First Name</label>
                   <input
+                    aria-label="First Name"
                     required
                     type="text"
                     value={firstName}
@@ -579,6 +489,7 @@ export default function AdminUsersPage() {
                 <div>
                   <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Last Name</label>
                   <input
+                    aria-label="Last Name"
                     required
                     type="text"
                     value={lastName}
@@ -592,6 +503,7 @@ export default function AdminUsersPage() {
               <div>
                 <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Email Address</label>
                 <input
+                  aria-label="Email Address"
                   required
                   type="email"
                   value={email}
@@ -603,37 +515,28 @@ export default function AdminUsersPage() {
 
               <div>
                 <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">
-                  Initial Password <span className="text-[hsl(var(--muted-foreground))] font-normal">(Optional, defaults to ilmbit123)</span>
+                  Initial Password <span className="text-[hsl(var(--muted-foreground))] font-normal">(At least 8 characters)</span>
                 </label>
                 <input
-                  type="text"
+                  aria-label="Initial Password"
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                  placeholder="ilmbit123"
+                  required minLength={8} maxLength={128} autoComplete="new-password"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Specializations (comma separated)</label>
                 <input
+                  aria-label="Specializations (comma separated)"
                   required
                   type="text"
                   value={specializations}
                   onChange={(e) => setSpecializations(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
                   placeholder="e.g. Tajweed, Hifz, Fiqh"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1.5 text-[hsl(var(--foreground))]">Base Hourly Rate (LKR)</label>
-                <input
-                  required
-                  type="number"
-                  value={hourlyRate}
-                  onChange={(e) => setHourlyRate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
                 />
               </div>
 
@@ -725,23 +628,6 @@ export default function AdminUsersPage() {
                 </div>
               </div>
 
-              <div className="pt-1">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sendInviteEmail}
-                    onChange={(e) => setSendInviteEmail(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-[hsl(var(--border))]"
-                  />
-                  <div>
-                    <div className="text-xs font-semibold text-[hsl(var(--foreground))]">Account Activation Notice</div>
-                    <div className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                      Mark account as active and ready for immediate login.
-                    </div>
-                  </div>
-                </label>
-              </div>
-
               <div className="pt-3 flex gap-3">
                 <button
                   type="button"
@@ -779,10 +665,15 @@ export default function AdminUsersPage() {
           onClick={() => !isSubmitting && closeEditModal()}
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-shifts-title"
+            tabIndex={-1}
             className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-lg w-full p-6 animate-fade-in max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Edit Lecturer Shifts</h3>
+            <h3 id="edit-shifts-title" className="text-lg font-bold mb-1 text-[hsl(var(--foreground))]">Edit Lecturer Shifts</h3>
             <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">
               Update working shifts for <strong className="text-[hsl(var(--foreground))]">{selectedLecturerForEdit.name}</strong>.
             </p>
@@ -903,15 +794,6 @@ export default function AdminUsersPage() {
       )}
 
       {/* Success Toasts */}
-      {assignmentSuccess && (
-        <div className="fixed bottom-6 right-6 z-[100] animate-fade-in">
-          <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-emerald-500/30 shadow-lg flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-            <CheckCircle className="h-4 w-4" />
-            Scholar assigned to student successfully in database!
-          </div>
-        </div>
-      )}
-
       {addLecturerSuccess && (
         <div className="fixed bottom-6 right-6 z-[100] animate-fade-in">
           <div className="px-5 py-3 rounded-xl bg-[hsl(var(--card))] border border-emerald-500/30 shadow-lg flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">

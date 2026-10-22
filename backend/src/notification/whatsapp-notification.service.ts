@@ -5,7 +5,7 @@ export interface WhatsAppDispatchPayload {
   toPhone: string;
   recipientName: string;
   recipientRole?: string;
-  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW' | 'GENERAL';
+  eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW' | 'SESSION_LECTURER_NO_SHOW' | 'GENERAL';
   message: string;
   metadata?: Record<string, any>;
 }
@@ -82,7 +82,7 @@ export class WhatsAppNotificationService {
    * Builds clean, professional WhatsApp text messages
    */
   buildBookingMessage(params: {
-    eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW';
+    eventType: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'BOOKING_RESCHEDULED' | 'SESSION_STUDENT_NO_SHOW' | 'SESSION_LECTURER_NO_SHOW';
     recipientName: string;
     actorName: string;
     actorRole: string;
@@ -132,6 +132,10 @@ export class WhatsAppNotificationService {
         `\n🔗 Visit your dashboard to view your updated schedule or rebook:\n${actionUrl}\n\n` +
         `_Barakallahu Feekum,_ \n_IlmConnect Support_`
       );
+    }
+
+    if (eventType === 'SESSION_LECTURER_NO_SHOW') {
+      return `Assalamu Alaikum ${recipientName},\nYour lecturer was absent for the session on ${sessionDateFormatted} at ${sessionTimeFormatted}. Contact support to arrange the next lesson.\n${actionUrl}`;
     }
 
     if (eventType === 'SESSION_STUDENT_NO_SHOW') {

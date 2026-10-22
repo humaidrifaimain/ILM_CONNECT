@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { AccessToken } from 'livekit-server-sdk';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { AccessToken, RoomServiceClient, WebhookReceiver } from 'livekit-server-sdk';
 
 export interface LivekitTokenResult {
   token: string;
@@ -40,10 +40,42 @@ export class LivekitService {
     return `ilm-session-${sessionId}`;
   }
 
+  async studentIsPresent(roomName: string, studentId: string): Promise<boolean> {
+    if (!this.isConfigured()) throw new ServiceUnavailableException('Live attendance is unavailable');
+    const client = new RoomServiceClient((process.env.LIVEKIT_URL || this.wsUrl)!.replace(/^ws/, 'http'), process.env.LIVEKIT_API_KEY || this.apiKey, process.env.LIVEKIT_API_SECRET || this.apiSecret);
+    try {
+      const participants = await client.listParticipants(roomName);
+      return participants.some(participant => participant.identity === `student:${studentId}`);
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'not_found') return false;
+      throw new ServiceUnavailableException('Unable to check classroom attendance. Please retry.');
+    }
+  }
+
+  async receiveWebhook(body: string, authorization?: string) {
+    if (!this.isConfigured()) throw new ServiceUnavailableException('Live video service is not configured');
+    return new WebhookReceiver((process.env.LIVEKIT_API_KEY || this.apiKey)!, (process.env.LIVEKIT_API_SECRET || this.apiSecret)!).receive(body, authorization);
+  }
+
+  async endRoom(roomName: string) {
+    if (!this.isConfigured()) {
+      if (process.env.NODE_ENV === 'production') throw new ServiceUnavailableException('Live video service is not configured');
+      return;
+    }
+    const url = (process.env.LIVEKIT_URL || this.wsUrl)!.replace(/^ws/, 'http');
+    const client = new RoomServiceClient(url, process.env.LIVEKIT_API_KEY || this.apiKey, process.env.LIVEKIT_API_SECRET || this.apiSecret);
+    try {
+      await client.deleteRoom(roomName);
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'not_found') return;
+      throw error;
+    }
+  }
+
   /**
    * Generate a LiveKit access token for a participant.
-   * If credentials are not configured or contain masked bullets, returns
-   * an interactive simulation session so video meetings always work smoothly.
+   * Production must fail clearly when credentials are invalid. A local-only
+   * classroom cannot connect participants in different browsers.
    */
   async generateToken(identity: string, name: string, roomName: string): Promise<LivekitTokenResult> {
     const apiKey = process.env.LIVEKIT_API_KEY || this.apiKey;
@@ -54,7 +86,12 @@ export class LivekitService {
       const reason = this.isSecretMasked()
         ? 'LIVEKIT_API_SECRET in backend/.env contains masked bullet characters (•).'
         : 'LiveKit credentials are not fully configured in backend/.env.';
-      this.logger.warn(`${reason} Entering interactive virtual classroom mode.`);
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error(reason);
+        throw new ServiceUnavailableException('Live video service is not configured. Please contact the administrator.');
+      }
+
+      this.logger.warn(`${reason} Entering local interactive classroom mode.`);
       return {
         token: `sim_${identity}_${Date.now()}`,
         wsUrl: '',
@@ -81,7 +118,11 @@ export class LivekitService {
       const token = await at.toJwt();
       return { token, wsUrl: wsUrl!, isSimulation: false };
     } catch (err: any) {
-      this.logger.error(`LiveKit token generation failed: ${err.message}. Falling back to simulation mode.`);
+      this.logger.error(`LiveKit token generation failed: ${err.message}.`);
+      if (process.env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableException('Unable to connect to the live video service. Please try again.');
+      }
+
       return {
         token: `sim_${identity}_${Date.now()}`,
         wsUrl: '',
@@ -91,4 +132,3 @@ export class LivekitService {
     }
   }
 }
-

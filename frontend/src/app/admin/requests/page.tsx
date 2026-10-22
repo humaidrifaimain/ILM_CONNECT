@@ -1,9 +1,9 @@
 'use client';
 
+import { AdminWaitlist } from '@/components/layout/admin-waitlist';
 import { useState } from 'react';
 import {
   Search,
-  UserPlus,
   RefreshCw,
   CheckCircle,
   Clock,
@@ -12,21 +12,18 @@ import {
   X,
   User,
   GraduationCap,
-  Sparkles,
   AlertCircle,
   HelpCircle,
-  ExternalLink,
-  ChevronRight,
   Loader2,
-  CheckCircle2,
-  RotateCcw,
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/components/ui/toast';
 import { TableSkeleton } from '@/components/ui/loading-screen';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Portal } from '@/components/ui/portal';
+import { useDialogAccessibility } from '@/lib/use-dialog-accessibility';
+import { RequestLecturerAssignment } from '@/components/admin/request-lecturer-assignment';
 
 interface TicketMessage {
   id: string;
@@ -55,6 +52,9 @@ interface SupportTicket {
       country?: string;
       phone?: string;
       currentTier?: string;
+      preferredHours?: number[];
+      assignedLecturerId?: string | null;
+      assignedLecturer?: { userId: string; fullName: string } | null;
     } | null;
     lecturerProfile?: {
       fullName?: string;
@@ -72,9 +72,11 @@ export default function AdminRequestsPage() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const dialogRef = useDialogAccessibility(!!selectedTicket, () => { if (!sendingReply && !assigning) setSelectedTicket(null); });
 
   // Fetch tickets with 10-second silent background polling
-  const { data: tickets = [], isLoading, refetch } = useQuery<SupportTicket[]>({
+  const { data: tickets = [], isLoading, isError, refetch } = useQuery<SupportTicket[]>({
     queryKey: ['adminSupportTickets'],
     queryFn: () => apiFetch('/support/tickets'),
     refetchInterval: 10000,
@@ -122,8 +124,8 @@ export default function AdminRequestsPage() {
       });
       await queryClient.invalidateQueries({ queryKey: ['adminSupportTickets'] });
       toast.success('Status Updated', `Ticket status updated to ${newStatus}.`);
-    } catch (err: any) {
-      toast.error('Update Failed', err?.message || 'Failed to update ticket status');
+    } catch (err) {
+      toast.error('Update Failed', err instanceof Error ? err.message : 'Failed to update ticket status');
     }
   };
 
@@ -141,8 +143,8 @@ export default function AdminRequestsPage() {
       setReplyText('');
       await queryClient.invalidateQueries({ queryKey: ['adminSupportTickets'] });
       toast.success('Reply Sent', 'Your message has been delivered to the user.');
-    } catch (err: any) {
-      toast.error('Failed to send reply', err?.message || 'Could not post message');
+    } catch (err) {
+      toast.error('Failed to send reply', err instanceof Error ? err.message : 'Could not post message');
     } finally {
       setSendingReply(false);
     }
@@ -157,10 +159,11 @@ export default function AdminRequestsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      <AdminWaitlist />
+      {isError && <p role="alert">Unable to load support requests. <button className="underline" onClick={() => refetch()}>Retry</button></p>}
       {/* ─── Header ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Operational Requests & Support</h1>
           <p className="text-[hsl(var(--muted-foreground))] text-sm">
             Manage student and lecturer inquiries, reassignment requests, and send direct replies.
           </p>
@@ -170,6 +173,7 @@ export default function AdminRequestsPage() {
       {/* ─── Role Separation Tabs ─── */}
       <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] pb-2 overflow-x-auto">
         <button
+          aria-pressed={roleFilter === 'ALL'}
           onClick={() => setRoleFilter('ALL')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
             roleFilter === 'ALL'
@@ -184,10 +188,11 @@ export default function AdminRequestsPage() {
         </button>
 
         <button
+          aria-pressed={roleFilter === 'STUDENT'}
           onClick={() => setRoleFilter('STUDENT')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
             roleFilter === 'STUDENT'
-              ? 'bg-emerald-600 text-white shadow-sm'
+              ? 'bg-[hsl(var(--primary))] text-white shadow-sm'
               : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'
           }`}
         >
@@ -199,10 +204,11 @@ export default function AdminRequestsPage() {
         </button>
 
         <button
+          aria-pressed={roleFilter === 'LECTURER'}
           onClick={() => setRoleFilter('LECTURER')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
             roleFilter === 'LECTURER'
-              ? 'bg-purple-600 text-white shadow-sm'
+              ? 'bg-[hsl(var(--primary))] text-white shadow-sm'
               : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--border))]'
           }`}
         >
@@ -327,7 +333,9 @@ export default function AdminRequestsPage() {
                       <td className="py-3.5 px-5">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
-                            {req.type === 'LECTURER_CHANGE' ? (
+                            {req.type === 'STUDENT_REGISTRATION' ? (
+                              <span className="text-sm font-semibold">New student registration</span>
+                            ) : req.type === 'LECTURER_CHANGE' ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 font-semibold text-xs">
                                 <RefreshCw className="h-3 w-3" /> Lecturer Change
                               </span>
@@ -371,13 +379,13 @@ export default function AdminRequestsPage() {
                               ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
                               : isInReview
                               ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
-                              : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                              : 'bg-amber-100 text-amber-900 dark:text-amber-900'
                           }`}
                         >
                           {isResolved ? (
                             <CheckCircle className="h-3 w-3" />
                           ) : isInReview ? (
-                            <Sparkles className="h-3 w-3" />
+                            <MessageSquare className="h-3 w-3" />
                           ) : (
                             <Clock className="h-3 w-3" />
                           )}
@@ -392,11 +400,12 @@ export default function AdminRequestsPage() {
                             onClick={() => setSelectedTicket(req)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.08)] hover:bg-[hsl(var(--primary)/0.18)] transition-all"
                           >
-                            <MessageSquare className="h-3.5 w-3.5" /> View & Reply
+                            <MessageSquare className="h-3.5 w-3.5" /> {['STUDENT_REGISTRATION', 'LECTURER_CHANGE', 'STUDENT_REASSIGNMENT'].includes(req.type) && req.user.role === 'STUDENT' ? 'View & assign' : 'View & Reply'}
                           </button>
 
                           {req.status !== 'RESOLVED' ? (
                             <button
+                              disabled={req.type === 'STUDENT_REGISTRATION' && !req.user.studentProfile?.assignedLecturerId}
                               onClick={() => handleStatusUpdate(req.id, 'RESOLVED')}
                               className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-600 border border-emerald-500/30 hover:bg-emerald-500/10 transition-colors"
                               title="Mark Resolved"
@@ -424,7 +433,7 @@ export default function AdminRequestsPage() {
                       <div className="h-12 w-12 rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] flex items-center justify-center mx-auto mb-3">
                         <MessageSquare className="h-6 w-6" />
                       </div>
-                      <p className="font-semibold text-sm">No operational requests match your filter.</p>
+                      <p className="font-semibold text-sm">{isError ? 'Unable to load support requests.' : 'No operational requests match your filter.'}</p>
                       <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
                         Try resetting the search or selecting &ldquo;All Requests&rdquo;.
                       </p>
@@ -443,9 +452,14 @@ export default function AdminRequestsPage() {
           {currentSelectedTicket && (
             <div
               className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm"
-              onClick={() => setSelectedTicket(null)}
+              onClick={() => { if (!assigning && !sendingReply) setSelectedTicket(null); }}
             >
               <motion.div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="request-conversation-title"
+                tabIndex={-1}
                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -466,7 +480,7 @@ export default function AdminRequestsPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-[hsl(var(--foreground))]">
+                      <h2 id="request-conversation-title" className="text-base font-bold text-[hsl(var(--foreground))]">
                         {getDisplayName(currentSelectedTicket)}
                       </h2>
                       <span
@@ -492,13 +506,15 @@ export default function AdminRequestsPage() {
                         ? 'bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]'
                         : currentSelectedTicket.status === 'IN_REVIEW'
                         ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
-                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                        : 'bg-amber-100 text-amber-900'
                     }`}
                   >
                     {currentSelectedTicket.status}
                   </span>
                   <button
+                    disabled={assigning || sendingReply}
                     onClick={() => setSelectedTicket(null)}
+                    aria-label="Close request conversation"
                     className="h-8 w-8 rounded-full hover:bg-[hsl(var(--muted))] flex items-center justify-center text-[hsl(var(--muted-foreground))] transition-colors"
                   >
                     <X className="h-4 w-4" />
@@ -531,6 +547,7 @@ export default function AdminRequestsPage() {
                 </div>
 
                 {/* Original Request Box */}
+                {currentSelectedTicket.user.role === 'STUDENT' && ['STUDENT_REGISTRATION', 'LECTURER_CHANGE', 'STUDENT_REASSIGNMENT'].includes(currentSelectedTicket.type) && <RequestLecturerAssignment key={currentSelectedTicket.id} request={currentSelectedTicket} onBusyChange={setAssigning} />}
                 <div className="space-y-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
                     Original Submitted Request
@@ -607,6 +624,8 @@ export default function AdminRequestsPage() {
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     placeholder={`Write an official reply message to ${getDisplayName(currentSelectedTicket)}...`}
+                    aria-label="Reply to support request"
+                    maxLength={10000}
                     className="w-full px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-xs text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] placeholder:text-[hsl(var(--muted-foreground))]"
                   />
                 </div>
@@ -617,21 +636,23 @@ export default function AdminRequestsPage() {
                     <button
                       type="button"
                       onClick={() => handleStatusUpdate(currentSelectedTicket.id, 'IN_REVIEW')}
+                      disabled={assigning}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                         currentSelectedTicket.status === 'IN_REVIEW'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
+                          : 'bg-blue-500/10 text-blue-800 hover:bg-blue-500/20'
                       }`}
                     >
                       In Review
                     </button>
                     <button
                       type="button"
+                      disabled={assigning || (currentSelectedTicket.type === 'STUDENT_REGISTRATION' && !currentSelectedTicket.user.studentProfile?.assignedLecturerId)}
                       onClick={() => handleStatusUpdate(currentSelectedTicket.id, 'RESOLVED')}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                         currentSelectedTicket.status === 'RESOLVED'
                           ? 'bg-emerald-600 text-white'
-                          : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
+                          : 'bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/20'
                       }`}
                     >
                       Resolved
@@ -641,7 +662,7 @@ export default function AdminRequestsPage() {
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                     <button
                       type="button"
-                      disabled={sendingReply || !replyText.trim()}
+                      disabled={assigning || sendingReply || !replyText.trim() || (currentSelectedTicket.type === 'STUDENT_REGISTRATION' && !currentSelectedTicket.user.studentProfile?.assignedLecturerId)}
                       onClick={() => handleSendReply('RESOLVED')}
                       className="px-3.5 py-2 rounded-xl font-bold text-xs border border-emerald-600/30 text-emerald-600 hover:bg-emerald-600/10 transition-all disabled:opacity-50"
                     >
@@ -650,7 +671,7 @@ export default function AdminRequestsPage() {
 
                     <button
                       type="button"
-                      disabled={sendingReply || !replyText.trim()}
+                      disabled={assigning || sendingReply || !replyText.trim()}
                       onClick={() => handleSendReply()}
                       className="px-4 py-2 rounded-xl font-bold text-xs text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
                     >

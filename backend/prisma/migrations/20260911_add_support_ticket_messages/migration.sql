@@ -18,10 +18,20 @@ CREATE INDEX IF NOT EXISTS "support_ticket_messages_ticket_id_idx" ON "support_t
 CREATE INDEX IF NOT EXISTS "support_ticket_messages_sender_id_idx" ON "support_ticket_messages"("sender_id");
 
 -- AddForeignKey
-ALTER TABLE "support_ticket_messages" ADD CONSTRAINT IF NOT EXISTS "support_ticket_messages_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "support_tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'support_ticket_messages_ticket_id_fkey' AND conrelid = 'support_ticket_messages'::regclass) THEN
+    ALTER TABLE "support_ticket_messages" ADD CONSTRAINT "support_ticket_messages_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "support_tickets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- AddForeignKey
-ALTER TABLE "support_ticket_messages" ADD CONSTRAINT IF NOT EXISTS "support_ticket_messages_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'support_ticket_messages_sender_id_fkey' AND conrelid = 'support_ticket_messages'::regclass) THEN
+    ALTER TABLE "support_ticket_messages" ADD CONSTRAINT "support_ticket_messages_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- AddForeignKey (User relation)
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "support_ticket_messages_relation" TEXT;

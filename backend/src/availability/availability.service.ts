@@ -1,6 +1,11 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSlotDto } from './dto/availability.dto';
+import { lecturerConflictWindow, SESSION_MINUTES } from './session-timing';
 
 @Injectable()
 export class AvailabilityService {
@@ -12,13 +17,8 @@ export class AvailabilityService {
       where: { userId: lecturerId },
     });
 
-    let targetId = lecturerId;
-    if (!profile) {
-      const firstLecturer = await this.prisma.lecturerProfile.findFirst();
-      if (firstLecturer) {
-        targetId = firstLecturer.userId;
-      }
-    }
+    if (!profile) throw new NotFoundException('Lecturer profile not found');
+    const targetId = lecturerId;
 
     return this.prisma.availabilitySlot.findMany({
       where: { lecturerId: targetId },
@@ -30,89 +30,117 @@ export class AvailabilityService {
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(dto.endsAt);
 
-    if (startsAt >= endsAt) {
+    if (
+      !Number.isFinite(startsAt.getTime()) ||
+      !Number.isFinite(endsAt.getTime()) ||
+      startsAt >= endsAt
+    ) {
       throw new BadRequestException('Slot start time must be before end time');
     }
+    if (startsAt <= new Date())
+      throw new BadRequestException('Availability must start in the future');
+    if (+endsAt - +startsAt !== SESSION_MINUTES * 60000)
+      throw new BadRequestException('Each availability session must last 40 minutes');
 
-    // Ensure target lecturer has a valid profile
-    let targetId = lecturerId;
-    const profile = await this.prisma.lecturerProfile.findUnique({
-      where: { userId: lecturerId },
-    });
-
-    if (!profile) {
-      const firstLecturer = await this.prisma.lecturerProfile.findFirst();
-      if (firstLecturer) {
-        targetId = firstLecturer.userId;
-      } else {
-        throw new BadRequestException('No active lecturer profile found to assign availability slot');
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${'lecturer:' + lecturerId}))`;
+      const targetId = lecturerId;
+      const profile = await tx.lecturerProfile.findUnique({
+        where: { userId: lecturerId },
+      });
+      if (!profile) throw new NotFoundException('Lecturer profile not found');
+      const shift = Array.isArray(profile.hourlyAvailabilityJson)
+        ? profile.hourlyAvailabilityJson.map(Number)
+        : [];
+      const workingHour = (time: Date) =>
+        Number(
+          new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Asia/Colombo',
+            hour: 'numeric',
+            hourCycle: 'h23',
+          }).format(time),
+        );
+      for (
+        let time = +startsAt;
+        time < +endsAt;
+        time = Math.min(+endsAt, time + 60000)
+      ) {
+        if (!shift.includes(workingHour(new Date(time))))
+          throw new BadRequestException(
+            'Availability must stay within your assigned shift (Asia/Colombo)',
+          );
       }
-    }
+      if (!shift.includes(workingHour(new Date(+endsAt - 1))))
+        throw new BadRequestException(
+          'Availability must stay within your assigned shift (Asia/Colombo)',
+        );
 
-    // If identical slot already exists for this lecturer, return it (idempotent)
-    const existingSame = await this.prisma.availabilitySlot.findFirst({
-      where: {
-        lecturerId: targetId,
-        startsAt,
-        endsAt,
-      },
-    });
-
-    if (existingSame) {
-      return existingSame;
-    }
-
-    // Check for overlap: existing starts before new ends AND existing ends after new starts
-    const overlap = await this.prisma.availabilitySlot.findFirst({
-      where: {
-        lecturerId: targetId,
-        startsAt: { lt: endsAt },
-        endsAt: { gt: startsAt },
-      },
-    });
-
-    if (overlap) {
-      if (overlap.status === 'BOOKED') {
-        throw new BadRequestException('Slot overlaps with an already booked student session');
-      }
-      // If existing slot is OPEN, update its timing smoothly rather than rejecting
-      return this.prisma.availabilitySlot.update({
-        where: { id: overlap.id },
-        data: {
+      // If identical slot already exists for this lecturer, return it (idempotent)
+      const existingSame = await tx.availabilitySlot.findFirst({
+        where: {
+          lecturerId: targetId,
           startsAt,
           endsAt,
-          recurringRule: dto.recurringRule || overlap.recurringRule,
         },
       });
-    }
 
-    return this.prisma.availabilitySlot.create({
-      data: {
-        lecturerId: targetId,
-        startsAt,
-        endsAt,
-        status: 'OPEN',
-        recurringRule: dto.recurringRule || null,
-      },
+      if (existingSame) {
+        return existingSame;
+      }
+
+      const overlap = await tx.availabilitySlot.findFirst({
+        where: {
+          lecturerId: targetId,
+          ...lecturerConflictWindow(startsAt, endsAt),
+        },
+      });
+
+      if (overlap) {
+        if (overlap.status === 'BOOKED') {
+          throw new BadRequestException(
+            'Leave at least 10 minutes between sessions',
+          );
+        }
+        throw new BadRequestException(
+          'Leave at least 10 minutes between availability sessions',
+        );
+      }
+
+      return tx.availabilitySlot.create({
+        data: {
+          lecturerId: targetId,
+          startsAt,
+          endsAt,
+          status: 'OPEN',
+          recurringRule: dto.recurringRule || null,
+        },
+      });
     });
   }
 
   async deleteSlot(lecturerId: string, slotId: string, isAdmin = false) {
-    const slot = await this.prisma.availabilitySlot.findFirst({
-      where: isAdmin ? { id: slotId } : { id: slotId, lecturerId },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const target = isAdmin
+        ? await tx.availabilitySlot.findUnique({ where: { id: slotId } })
+        : null;
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${'lecturer:' + (target?.lecturerId || lecturerId)}))`;
+      const slot = await tx.availabilitySlot.findFirst({
+        where: isAdmin ? { id: slotId } : { id: slotId, lecturerId },
+      });
 
-    if (!slot) {
-      return { success: true, message: 'Slot already deleted' };
-    }
+      if (!slot) {
+        return { success: true, message: 'Slot already deleted' };
+      }
 
-    if (slot.status === 'BOOKED') {
-      throw new BadRequestException('Cannot delete an already booked session slot');
-    }
+      if (slot.status === 'BOOKED') {
+        throw new BadRequestException(
+          'Cannot delete an already booked session slot',
+        );
+      }
 
-    return this.prisma.availabilitySlot.delete({
-      where: { id: slotId },
+      return tx.availabilitySlot.delete({
+        where: { id: slotId },
+      });
     });
   }
 }
-

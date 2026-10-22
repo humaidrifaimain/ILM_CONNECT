@@ -1,19 +1,46 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsArray, IsNumber } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { ArrayMinSize, ArrayMaxSize, ArrayUnique, IsEmail, IsNotEmpty, IsOptional, IsString, IsArray, IsNumber, IsInt, Min, Max, Length, ValidateIf, IsEnum, IsDefined } from 'class-validator';
+import { UserStatus } from '@prisma/client';
+
+export class UpdateLecturerDto {
+  @IsDefined()
+  @IsArray()
+  @ArrayMinSize(4)
+  @ArrayMaxSize(24)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(23, { each: true })
+  hourlyAvailabilityJson: number[];
+}
+
+export class UpdateUserStatusDto {
+  @IsDefined()
+  @IsEnum(UserStatus)
+  status: UserStatus;
+}
 
 export class CreateLecturerDto {
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
   @IsString()
-  @IsNotEmpty()
+  @Length(1, 160)
   fullName: string;
 
   @IsEmail()
   email: string;
 
   @IsString()
-  @IsOptional()
-  password?: string;
+  @Length(8, 128)
+  password: string;
 
-  @IsOptional()
-  specializations?: string[] | string;
+  @ValidateIf((_, value) => value !== undefined)
+  @Transform(({ value }) => typeof value === 'string' ? value.split(',').map(item => item.trim()).filter(Boolean) : value)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @Length(1, 100, { each: true })
+  specializations?: string[];
 
   @IsString()
   @IsOptional()
@@ -24,15 +51,26 @@ export class CreateLecturerDto {
   qualifications?: string;
 
   @IsArray()
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @Length(1, 100, { each: true })
   languages?: string[];
 
   @IsNumber()
   @IsOptional()
+  @Min(0)
   hourlyRate?: number;
 
   @IsArray()
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
+  @ArrayMinSize(4)
+  @ArrayMaxSize(24)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(23, { each: true })
   hourlyAvailabilityJson?: number[];
 
   @IsOptional()

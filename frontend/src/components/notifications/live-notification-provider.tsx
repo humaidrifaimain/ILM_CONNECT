@@ -90,12 +90,22 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
   const initialLoadDoneRef = useRef(false);
   const mountTimeRef = useRef(Date.now());
 
+  useEffect(() => {
+    setToasts([]);
+    seenIdsRef.current.clear();
+    initialLoadDoneRef.current = false;
+    mountTimeRef.current = Date.now();
+  }, [user?.id]);
+
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const addToast = useCallback(
     (notif: any) => {
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      void queryClient.invalidateQueries({ queryKey: ['studentBookings'] });
+      void queryClient.invalidateQueries({ queryKey: ['lecturerBookings'] });
       // Prevent historic notifications from popping up as toasts (they will still be in the bell menu)
       const notifTime = new Date(notif.createdAt || new Date()).getTime();
       if (notifTime < mountTimeRef.current - 15000) {
@@ -115,7 +125,9 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
 
       const isLecturer = user?.role === 'LECTURER';
       let actionUrl = undefined;
-      if (type.startsWith('BOOKING_') || type === 'SESSION_STUDENT_NO_SHOW') {
+      if (type.startsWith('COURSE_REQUEST')) {
+        actionUrl = isLecturer ? '/lecturer/courses' : '/student/courses';
+      } else if (type.startsWith('BOOKING_') || type === 'SESSION_STUDENT_NO_SHOW') {
         actionUrl = isLecturer ? '/lecturer/sessions' : '/student/dashboard';
       } else if (type === 'NEW_MESSAGE') {
         actionUrl = isLecturer ? '/lecturer/messages' : '/student/messages';
@@ -147,9 +159,6 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
       playNotificationChime();
 
       // Invalidate relevant React Query caches
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['studentBookings'] });
-      queryClient.invalidateQueries({ queryKey: ['lecturerBookings'] });
       queryClient.invalidateQueries({ queryKey: ['messageThreads'] });
       queryClient.invalidateQueries({ queryKey: ['unreadMessageCount'] });
 
@@ -222,7 +231,7 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
 
   // 2. Secondary: Fast Polling fallback (every 7 seconds)
   const { data: latestNotifications } = useQuery<any[]>({
-    queryKey: ['liveNotificationPoll'],
+    queryKey: ['liveNotificationPoll', user?.id],
     queryFn: () => apiFetch('/notifications', { skipRedirect: true }),
     refetchInterval: 7000,
     enabled: !!user,
@@ -254,7 +263,7 @@ export function LiveNotificationProvider({ children }: { children: React.ReactNo
       {children}
 
       {/* Floating Real-time Live Toast Container */}
-      <div className="fixed top-16 right-4 sm:right-5 z-[9999] flex flex-col gap-2 max-w-[340px] sm:max-w-xs w-full pointer-events-none">
+      <div className="fixed top-16 right-4 sm:right-5 z-[9999] flex flex-col gap-2 max-w-[340px] sm:max-w-xs w-[calc(100%-2rem)] pointer-events-none">
         {toasts.map((toast) => {
           const isCancelled = toast.type === 'BOOKING_CANCELLED';
           const isRescheduled = toast.type === 'BOOKING_RESCHEDULED';

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Req, Body } from '@nestjs/common';
 import { ProgressService } from './progress.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -17,10 +17,18 @@ export class ProgressController {
   }
 
   @Post('advance')
-  @Roles(Role.LECTURER, Role.ADMIN)
-  async advanceProgress(@Req() req: any, studentId: string) {
-    return this.progressService.advanceProgress(studentId);
+  @Roles(Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
+  async advanceProgress(@Req() req: any, @Body('studentId') studentId: string) {
+    return this.progressService.advanceProgress(studentId, req.user);
   }
+
+  @Get('assessments')
+  @Roles(Role.STUDENT)
+  getAssessments(@Req() req: any) { return this.progressService.getAssessments(req.user.id); }
+
+  @Post('assessments')
+  @Roles(Role.LECTURER, Role.ADMIN, Role.SUPER_ADMIN)
+  recordAssessment(@Req() req: any, @Body() body: { studentId: string; title: string; score: number; feedback: string }) { return this.progressService.recordAssessment(req.user, body); }
 
   @Get('certificates')
   @Roles(Role.STUDENT)

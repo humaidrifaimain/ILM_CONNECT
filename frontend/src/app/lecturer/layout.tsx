@@ -1,19 +1,7 @@
-import DashboardSidebar from '@/components/layout/dashboard-sidebar';
-import { DashboardTopbar } from '@/components/layout/dashboard-nav';
+import { DashboardShell } from '@/components/layout/dashboard-shell';
 import MessageFAB from '@/components/chat/message-fab';
+import { RequiredLessonFeedback } from '@/components/lecturer/required-lesson-feedback';
 
 export default function LecturerLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-screen bg-slate-50/60 text-stone-900">
-      <DashboardSidebar />
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-50/60">
-        <DashboardTopbar />
-        <main className="flex-1 p-4 lg:p-6">
-          {children}
-        </main>
-      </div>
-      <MessageFAB />
-    </div>
-  );
+  return <RequiredLessonFeedback><DashboardShell floatingAction={<MessageFAB />}>{children}</DashboardShell></RequiredLessonFeedback>;
 }
-

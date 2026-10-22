@@ -1,26 +1,59 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Check, Calendar, Info, X, User, Video, ExternalLink, AlertTriangle, Clock, Lock, Play, HelpCircle, MessageSquareText } from 'lucide-react';
+import { Check, Calendar, Info, X, User, Video, ExternalLink, AlertTriangle, Clock, HelpCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { toast } from '@/components/ui/toast';
 import { LoadingScreen } from '@/components/ui/loading-screen';
-import { BookingCalendar } from '@/components/classroom/booking-calendar';
+import { BookingCalendar, type CalendarSlot } from '@/components/classroom/booking-calendar';
+
+interface AssignedLecturer {
+  userId: string;
+  name: string;
+  title: string;
+  hourlyAvailabilityJson: number[];
+}
+
+interface LecturerProfile {
+  userId?: string;
+  id?: string;
+  fullName?: string;
+  name?: string;
+  qualifications?: string;
+  title?: string;
+  hourlyAvailabilityJson?: unknown;
+}
+
+interface StudentProfileResponse {
+  currentTier?: string;
+  assignedLecturer?: LecturerProfile | null;
+}
+
+interface BookingRecord {
+  id: string;
+  endsAt: string;
+  startsAt: string;
+  status: string;
+  subject?: string;
+  lecturer?: {
+    fullName?: string;
+    name?: string;
+  };
+}
 
 export default function BookSessionPage() {
   const params = useParams();
   const courseId = (params?.courseId as string) || 'beginner-qaida';
 
-  const [confirmed, setConfirmed] = useState(false);
+  const [confirmed, setConfirmed] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const [assignedLecturer, setAssignedLecturer] = useState<any>(null);
+  const [assignedLecturer, setAssignedLecturer] = useState<AssignedLecturer | null>(null);
   const [lecturerTimeshift, setLecturerTimeshift] = useState<number[]>([]);
-  const [availabilitySlots, setAvailabilitySlots] = useState<any[]>([]);
-  const [studentBookings, setStudentBookings] = useState<any[]>([]);
-  const [selectedBookedSession, setSelectedBookedSession] = useState<any | null>(null);
+  const [availabilitySlots, setAvailabilitySlots] = useState<CalendarSlot[]>([]);
+  const [studentBookings, setStudentBookings] = useState<BookingRecord[]>([]);
+  const [selectedBookedSession, setSelectedBookedSession] = useState<BookingRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [studentTier, setStudentTier] = useState<string>('STANDARD');
 
@@ -50,8 +83,8 @@ export default function BookSessionPage() {
         }
 
         const [profile, bookings] = await Promise.all([
-          apiFetch('/profile/student').catch(() => null),
-          apiFetch('/bookings/student').catch(() => null),
+          apiFetch('/profile/student').catch(() => null) as Promise<StudentProfileResponse | null>,
+          apiFetch('/bookings/student').catch(() => null) as Promise<BookingRecord[] | null>,
         ]);
 
         if (!isMounted) return;
@@ -64,30 +97,21 @@ export default function BookSessionPage() {
           setStudentBookings(bookings);
         }
 
-        let lecturer = profile?.assignedLecturer || bookings?.find((b: any) => new Date(b.startsAt) > new Date())?.lecturer;
-        
-        if (!lecturer && bookings?.length > 0) {
-          lecturer = bookings[0].lecturer;
-        }
+        const lecturer = profile?.assignedLecturer;
 
         if (!lecturer) {
-          const lecturers = await apiFetch('/profile/lecturers').catch(() => null);
-          if (lecturers && lecturers.length > 0) {
-            lecturer = lecturers[0];
-          } else {
-            lecturer = {
-              userId: 'placeholder',
-              fullName: 'Sheikh Ahmed Al-Farsi',
-              qualifications: 'Senior Quran Instructor'
-            };
-          }
+          setAssignedLecturer(null);
+          setLecturerTimeshift([]);
+          setAvailabilitySlots([]);
+          assignedLecturerIdRef.current = null;
+          return;
         }
 
         const lecturerData = {
-           userId: lecturer.userId || lecturer.id,
-           name: lecturer.fullName || lecturer.name,
+           userId: lecturer.userId || lecturer.id || '',
+           name: lecturer.fullName || lecturer.name || 'Assigned Lecturer',
            title: lecturer.qualifications || lecturer.title || 'Quran Instructor',
-           hourlyAvailabilityJson: lecturer.hourlyAvailabilityJson || []
+           hourlyAvailabilityJson: Array.isArray(lecturer.hourlyAvailabilityJson) ? lecturer.hourlyAvailabilityJson.map(Number) : []
         };
 
         const timeshiftHours = Array.isArray(lecturerData.hourlyAvailabilityJson)
@@ -97,20 +121,19 @@ export default function BookSessionPage() {
         setAssignedLecturer(lecturerData);
         assignedLecturerIdRef.current = lecturerData.userId;
 
-        if (lecturerData.userId !== 'placeholder') {
-           const slots = await apiFetch(`/availability/${lecturerData.userId}`).catch(() => null);
-           if (isMounted && slots) {
-             setAvailabilitySlots(slots);
-           }
+        const slots = await apiFetch(`/availability/${lecturerData.userId}`).catch(() => null) as CalendarSlot[] | null;
+        if (isMounted && slots) {
+          setAvailabilitySlots(slots);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (isInitial) {
-          if (error.message === 'Forbidden resource') {
+          const message = error instanceof Error ? error.message : 'Failed to load booking data';
+          if (message === 'Forbidden resource') {
             toast.error('Access Denied', 'You must be logged in as a Student to book sessions.');
           } else {
             console.warn('Failed to load booking data:', error);
           }
-          setAssignedLecturer({ name: 'Sheikh Ahmed Al-Farsi', title: 'Senior Quran Instructor' });
+          setAssignedLecturer(null);
         }
       } finally {
         if (isInitial && isMounted) {
@@ -141,6 +164,10 @@ export default function BookSessionPage() {
 
   const handleConfirmBooking = async (selectedSlots: string[]) => {
     if (selectedSlots.length < 1) return;
+    if (!assignedLecturer?.userId) {
+      toast.info('Lecturer Not Assigned', 'Please contact support so an admin can assign your lecturer.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       for (const slotKey of selectedSlots) {
@@ -149,7 +176,6 @@ export default function BookSessionPage() {
         const [hour, min] = time.split(':');
         const startsAtDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(min));
         const startsAt = startsAtDate.toISOString();
-        
         await apiFetch('/bookings', {
           method: 'POST',
           body: JSON.stringify({
@@ -161,12 +187,12 @@ export default function BookSessionPage() {
       try {
         const freshBookings = await apiFetch('/bookings/student');
         setStudentBookings(freshBookings || []);
-      } catch (e) {}
-      
-      setConfirmed(true);
+      } catch {}
+      setConfirmed(selectedSlots.length);
       toast.success('Session(s) Booked!', 'Your sessions have been confirmed and added to your schedule.');
-    } catch (error: any) {
-      toast.error('Booking Failed', error.message || 'Failed to book session.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to book session.';
+      toast.error('Booking Failed', message);
     } finally {
       setIsSubmitting(false);
     }
@@ -183,11 +209,36 @@ export default function BookSessionPage() {
     <div className="space-y-6 animate-fade-in w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Book Session</h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">Select available time slots with your assigned lecturer</p>
         </div>
         <Link href="/student/dashboard" className="text-sm text-[hsl(var(--primary))] hover:underline">← Back to Dashboard</Link>
       </div>
+
+      {!assignedLecturer ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold">Lecturer is not assigned yet</h2>
+                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-amber-800">
+                  An admin must assign your lecturer before you can book a session. Please contact support and we will help you get matched.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/student/support?tab=contact"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#095F46] px-4 text-sm font-bold text-white transition-colors hover:bg-[#074c38]"
+            >
+              <HelpCircle className="h-4 w-4" />
+              Contact Support
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
 
       {/* Summary banner */}
       <div className="p-4 rounded-xl bg-[hsl(var(--primary-light))] border border-[hsl(var(--primary)/0.2)] flex items-start gap-3">
@@ -200,7 +251,7 @@ export default function BookSessionPage() {
 
       {/* Assigned lecturer info */}
       <div className="flex items-center gap-3 p-4 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-        <div className="h-10 w-10 rounded-full bg-[#095F46] flex items-center justify-center text-white font-bold text-sm">{assignedLecturer.name.split(' ').map((n: any)=>n[0]).join('').slice(0,2)}</div>
+        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(168,80%,26%)] to-[hsl(168,50%,45%)] flex items-center justify-center text-white font-bold text-sm">{assignedLecturer.name.split(' ').map((n: string)=>n[0]).join('').slice(0,2)}</div>
         <div>
           <div className="font-medium text-sm">{assignedLecturer.name}</div>
           <div className="text-xs text-[hsl(var(--muted-foreground))]">{assignedLecturer.title}</div>
@@ -219,6 +270,8 @@ export default function BookSessionPage() {
         isSubmitting={isSubmitting}
         onSlotClick={(session) => setSelectedBookedSession(session)}
       />
+        </>
+      )}
     </div>
 
       {/* 2nd: Already Booked Session Detail Popup Modal */}
@@ -228,7 +281,7 @@ export default function BookSessionPage() {
           onClick={() => setSelectedBookedSession(null)}
         >
           <div
-            className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-scale-in relative overflow-hidden"
+            className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl max-w-md w-full p-6 animate-scale-in relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Ambient accent background glow */}
@@ -237,7 +290,7 @@ export default function BookSessionPage() {
             {/* Modal Header */}
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 shadow-xs">
+                <div className="h-11 w-11 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 shadow-xs">
                   <Calendar className="h-5 w-5" />
                 </div>
                 <div>
@@ -336,7 +389,7 @@ export default function BookSessionPage() {
               <div className="p-3.5 rounded-xl bg-[hsl(var(--primary)/0.08)] border border-[hsl(var(--primary)/0.2)] text-xs text-[hsl(var(--foreground)/0.8)] mb-5 flex items-start gap-2.5">
                 <Info className="h-4 w-4 text-[hsl(var(--primary))] flex-shrink-0 mt-0.5" />
                 <p className="leading-relaxed">
-                  This session slot is already booked and reserved for you. You can enter the classroom 5 minutes before the scheduled time from your sessions dashboard.
+                  This session slot is already booked and reserved for you. You can enter the classroom at any time from your sessions dashboard while the session is scheduled or in progress.
                 </p>
               </div>
             )}
@@ -352,7 +405,7 @@ export default function BookSessionPage() {
               ) && (
                 <Link
                   href={`/student/courses/${courseId}/sessions/${selectedBookedSession.id}/room`}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:bg-[#074c38] hover:shadow-md transition-all flex items-center justify-center gap-1.5 order-first sm:order-none"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#095F46] hover:shadow-md transition-all flex items-center justify-center gap-1.5 order-first sm:order-none"
                 >
                   <Video className="h-3.5 w-3.5" /> Enter Classroom
                 </Link>
@@ -377,15 +430,15 @@ export default function BookSessionPage() {
       )}
 
       {/* Confirmation Modal */}
-      {confirmed && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={() => setConfirmed(false)}>
-          <div className="bg-[hsl(var(--card))] rounded-2xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in text-center" onClick={e => e.stopPropagation()}>
+      {confirmed > 0 && assignedLecturer && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50" onClick={() => setConfirmed(0)}>
+          <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] shadow-2xl max-w-sm w-full p-6 animate-fade-in text-center" onClick={e => e.stopPropagation()}>
             <div className="h-14 w-14 rounded-full bg-[hsl(var(--success)/0.15)] flex items-center justify-center mx-auto mb-4">
               <Check className="h-7 w-7 text-[hsl(var(--success))]" />
             </div>
             <h3 className="text-lg font-bold mb-2">Sessions Booked!</h3>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{confirmed} session confirmed with {assignedLecturer.name}. You&apos;ll be able to join the internal classroom 5 minutes before the session starts.</p>
-            <Link href="/student/dashboard" className="block w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46] hover:bg-[#074c38] transition-colors shadow-sm">Return to Dashboard</Link>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">{confirmed} session{confirmed === 1 ? '' : 's'} confirmed with {assignedLecturer.name}. You can join the classroom at any time while the session is scheduled or in progress.</p>
+            <Link href="/student/dashboard" className="block w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-[#095F46]">Return to Dashboard</Link>
           </div>
         </div>
       )}
